@@ -65,7 +65,8 @@ class SubCellReconstruction:
                     stencil = cell_creator.stencil_creator.get_stencil(
                         average_values, smoothness_index, coords, independent_axis, indexer)
                     for proposed_cell in cell_creator.cell_creator.create_cells(
-                            self.cells, coords, smoothness_index, independent_axis, stencil):
+                            average_values=average_values, indexer=indexer, cells=self.cells, coords=coords,
+                            smoothness_index=smoothness_index, independent_axis=independent_axis, stencil=stencil):
                         proposed_cell_reconstruction_error = self.reconstruction_error_measure.calculate_error(
                             proposed_cell, average_values, indexer, smoothness_index, independent_axis)
                         if proposed_cell_reconstruction_error < reconstruction_error[coords.tuple]:

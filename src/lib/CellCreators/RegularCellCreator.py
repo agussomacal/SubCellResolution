@@ -1,3 +1,5 @@
+from typing import Generator, Dict
+
 import numpy as np
 
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
@@ -7,6 +9,7 @@ from lib.CellCreators.CellCreatorBase import CellCreatorBase, CellBase, REGULAR_
 # ======================================== #
 #           Regular cells
 # ======================================== #
+from src.Indexers import ArrayIndexerNd
 from src.lib.StencilCreators import Stencil
 
 
@@ -41,7 +44,9 @@ class PolynomialRegularCellCreator(CellCreatorBase):
         # only dimension 1, needs to know the problem dimensionality
         super().__init__()
 
-    def create_cells(self, cells, coords, smoothness_index, independent_axis, stencil: Stencil) -> CellBase:
+    def create_cells(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
+                     coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
+                     stencil: Stencil) -> Generator[CellBase, None, None]:
         # (self.polynomial_max_degree + 1) * (1 + noisy)
         polynomial_max_degree = int(np.floor(len(stencil.coords) ** (1 / self.dimensionality)) / (1 + self.noisy) - 1)
         polynomial_coefs = fit_polynomial_from_integrals(
@@ -66,7 +71,9 @@ class PiecewiseConstantRegularCellCreator(CellCreatorBase):
         # only dimension 1, needs to know the problem dimensionality
         super().__init__()
 
-    def create_cells(self, cells, coords, smoothness_index, independent_axis, stencil: Stencil) -> CellBase:
+    def create_cells(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
+                     coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
+                     stencil: Stencil) -> Generator[CellBase, None, None]:
         yield PolynomialCell(
             coords,
             np.reshape(self.apriori_values[np.mean(stencil.values) > self.midpoint],

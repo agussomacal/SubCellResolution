@@ -6,13 +6,15 @@ import seaborn as sns
 import matplotlib.pylab as plt
 
 import config
-from experiments.models import piecewise_constant, calculate_averages_from_image, load_image
+from experiments.VizReconstructionUtils import SUB_DISCRETIZATION2BOUND_ERROR, plot_cells, draw_cell_borders, \
+    plot_cells_not_regular_classification_core, plot_cells_vh_classification_core, plot_cells_type_of_curve_core, \
+    plot_curve_core, plot_cells_pivot_points_core
+from experiments.models import piecewise_constant, calculate_averages_from_image, load_image, elvira
+from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
 from lib.SubCellReconstruction import SubCellReconstruction
 from src.DataManager import DataManager, JOBLIB
 from src.LabPipeline import LabPipeline
 from src.viz_utils import perplex_plot
-
-SUB_DISCRETIZATION2BOUND_ERROR = 5
 
 
 def calculate_reconstruction_error(image: np.ndarray, model: SubCellReconstruction):
@@ -47,9 +49,53 @@ def plot_convergence_curves(fig, ax, num_cells_per_dim, reconstruction_error, fi
     })
     for model, d in data.groupby("Model"):
         plt.plot(d["N"], d["Error"], label=model)
+    ax.set_xticks(num_cells_per_dim, num_cells_per_dim)
+    y_ticks = np.arange(1 - int(np.log10(data["Error"].min())))
+    ax.set_yticks(10.0 ** (-y_ticks), [fr"$10^{-y}$" for y in y_ticks])
     ax.set_yscale("log")
     ax.set_xscale("log")
     ax.legend()
+
+
+@perplex_plot
+def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, resolution_factor=None, true_function=False,
+                        difference=False, plot_curve=True, plot_curve_winner=False, plot_vh_classification=True,
+                        plot_singular_cells=True, cmap="magma", trim=((0, 0), (0, 0)), numbers_on=True, *args,
+                        **kwargs):
+    image = image.pop()
+    num_cells_per_dim = num_cells_per_dim.pop()
+    model = model.pop()
+
+    model_resolution = np.array(model.resolution)
+    image = load_image(image)
+    if true_function:
+        plot_cells(ax, colors=image, mesh_shape=model.resolution, alpha=0.5, cmap="Greys_r",
+                   vmin=np.min(image), vmax=np.max(image))
+    if difference:
+        resolution_factor = np.array(
+            np.shape(image)) // model_resolution if resolution_factor is None else resolution_factor
+        reconstruction = model.reconstruct(resolution_factor=resolution_factor)
+        reconstruction -= calculate_averages_from_image(image, model_resolution * resolution_factor)
+        plot_cells(ax, colors=reconstruction, mesh_shape=model.resolution, alpha=0.5, cmap=cmap, vmin=-1, vmax=1)
+
+    if plot_curve:
+        if plot_curve_winner:
+            plot_cells_type_of_curve_core(ax, model.resolution, model.cells, alpha=0.8)
+        elif plot_vh_classification:
+            plot_cells_vh_classification_core(ax, model.resolution, model.cells, alpha=0.8)
+        elif plot_singular_cells:
+            plot_cells_not_regular_classification_core(ax, model.resolution, model.cells, alpha=0.8)
+        plot_curve_core(ax, curve_cells=[cell for cell in model.cells.values() if
+                                         cell.CELL_TYPE == CURVE_CELL_TYPE])
+        plot_cells_pivot_points_core(ax, model.cells)
+    draw_cell_borders(
+        ax, mesh_shape=num_cells_per_dim,
+        refinement=model_resolution // num_cells_per_dim,
+        numbers_on=numbers_on,
+        prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
+    )
+    ax.set_xlim((-0.5 + trim[0][0], model.resolution[0] - trim[0][1] - 0.5))
+    ax.set_ylim((model.resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
 
 
 if __name__ == "__main__":
@@ -62,7 +108,8 @@ if __name__ == "__main__":
     lab = LabPipeline()
     lab.define_new_block_of_functions(
         "fit_models",
-        piecewise_constant
+        piecewise_constant,
+        elvira
     )
     lab.define_new_block_of_functions(
         "ReconstructModels",
@@ -81,3 +128,18 @@ if __name__ == "__main__":
     )
 
     plot_convergence_curves(data_manager)
+    plot_reconstruction(
+        data_manager,
+        folder='reconstruction',
+        axes_by=[],
+        plot_by=['image', 'fit_models', 'num_cells_per_dim', 'refinement'],
+        axes_xy_proportions=(15, 15),
+        resolution_factor=2,
+        true_function=True,
+        difference=True,
+        plot_curve=True,
+        plot_curve_winner=False,
+        plot_vh_classification=False,
+        plot_singular_cells=False,
+        numbers_on=True
+    )

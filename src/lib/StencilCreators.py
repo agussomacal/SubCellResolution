@@ -139,17 +139,6 @@ def get_regular_opposite_cell_coords(coords: CellCoords, dependent_axis: int, re
     return regular_opposite_cells, singular_cells
 
 
-def get_regular_opposite_cell_coords_sorted(coords: CellCoords, average_values: np.ndarray, dependent_axis: int,
-                                            regularity_mask: np.ndarray, indexer: ArrayIndexerNd) \
-        -> (Tuple[Tuple[int, int], Tuple[int, int]], np.ndarray):
-    regular_opposite_cells, singular_cells = get_regular_opposite_cell_coords(coords, dependent_axis, regularity_mask,
-                                                                              indexer)
-    regular_opposite_cells = np.transpose(indexer[regular_opposite_cells])
-    stencil_order = np.argsort([average_values[tuple(coord)] for coord in regular_opposite_cells])
-    return regular_opposite_cells[stencil_order], singular_cells
-    # return tuple([regular_opposite_cells[o] for o in stencil_order]), singular_cells
-
-
 def surf_step(coords: CellCoords, surfers_coords: np.ndarray, surfers_nearness: float, regularity_mask: np.ndarray,
               # region_mask: np.ndarray,
               regular_cells_set: np.ndarray, regular_cells_nearness: List[float], dependent_axis: int,

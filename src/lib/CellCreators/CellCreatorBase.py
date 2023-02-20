@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Generator
 
 import numpy as np
 from lib.AuxiliaryStructures.Constants import NEIGHBOURHOOD_8, neighbourhood_8_ix, NIGHT_NAVY, \
@@ -54,7 +54,9 @@ class CellBase:
 #        Cell creator definition
 # ======================================== #
 class CellCreatorBase:
-    def create_cells(self, cells, coords, smoothness_index, independent_axis, stencil: Stencil) -> CellBase:
+    def create_cells(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
+                     coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
+                     stencil: Stencil) -> Generator[CellBase, None, None]:
         raise Exception("Not implemented")
 
     def __str__(self):

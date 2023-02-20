@@ -1,16 +1,22 @@
+import operator
 import time
+from functools import partial
 from typing import Union, Tuple
 
 import matplotlib.pylab as plt
 import numpy as np
 
 import config
+from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
+from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
+from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_regular_opposite_cells
 from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator
-from lib.CellIterators import iterate_default
-from lib.CellOrientators import BaseOrientator
-from lib.SmoothnessCalculators import indifferent
-from lib.StencilCreators import StencilCreatorSameRegionAdaptive
-from lib.SubCellReconstruction import CellCreatorPipeline, SubCellReconstruction, ReconstructionErrorMeasureBase
+from lib.CellIterators import iterate_default, iterate_all, iterate_by_condition_on_smoothness
+from lib.CellOrientators import BaseOrientator, OrientPredefined
+from lib.SmoothnessCalculators import indifferent, naive_piece_wise
+from lib.StencilCreators import StencilCreatorSameRegionAdaptive, StencilCreatorFixedShape
+from lib.SubCellReconstruction import CellCreatorPipeline, SubCellReconstruction, ReconstructionErrorMeasureBase, \
+    ReconstructionErrorMeasure
 from src.Indexers import ArrayIndexerNd
 
 
@@ -59,11 +65,41 @@ def piecewise_constant(refinement: int):
         smoothness_calculator=indifferent,
         reconstruction_error_measure=ReconstructionErrorMeasureBase(),
         refinement=refinement,
-        cell_creators=[
+        cell_creators=
+        [  # regular cell with piecewise_constant
             CellCreatorPipeline(
-                cell_iterator=iterate_default,
+                cell_iterator=iterate_all,
                 orientator=BaseOrientator(dimensionality=2),
                 stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=1, dimensionality=2),
                 cell_creator=PolynomialRegularCellCreator(dimensionality=2, noisy=False))
+        ]
+    )
+
+
+@fit_model_decorator
+def elvira(refinement: int):
+    return SubCellReconstruction(
+        name="ELVIRA",
+        smoothness_calculator=naive_piece_wise,
+        reconstruction_error_measure=ReconstructionErrorMeasure(
+            stencil_creator=StencilCreatorFixedShape((3, 3)), central_cell_extra_weight=1, metric="l2"),
+        refinement=refinement,
+        cell_creators=
+        [  # regular cell with piecewise_constant
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_condition_on_smoothness, value=REGULAR_CELL,
+                                      condition=operator.eq),  # only identified curve cells
+                orientator=BaseOrientator(dimensionality=2),
+                stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=1, dimensionality=2),
+                cell_creator=PolynomialRegularCellCreator(dimensionality=2, noisy=False)
+            )] +
+        [  # curve cells with ELVIRA
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
+                                      condition=operator.eq),
+                orientator=OrientPredefined(predefined_axis=independent_axis, dimensionality=2),
+                stencil_creator=StencilCreatorFixedShape((3, 3)),
+                cell_creator=ELVIRACurveCellCreator(regular_opposite_cell_searcher=get_regular_opposite_cells)
+            ) for independent_axis in [0, 1]
         ]
     )
