@@ -1,3 +1,4 @@
+import itertools
 from collections import namedtuple
 from typing import Tuple, Union, List
 
@@ -74,10 +75,10 @@ class SubCellReconstruction:
                             self.cells[coords.tuple] = proposed_cell
 
             if r < self.refinement - 1:
-                average_values = self.reconstruct(resolution_factor=2)
+                average_values = self.reconstruct_by_factor(resolution_factor=2)
         return self
 
-    def reconstruct(self, resolution_factor: Union[int, Tuple, np.ndarray] = 1):
+    def reconstruct_by_factor(self, resolution_factor: Union[int, Tuple, np.ndarray] = 1):
         resolution_factor = np.array([resolution_factor] * len(self.resolution), dtype=int) \
             if isinstance(resolution_factor, int) else np.array(resolution_factor)
         average_values = np.zeros(resolution_factor * np.array(self.resolution, dtype=int))
@@ -90,3 +91,11 @@ class SubCellReconstruction:
                 average_values[tuple(ix * resolution_factor + sub_ix)] = avg
 
         return average_values * np.prod(resolution_factor)
+
+    def reconstruct_arbitrary_size(self, size: Union[Tuple, np.ndarray]):
+        # TODO: test
+        size = np.array(size)
+        values = np.zeros(size)
+        for ix in mesh_iterator(size, out_type=np.array):
+            values[tuple(ix)] = self.cells[tuple(ix // self.resolution)](*(ix / self.resolution))
+        return values

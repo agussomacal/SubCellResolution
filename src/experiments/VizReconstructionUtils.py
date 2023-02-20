@@ -186,15 +186,6 @@ def plot_cells_vh_classification_core(ax, mesh_shape, all_cells, alpha=1.0):
         rectangle_mode=True)
 
 
-def plot_cells_pivot_points_core(ax, all_cells):
-    for cell in all_cells.values():
-        if hasattr(cell, "pivot_point"):
-            for orientation, pivot_point in cell.pivot_point.items():
-                # c = VHM_ORIENTATION_COLOR_DICT[cell.dependent_axis] if hasattr(cell, "dependent_axis") else "black"
-                c = VHM_ORIENTATION_COLOR_DICT[orientation]
-                ax.scatter(x=pivot_point[1] - 0.5, y=pivot_point[0] - 0.5, c=c, alpha=0.5, s=5)
-
-
 def get_curve(curve_cell: CellCurveBase, coords2=None):
     x = curve_cell.coords.coords[curve_cell.independent_axis] + \
         np.linspace(0, 1, CURVE_PLOT_RESOLUTION + 1).reshape((-1, 1))

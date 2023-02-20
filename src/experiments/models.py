@@ -47,6 +47,7 @@ def fit_model_decorator(function):
         model.fit(average_values=avg_values,
                   indexer=ArrayIndexerNd(avg_values, "cyclic"))
         t_fit = time.time() - t0
+
         return {
             "model": model,
             "time_to_fit": t_fit
@@ -56,6 +57,21 @@ def fit_model_decorator(function):
     # the other option is to pass to the block the name we wish to associate to the function.
     decorated_func.__name__ = function.__name__
     return decorated_func
+
+
+def image_reconstruction(image, model):
+    image = load_image(image)
+    t0 = time.time()
+    reconstruction = model.reconstruct_by_factor(
+        resolution_factor=np.array(np.array(np.shape(image)) / np.array(model.resolution), dtype=int))
+    t_reconstruct = time.time() - t0
+
+    reconstruction_error = np.abs(np.array(reconstruction) - image)
+    return {
+        "reconstruction": reconstruction,
+        "reconstruction_error": reconstruction_error,
+        "time_to_reconstruct": t_reconstruct
+    }
 
 
 @fit_model_decorator

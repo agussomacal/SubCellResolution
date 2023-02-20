@@ -1,23 +1,12 @@
-numpy
-scikit-learn
-matplotlib>=3.5
-dill
-joblib
-pandas
-seaborn
-pathos
-pytest
-torch
-tensorflow
-cma
+python-benedict
 tqdm
-pillow
-scikit-image
-sympy
-ipywidgets
-ipykernel
+joblib
 pytest
-scikit-optimize
-shapely
+pathos
+numpy
+pandas
+matplotlib
+seaborn
+scikit-learn
 
 # python -m ipykernel install --user --name venv --display-name "SubCell-venv"
