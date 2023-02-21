@@ -9,9 +9,10 @@ import numpy as np
 import config
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
-from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_regular_opposite_cells
+from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_cells_by_smoothness_threshold, \
+    get_opposite_cells_by_grad
 from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator
-from lib.CellIterators import iterate_default, iterate_all, iterate_by_condition_on_smoothness
+from lib.CellIterators import iterate_all, iterate_by_condition_on_smoothness
 from lib.CellOrientators import BaseOrientator, OrientPredefined
 from lib.SmoothnessCalculators import indifferent, naive_piece_wise
 from lib.StencilCreators import StencilCreatorSameRegionAdaptive, StencilCreatorFixedShape
@@ -115,7 +116,35 @@ def elvira(refinement: int):
                                       condition=operator.eq),
                 orientator=OrientPredefined(predefined_axis=independent_axis, dimensionality=2),
                 stencil_creator=StencilCreatorFixedShape((3, 3)),
-                cell_creator=ELVIRACurveCellCreator(regular_opposite_cell_searcher=get_regular_opposite_cells)
+                cell_creator=ELVIRACurveCellCreator(regular_opposite_cell_searcher=get_opposite_cells_by_smoothness_threshold)
+            ) for independent_axis in [0, 1]
+        ]
+    )
+
+
+@fit_model_decorator
+def elvira_soc(refinement: int):
+    return SubCellReconstruction(
+        name="ELVIRA",
+        smoothness_calculator=naive_piece_wise,
+        reconstruction_error_measure=ReconstructionErrorMeasure(
+            stencil_creator=StencilCreatorFixedShape((3, 3)), central_cell_extra_weight=1, metric="l2"),
+        refinement=refinement,
+        cell_creators=
+        [  # regular cell with piecewise_constant
+            CellCreatorPipeline(
+                cell_iterator=iterate_all,  # all cells
+                orientator=BaseOrientator(dimensionality=2),
+                stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=1, dimensionality=2),
+                cell_creator=PolynomialRegularCellCreator(dimensionality=2, noisy=False)
+            )] +
+        [  # curve cells with ELVIRA
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
+                                      condition=operator.eq),
+                orientator=OrientPredefined(predefined_axis=independent_axis, dimensionality=2),
+                stencil_creator=StencilCreatorFixedShape((3, 3)),
+                cell_creator=ELVIRACurveCellCreator(regular_opposite_cell_searcher=get_opposite_cells_by_grad)
             ) for independent_axis in [0, 1]
         ]
     )

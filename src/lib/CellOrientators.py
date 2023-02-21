@@ -5,6 +5,31 @@ from lib.StencilCreators import get_fixed_stencil_values
 from src.Indexers import ArrayIndexerNd
 
 
+# https://pyimagesearch.com/2021/05/12/image-gradients-with-opencv-sobel-and-scharr/
+
+
+def approximate_gradient_by(average_values, method="scharr", normalize=False):
+    """
+    https://pyimagesearch.com/2021/05/12/image-gradients-with-opencv-sobel-and-scharr/
+    :return:
+    """
+    if method == "scharr":
+        scharr_gx = np.array(
+            [[3, 0, -3],
+             [10, 0, -10],
+             [3, 0, -3]])
+        scharr_gy = np.array(
+            [[3, 10, 3],
+             [0, 0, 0],
+             [-3, -100, -3]])
+        g = np.array([np.sum(average_values * scharr_gx), np.sum(average_values * scharr_gy)])
+    elif method == "sobel":
+        raise Exception("Not implemented method {}.".format(method))
+    else:
+        raise Exception("Not implemented method {}.".format(method))
+    return g / np.sqrt(np.dot(g, g)) if normalize else g
+
+
 # ---------------------------------------------- #
 # ----------------- Base class ----------------- #
 class BaseOrientator:

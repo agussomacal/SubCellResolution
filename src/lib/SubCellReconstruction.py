@@ -61,6 +61,7 @@ class SubCellReconstruction:
             smoothness_index = self.smoothness_calculator(average_values, indexer)
             reconstruction_error = np.inf * np.ones(np.shape(smoothness_index))  # everything to be improved
             for cell_creator in self.cell_creators:
+                new_cells = dict()
                 for coords in cell_creator.cell_iterator(smoothness_index, reconstruction_error):
                     independent_axis = cell_creator.orientator.get_independent_axis(coords, average_values, indexer)
                     stencil = cell_creator.stencil_creator.get_stencil(
@@ -72,7 +73,8 @@ class SubCellReconstruction:
                             proposed_cell, average_values, indexer, smoothness_index, independent_axis)
                         if proposed_cell_reconstruction_error < reconstruction_error[coords.tuple]:
                             reconstruction_error[coords.tuple] = proposed_cell_reconstruction_error
-                            self.cells[coords.tuple] = proposed_cell
+                            new_cells[coords.tuple] = proposed_cell
+                self.cells.update(new_cells)
 
             if r < self.refinement - 1:
                 average_values = self.reconstruct_by_factor(resolution_factor=2)

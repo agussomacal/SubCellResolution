@@ -58,8 +58,8 @@ class CurveCellCreatorBase(CellCreatorBase):
                      coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
                      stencil: Stencil) -> Generator[CellBase, None, None]:
         regular_opposite_cells = self.regular_opposite_cell_searcher(
-            coords=coords, dependent_axis=1 - independent_axis, average_values=average_values,
-            smoothness_index=smoothness_index, indexer=indexer, cells=cells
+            coords=coords, independent_axis=independent_axis, average_values=average_values,
+            smoothness_index=smoothness_index, indexer=indexer, cells=cells, stencil=stencil,
         )
         for curve in self.create_curves(average_values, indexer, cells, coords, smoothness_index,
                                         independent_axis, stencil, regular_opposite_cells):

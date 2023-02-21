@@ -10,7 +10,7 @@ from experiments.VizReconstructionUtils import SUB_DISCRETIZATION2BOUND_ERROR, p
     plot_cells_not_regular_classification_core, plot_cells_vh_classification_core, plot_cells_type_of_curve_core, \
     plot_curve_core
 from experiments.models import piecewise_constant, calculate_averages_from_image, load_image, elvira, \
-    image_reconstruction
+    image_reconstruction, elvira_soc
 from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
 from lib.SubCellReconstruction import SubCellReconstruction
 from src.DataManager import DataManager, JOBLIB
@@ -103,16 +103,17 @@ def plot_original_image(fig, ax, image, num_cells_per_dim, model, alpha=0.5, cma
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
-        name='ImageReconstruction',
+        name='ImageReconstruction2',
         format=JOBLIB
     )
-    data_manager.load()
+    # data_manager.load()
 
     lab = LabPipeline()
     lab.define_new_block_of_functions(
         "models",
         piecewise_constant,
-        elvira
+        elvira,
+        elvira_soc
     )
 
     lab.define_new_block_of_functions(
@@ -120,16 +121,16 @@ if __name__ == "__main__":
         image_reconstruction
     )
 
-    # lab.execute(
-    #     data_manager,
-    #     num_cores=-1,
-    #     recalculate=False,
-    #     forget=False,
-    #     refinement=[1],
-    #     num_cells_per_dim=[21, 28, 42],
-    #     noise=[0],
-    #     image=["ShapesVertex_1680x1680.jpg"]
-    # )
+    lab.execute(
+        data_manager,
+        num_cores=-1,
+        recalculate=False,
+        forget=False,
+        refinement=[1],
+        num_cells_per_dim=[21, 28, 42],
+        noise=[0],
+        image=["ShapesVertex_1680x1680.jpg"]
+    )
 
     plot_convergence_curves(data_manager)
     plot_reconstruction(
