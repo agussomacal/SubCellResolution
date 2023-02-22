@@ -159,8 +159,8 @@ if __name__ == "__main__":
     lab = LabPipeline()
     lab.define_new_block_of_functions(
         "models",
-        # piecewise_constant,
-        elvira,
+        piecewise_constant,
+        # elvira,
         elvira_soc
     )
 
@@ -172,12 +172,18 @@ if __name__ == "__main__":
     lab.execute(
         data_manager,
         num_cores=1,
-        recalculate=True,
-        forget=False,
+        recalculate=False,
+        forget=True,
         refinement=[1],
-        num_cells_per_dim=[21],  # , 28, 42
+        num_cells_per_dim=[42*2],  # , 28, 42
+        # num_cells_per_dim=[28],  # , 28, 42
         noise=[0],
-        image=["ShapesVertex_1680x1680.jpg"]
+        image=[
+            # "ShapesVertex_1680x1680.jpg",
+            # "peppers.jpg"
+            # "R2D2.jpeg"
+            "DarthVader.jpeg"
+        ]
     )
 
     # plot_convergence_curves(data_manager)
@@ -189,10 +195,10 @@ if __name__ == "__main__":
         axes_xy_proportions=(15, 15),
         resolution_factor=10,
         difference=True,
-        plot_curve=False,
+        plot_curve=True,
         plot_curve_winner=False,
         plot_vh_classification=False,
-        plot_singular_cells=False,
+        plot_singular_cells=True,
         numbers_on=True
     )
     # plot_original_image(

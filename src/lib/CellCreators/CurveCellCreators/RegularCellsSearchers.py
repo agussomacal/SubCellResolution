@@ -28,7 +28,7 @@ def get_regular_opposite_cell_coords_by_direction(coords: CellCoords, cells: Dic
     singular_cells = {coords.tuple}
     for sign in [1, -1]:
         for i in np.arange(start, np.shape(average_values)[0]):
-            coords_i = 1 * coords.coords + i * direction * sign
+            coords_i = 1 * coords.coords + 0.5 + i * direction * sign
             coords_i = np.array(coords_i, dtype=int)
             if acceptance_criterion(coords_i):
                 regular_opposite_cells.append(tuple(coords_i))
@@ -76,6 +76,25 @@ def get_opposite_cells_by_smoothness_threshold(coords: CellCoords, cells: Dict[T
     return tuple([cells[tuple(indexer[o])] for o in regular_opposite_cell_coords])
 
 
+def get_opposite_cells_by_relative_smoothness(coords: CellCoords, cells: Dict[Tuple[int], CellBase],
+                                              independent_axis: int,
+                                              average_values: np.ndarray, smoothness_index: np.ndarray,
+                                              indexer: ArrayIndexerNd,
+                                              threshold=0.5, **kwargs):
+    regular_opposite_cell_coords, _ = get_regular_opposite_cell_coords_by_direction(
+        coords=coords, cells=cells, average_values=average_values, indexer=indexer,
+        direction=np.array([0, 1])[[independent_axis, 1 - independent_axis]],
+        acceptance_criterion=lambda coords_i: indexer[coords_i] in cells.keys() and
+                                              (cells[indexer[coords_i]].CELL_TYPE == REGULAR_CELL_TYPE) and
+                                              smoothness_index[indexer[coords_i]] <= threshold * smoothness_index[
+                                                  indexer[coords.tuple]],
+        start=2)
+
+    # order from down to up given dependant axis.
+    regular_opposite_cell_coords = sorted(regular_opposite_cell_coords, key=lambda c: c[1 - independent_axis])
+    return tuple([cells[tuple(indexer[o])] for o in regular_opposite_cell_coords])
+
+
 # def get_smooth_opposite_cells(coords: CellCoords, dependent_axis: int, average_values: np.ndarray,
 #                               smoothness_index, indexer: ArrayIndexerNd,
 #                               cells: Dict[Tuple[int], CellBase], stencil, **kwargs):
@@ -109,15 +128,15 @@ def get_opposite_cells_by_grad(coords: CellCoords, cells: Dict[Tuple[int], CellB
         acceptance_criterion=
         lambda coords_i: indexer[coords_i] in cells.keys() and
                          (cells[indexer[coords_i]].CELL_TYPE == REGULAR_CELL_TYPE) and
-                         (smoothness_index[indexer[coords_i]] < smoothness_index[indexer[coords.tuple]]),
+                         (smoothness_index[indexer[coords_i]] < 0.5 * smoothness_index[indexer[coords.tuple]]),
         start=2)
 
-    regular_opposite_cell_coords, _ = get_regular_opposite_cell_coords_by_direction(
-        coords=coords, cells=cells, average_values=average_values, indexer=indexer,
-        direction=np.array([0, 1])[[independent_axis, 1 - independent_axis]],
-        acceptance_criterion=lambda coords_i: indexer[coords_i] in cells.keys() and
-                                              smoothness_index[indexer[coords_i]] <= threshold,
-        start=2)
+    # regular_opposite_cell_coords, _ = get_regular_opposite_cell_coords_by_direction(
+    #     coords=coords, cells=cells, average_values=average_values, indexer=indexer,
+    #     direction=np.array([0, 1])[[independent_axis, 1 - independent_axis]],
+    #     acceptance_criterion=lambda coords_i: indexer[coords_i] in cells.keys() and
+    #                                           smoothness_index[indexer[coords_i]] <= threshold,
+    #     start=2)
 
     # sc = sorted(stencil_coords, key=lambda c: smoothness_index[indexer[c]])
     # first_neighbour = sc.pop(0)

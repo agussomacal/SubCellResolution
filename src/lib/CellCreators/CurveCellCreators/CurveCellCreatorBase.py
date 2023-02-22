@@ -62,13 +62,14 @@ class CurveCellCreatorBase(CellCreatorBase):
             coords=coords, independent_axis=independent_axis, average_values=average_values,
             smoothness_index=smoothness_index, indexer=indexer, cells=cells, stencil=stencil,
         )
-        for curve in self.create_curves(average_values, indexer, cells, coords, smoothness_index,
-                                        independent_axis, stencil, regular_opposite_cells):
-            yield CellCurveBase(
-                coords=coords,
-                curve=curve,
-                regular_opposite_cells=regular_opposite_cells,
-                dependent_axis=1 - independent_axis)
+        if len(regular_opposite_cells) == 2:
+            for curve in self.create_curves(average_values, indexer, cells, coords, smoothness_index,
+                                            independent_axis, stencil, regular_opposite_cells):
+                yield CellCurveBase(
+                    coords=coords,
+                    curve=curve,
+                    regular_opposite_cells=regular_opposite_cells,
+                    dependent_axis=1 - independent_axis)
 
     def create_curves(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,

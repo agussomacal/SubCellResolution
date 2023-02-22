@@ -16,15 +16,16 @@ class ELVIRACurveCellCreator(CurveCellCreatorBase):
     def create_curves(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
                       stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[CurveBase, None, None]:
-        stencil_values = stencil.values.sum(axis=1 - independent_axis)
+        value_up = regular_opposite_cells[1].evaluate(coords.coords)
+        value_down = regular_opposite_cells[0].evaluate(coords.coords)
+        # if the values are not 0 or 1
+        min_value = np.min((value_up, value_down))
+        stencil_values = stencil.values.sum(axis=1 - independent_axis) - 3 * min_value
 
         point_x = coords[independent_axis] + 0.5
         point_y = coords[1 - independent_axis] - 1.0
         # which side the integral has to be done, is 0 below the curve or is 1?
-        try:
-            jump = regular_opposite_cells[1].evaluate(coords.coords) - regular_opposite_cells[0].evaluate(coords.coords)
-        except:
-            regular_opposite_cells[1].evaluate(coords.coords)
+        jump = value_up - value_down
         if jump < 0:
             point_y += stencil_values[1]
         else:
@@ -35,6 +36,6 @@ class ELVIRACurveCellCreator(CurveCellCreatorBase):
                       (stencil_values[2] - stencil_values[0]) / 2]:
             yield CurvePolynomial(
                 polynomial=Polynomial([point_y - slope * point_x, slope]),
-                value_up=regular_opposite_cells[1].evaluate(coords.coords),
-                value_down=regular_opposite_cells[0].evaluate(coords.coords)
+                value_up=value_up,
+                value_down=value_down
             )

@@ -14,14 +14,14 @@ def approximate_gradient_by(average_values, method="scharr", normalize=False):
     :return:
     """
     if method == "scharr":
-        scharr_gx = np.array(
+        scharr_gy = np.array(
             [[3, 0, -3],
              [10, 0, -10],
              [3, 0, -3]])
-        scharr_gy = np.array(
+        scharr_gx = np.array(
             [[3, 10, 3],
              [0, 0, 0],
-             [-3, -100, -3]])
+             [-3, -10, -3]])
         g = np.array([np.sum(average_values * scharr_gx), np.sum(average_values * scharr_gy)])
     elif method == "sobel":
         raise Exception("Not implemented method {}.".format(method))

@@ -10,11 +10,11 @@ import config
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_cells_by_smoothness_threshold, \
-    get_opposite_cells_by_grad
+    get_opposite_cells_by_grad, get_opposite_cells_by_relative_smoothness
 from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator
 from lib.CellIterators import iterate_all, iterate_by_condition_on_smoothness, iterate_by_smoothness
-from lib.CellOrientators import BaseOrientator, OrientPredefined
-from lib.SmoothnessCalculators import indifferent, naive_piece_wise
+from lib.CellOrientators import BaseOrientator, OrientPredefined, OrientByGradient
+from lib.SmoothnessCalculators import indifferent, naive_piece_wise, by_gradient
 from lib.StencilCreators import StencilCreatorSameRegionAdaptive, StencilCreatorFixedShape
 from lib.SubCellReconstruction import CellCreatorPipeline, SubCellReconstruction, ReconstructionErrorMeasureBase, \
     ReconstructionErrorMeasure
@@ -127,7 +127,7 @@ def elvira(refinement: int):
 def elvira_soc(refinement: int):
     return SubCellReconstruction(
         name="ELVIRA",
-        smoothness_calculator=naive_piece_wise,
+        smoothness_calculator=by_gradient,
         reconstruction_error_measure=ReconstructionErrorMeasure(
             stencil_creator=StencilCreatorFixedShape((3, 3)), central_cell_extra_weight=1, metric="l2"),
         refinement=refinement,
@@ -138,14 +138,13 @@ def elvira_soc(refinement: int):
                 orientator=BaseOrientator(dimensionality=2),
                 stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=1, dimensionality=2),
                 cell_creator=PolynomialRegularCellCreator(dimensionality=2, noisy=False)
-            )] +
-        [  # curve cells with ELVIRA
+            ),
             CellCreatorPipeline(
                 cell_iterator=iterate_by_smoothness,
-                orientator=OrientPredefined(predefined_axis=independent_axis, dimensionality=2),
+                orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
                 stencil_creator=StencilCreatorFixedShape((3, 3)),
                 cell_creator=ELVIRACurveCellCreator(
-                    regular_opposite_cell_searcher=get_opposite_cells_by_smoothness_threshold)
-            ) for independent_axis in [0, 1]
+                    regular_opposite_cell_searcher=get_opposite_cells_by_grad)
+            )
         ]
     )
