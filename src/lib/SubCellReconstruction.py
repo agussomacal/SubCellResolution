@@ -26,8 +26,9 @@ class ReconstructionErrorMeasure(ReconstructionErrorMeasureBase):
 
     def calculate_error(self, proposed_cell: CellBase, average_values: np.ndarray, indexer: ArrayIndexerNd,
                         smoothness_index: np.ndarray, independent_axis=0):
-        stencil = self.stencil_creator.get_stencil(average_values, smoothness_index, proposed_cell.coords,
-                                                   independent_axis, indexer)
+        stencil = self.stencil_creator.get_stencil(
+            average_values=average_values, smoothness_index=smoothness_index, coords=proposed_cell.coords,
+            independent_axis=independent_axis, indexer=indexer)
         kernel_vector_error = np.array([proposed_cell.integrate_rectangle(
             rectangle=np.array([coords, coords + 1])) - average_values[tuple(coords)] for coords in
                                         np.transpose(indexer[stencil.coords])])
@@ -61,8 +62,9 @@ class SubCellReconstruction:
             smoothness_index = self.smoothness_calculator(average_values, indexer)
             reconstruction_error = np.inf * np.ones(np.shape(smoothness_index))  # everything to be improved
             for cell_creator in self.cell_creators:
-                new_cells = dict()
-                for coords in cell_creator.cell_iterator(smoothness_index, reconstruction_error):
+                # new_cells = dict()
+                for coords in cell_creator.cell_iterator(smoothness_index=smoothness_index,
+                                                         reconstruction_error=reconstruction_error):
                     independent_axis = cell_creator.orientator.get_independent_axis(coords, average_values, indexer)
                     stencil = cell_creator.stencil_creator.get_stencil(
                         average_values, smoothness_index, coords, independent_axis, indexer)
@@ -73,8 +75,9 @@ class SubCellReconstruction:
                             proposed_cell, average_values, indexer, smoothness_index, independent_axis)
                         if proposed_cell_reconstruction_error < reconstruction_error[coords.tuple]:
                             reconstruction_error[coords.tuple] = proposed_cell_reconstruction_error
-                            new_cells[coords.tuple] = proposed_cell
-                self.cells.update(new_cells)
+                            # new_cells[coords.tuple] = proposed_cell
+                            self.cells[coords.tuple] = proposed_cell
+                # self.cells.update(new_cells)
 
             if r < self.refinement - 1:
                 average_values = self.reconstruct_by_factor(resolution_factor=2)

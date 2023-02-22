@@ -40,6 +40,7 @@ class CellCurveBase(CellBase):
         )
 
     def evaluate(self, query_points: np.ndarray) -> np.ndarray:
+        # TODO: evaluate doesn't work like Regular cell.
         return np.array(
             [self.regular_opposite_cells[self.predict_regular_index(point)].evaluate(point) for point in query_points])
 

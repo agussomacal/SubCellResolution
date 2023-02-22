@@ -12,7 +12,7 @@ from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCell
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_cells_by_smoothness_threshold, \
     get_opposite_cells_by_grad
 from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator
-from lib.CellIterators import iterate_all, iterate_by_condition_on_smoothness
+from lib.CellIterators import iterate_all, iterate_by_condition_on_smoothness, iterate_by_smoothness
 from lib.CellOrientators import BaseOrientator, OrientPredefined
 from lib.SmoothnessCalculators import indifferent, naive_piece_wise
 from lib.StencilCreators import StencilCreatorSameRegionAdaptive, StencilCreatorFixedShape
@@ -116,7 +116,8 @@ def elvira(refinement: int):
                                       condition=operator.eq),
                 orientator=OrientPredefined(predefined_axis=independent_axis, dimensionality=2),
                 stencil_creator=StencilCreatorFixedShape((3, 3)),
-                cell_creator=ELVIRACurveCellCreator(regular_opposite_cell_searcher=get_opposite_cells_by_smoothness_threshold)
+                cell_creator=ELVIRACurveCellCreator(
+                    regular_opposite_cell_searcher=get_opposite_cells_by_smoothness_threshold)
             ) for independent_axis in [0, 1]
         ]
     )
@@ -140,11 +141,11 @@ def elvira_soc(refinement: int):
             )] +
         [  # curve cells with ELVIRA
             CellCreatorPipeline(
-                cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
-                                      condition=operator.eq),
+                cell_iterator=iterate_by_smoothness,
                 orientator=OrientPredefined(predefined_axis=independent_axis, dimensionality=2),
                 stencil_creator=StencilCreatorFixedShape((3, 3)),
-                cell_creator=ELVIRACurveCellCreator(regular_opposite_cell_searcher=get_opposite_cells_by_grad)
+                cell_creator=ELVIRACurveCellCreator(
+                    regular_opposite_cell_searcher=get_opposite_cells_by_smoothness_threshold)
             ) for independent_axis in [0, 1]
         ]
     )

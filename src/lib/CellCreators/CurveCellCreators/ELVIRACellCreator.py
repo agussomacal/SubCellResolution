@@ -21,7 +21,10 @@ class ELVIRACurveCellCreator(CurveCellCreatorBase):
         point_x = coords[independent_axis] + 0.5
         point_y = coords[1 - independent_axis] - 1.0
         # which side the integral has to be done, is 0 below the curve or is 1?
-        jump = regular_opposite_cells[1].evaluate(coords.coords) - regular_opposite_cells[0].evaluate(coords.coords)
+        try:
+            jump = regular_opposite_cells[1].evaluate(coords.coords) - regular_opposite_cells[0].evaluate(coords.coords)
+        except:
+            regular_opposite_cells[1].evaluate(coords.coords)
         if jump < 0:
             point_y += stencil_values[1]
         else:

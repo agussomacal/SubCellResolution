@@ -78,6 +78,54 @@ def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction
 
 
 @perplex_plot
+def plot_fast_reconstruction(fig, ax, image, num_cells_per_dim, model, alpha=0.5, resolution_factor: int = 3,
+                             difference=False, plot_curve=True, plot_curve_winner=False, plot_vh_classification=True,
+                             plot_singular_cells=True, cmap="magma", trim=((0, 0), (0, 0)), numbers_on=True, *args,
+                             **kwargs):
+    image = image.pop()
+    num_cells_per_dim = num_cells_per_dim.pop()
+    model = model.pop()
+
+    model_resolution = np.array(model.resolution)
+    image = load_image(image)
+    im_shape = np.array(np.shape(image))
+
+    resolution_factor = np.array(
+        (im_shape / model_resolution) // ((im_shape / model_resolution) / resolution_factor),
+        dtype=int)
+
+    plot_cells(ax, colors=image, mesh_shape=model_resolution, alpha=alpha, cmap="Greys_r",
+               vmin=np.min(image), vmax=np.max(image))
+    image = calculate_averages_from_image(image, model_resolution * resolution_factor)
+    reconstruction = model.reconstruct_by_factor(resolution_factor=resolution_factor)
+
+    if difference:
+        plot_cells(ax, colors=reconstruction - image, mesh_shape=model.resolution, alpha=alpha, cmap=cmap, vmin=-1,
+                   vmax=1)
+    else:
+        plot_cells(ax, colors=reconstruction, mesh_shape=model.resolution, alpha=alpha, cmap=cmap, vmin=-1, vmax=1)
+
+    if plot_curve:
+        if plot_curve_winner:
+            plot_cells_type_of_curve_core(ax, model.resolution, model.cells, alpha=0.8)
+        elif plot_vh_classification:
+            plot_cells_vh_classification_core(ax, model.resolution, model.cells, alpha=0.8)
+        elif plot_singular_cells:
+            plot_cells_not_regular_classification_core(ax, model.resolution, model.cells, alpha=0.8)
+        plot_curve_core(ax, curve_cells=[cell for cell in model.cells.values() if
+                                         cell.CELL_TYPE == CURVE_CELL_TYPE])
+
+    draw_cell_borders(
+        ax, mesh_shape=num_cells_per_dim,
+        refinement=model_resolution // num_cells_per_dim,
+        numbers_on=numbers_on,
+        prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
+    )
+    ax.set_xlim((-0.5 + trim[0][0], model.resolution[0] - trim[0][1] - 0.5))
+    ax.set_ylim((model.resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
+
+
+@perplex_plot
 def plot_original_image(fig, ax, image, num_cells_per_dim, model, alpha=0.5, cmap="Greys_r", trim=((0, 0), (0, 0)),
                         numbers_on=True, *args, **kwargs):
     image = image.pop()
@@ -111,34 +159,35 @@ if __name__ == "__main__":
     lab = LabPipeline()
     lab.define_new_block_of_functions(
         "models",
-        piecewise_constant,
+        # piecewise_constant,
         elvira,
         elvira_soc
     )
 
-    lab.define_new_block_of_functions(
-        "image_reconstruction",
-        image_reconstruction
-    )
+    # lab.define_new_block_of_functions(
+    #     "image_reconstruction",
+    #     image_reconstruction
+    # )
 
     lab.execute(
         data_manager,
-        num_cores=-1,
-        recalculate=False,
+        num_cores=1,
+        recalculate=True,
         forget=False,
         refinement=[1],
-        num_cells_per_dim=[21, 28, 42],
+        num_cells_per_dim=[21],  # , 28, 42
         noise=[0],
         image=["ShapesVertex_1680x1680.jpg"]
     )
 
-    plot_convergence_curves(data_manager)
-    plot_reconstruction(
+    # plot_convergence_curves(data_manager)
+    plot_fast_reconstruction(
         data_manager,
         folder='reconstruction',
         axes_by=[],
         plot_by=['image', 'models', 'num_cells_per_dim', 'refinement'],
         axes_xy_proportions=(15, 15),
+        resolution_factor=10,
         difference=True,
         plot_curve=False,
         plot_curve_winner=False,
@@ -146,11 +195,11 @@ if __name__ == "__main__":
         plot_singular_cells=False,
         numbers_on=True
     )
-    plot_original_image(
-        data_manager,
-        folder='reconstruction',
-        axes_by=[],
-        plot_by=['image', 'models', 'num_cells_per_dim', 'refinement'],
-        axes_xy_proportions=(15, 15),
-        numbers_on=True
-    )
+    # plot_original_image(
+    #     data_manager,
+    #     folder='reconstruction',
+    #     axes_by=[],
+    #     plot_by=['image', 'models', 'num_cells_per_dim', 'refinement'],
+    #     axes_xy_proportions=(15, 15),
+    #     numbers_on=True
+    # )
