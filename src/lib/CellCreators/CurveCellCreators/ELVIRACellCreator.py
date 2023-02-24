@@ -20,7 +20,7 @@ class ELVIRACurveCellCreator(CurveCellCreatorBase):
         value_down = regular_opposite_cells[0].evaluate(coords.coords)
         # if the values are not 0 or 1
         min_value = np.min((value_up, value_down))
-        stencil_values = stencil.values.sum(axis=1 - independent_axis) - 3 * min_value
+        stencil_values = stencil.values.reshape((3, 3)).sum(axis=1 - independent_axis) - 3 * min_value
 
         point_x = coords[independent_axis] + 0.5
         point_y = coords[1 - independent_axis] - 1.0

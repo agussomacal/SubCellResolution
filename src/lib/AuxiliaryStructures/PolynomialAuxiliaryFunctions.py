@@ -59,15 +59,15 @@ def evaluate_polynomial_integral_in_rectangle(poly_coefs: np.ndarray, rectangles
     return integrals
 
 
-def dimensions_iterator(ndims: int, degree: int) -> Tuple[int]:
+def dimensions_iterator(ndims: int, degree: int, full_rank=False) -> Tuple[int]:
     # make cartesian product of degree-coefs and then filters only those that are below the degree value.
     for coef_ix in itertools.product(*[np.arange(degree + 1) for _ in range(ndims)]):
         # (1, 1, 1); (x, 1, 1); (x**2, 1, 1); (x, y, 1); (x, 1, z) but not (x**2, y, 1)
-        if np.sum(coef_ix) <= degree:
+        if full_rank or np.sum(coef_ix) <= degree:
             yield tuple(coef_ix)
 
 
-def fit_polynomial_from_integrals(rectangles, values, degree: int, sample_weight=None):
+def fit_polynomial_from_integrals(rectangles, values, degree: int, sample_weight=None, full_rank=False):
     """
 
     :param stencil:
@@ -85,11 +85,11 @@ def fit_polynomial_from_integrals(rectangles, values, degree: int, sample_weight
     for monomials_integrals in monomials_integral_in_rectangles_iterator(rectangles, tuple([degree] * ndims)):
         A.append(
             [np.prod(np.array(monomials_integrals)[dims_ix, coef_ix]) for coef_ix in
-             dimensions_iterator(ndims=ndims, degree=degree)])
+             dimensions_iterator(ndims=ndims, degree=degree, full_rank=full_rank)])
 
     coefs = LinearRegression(fit_intercept=False).fit(A, values, sample_weight=sample_weight).coef_
 
-    for i, coef_ix in enumerate(dimensions_iterator(ndims=ndims, degree=degree)):
+    for i, coef_ix in enumerate(dimensions_iterator(ndims=ndims, degree=degree, full_rank=full_rank)):
         polynomial_coefs[coef_ix] = coefs[i]
 
     return polynomial_coefs

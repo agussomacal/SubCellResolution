@@ -52,8 +52,9 @@ class StencilCreatorFixedShape(StencilCreator):
                                                                   enumerate(self.stencil_shape[
                                                                                 [independent_axis,
                                                                                  1 - independent_axis]])])])
-        stencil_values = get_fixed_stencil_values(self.stencil_shape[[independent_axis, 1 - independent_axis]], coords,
-                                                  average_values, indexer)
+        stencil_values = np.array([average_values[indexer[c]] for c in stencil_coords])
+        # stencil_values = get_fixed_stencil_values(self.stencil_shape[[independent_axis, 1 - independent_axis]], coords,
+        #                                           average_values, indexer)
         return Stencil(coords=stencil_coords, values=stencil_values)
 
 
@@ -64,7 +65,7 @@ def get_stencil_same_type(coords: CellCoords, indexer: ArrayIndexerNd, num_nodes
     nodes2visit = [coords]
     for ix in range(num_nodes):
         visiting_coords = nodes2visit.pop(0)
-        yield visiting_coords
+        yield visiting_coords.tuple
         stencil.append(visiting_coords)
         new_node_candidates = {
             CellCoords(indexer[new_coords.coords]) for new_coords in visiting_coords + NEIGHBOURHOOD_8_MANHATTAN
@@ -114,9 +115,41 @@ class StencilCreatorSameRegionAdaptive(StencilCreator):
 
     def get_stencil(self, average_values: np.ndarray, smoothness_index: np.ndarray, coords: CellCoords,
                     independent_axis: int, indexer: ArrayIndexerNd) -> Stencil:
-        scoords = list(get_stencil_same_type(coords, indexer, self.num_nodes, cell_mask=smoothness_index))
-        values = np.array([average_values[c.tuple] for c in scoords])
+        scoords = np.array(list(get_stencil_same_type(coords, indexer, self.num_nodes, cell_mask=smoothness_index)))
+        values = np.array([average_values[tuple(c)] for c in scoords])
         return Stencil(coords=scoords, values=values)
+
+
+class StencilCreatorSmoothnessDistTradeOff(StencilCreatorFixedShape):
+    def __init__(self, stencil_shape: Tuple[int, int], dist_trade_off: float = 0.5, avg_diff_trade_off: float = 1.0):
+        super().__init__(stencil_shape)
+        self.avg_diff_trade_off = avg_diff_trade_off
+        self.dist_trade_off = dist_trade_off
+        dist_kernel = np.array(np.meshgrid(*list(map(range, stencil_shape)))) - np.reshape(stencil_shape,
+                                                                                           (-1, 1, 1)) // 2
+        self.dist_kernel = np.sqrt(np.sum(dist_kernel ** 2, axis=0))
+
+    def get_stencil(self, average_values: np.ndarray, smoothness_index: np.ndarray, coords: CellCoords,
+                    independent_axis: int, indexer: ArrayIndexerNd) -> Stencil:
+        neighbours_smoothness = get_fixed_stencil_values(stencil_size=self.stencil_shape, coords=coords,
+                                                         average_values=smoothness_index, indexer=indexer)
+        # index between 0 and 1 to measure if the cell is in the same side of a discontinuity or not
+        neighbours_averages_diff = np.abs(get_fixed_stencil_values(stencil_size=self.stencil_shape, coords=coords,
+                                                                   average_values=average_values, indexer=indexer) \
+                                          - average_values[coords.tuple])
+        neighbours_averages_diff -= np.min(neighbours_averages_diff)
+        neighbours_averages_diff /= max((1, np.max(neighbours_averages_diff)))
+
+        # avoid taking cells too far if smoothness doesn't get too better.
+        # avoid taking cells at the other side of a discontinuity
+        near_smooth_index = neighbours_smoothness * (1 + self.dist_kernel * self.dist_trade_off) * (
+                self.avg_diff_trade_off * neighbours_averages_diff + 1)
+        center_of_stencil = np.where(near_smooth_index == np.min(near_smooth_index))
+        pos = np.argsort(self.dist_kernel[center_of_stencil])[0]  # to disambiguate
+        center_of_stencil = indexer[np.array(list(zip(*center_of_stencil))[pos]) + coords.array]  # re-center
+
+        return super(StencilCreatorSmoothnessDistTradeOff, self).get_stencil(
+            average_values, smoothness_index, CellCoords(center_of_stencil), independent_axis, indexer)
 
 
 # -------------------------------------------------- #
@@ -198,8 +231,9 @@ class StencilCreatorAdaptive(StencilCreator):
                                                          independent_axis)
         # No cyclic transformation of indexes is applied because the coordinates need to be contiguous
         # to have a correct fit
-        coords = np.array(
+        stencil_coords = np.array(
             [c for c in itertools.product(*[np.arange(mn, mx + 1) for i, (mn, mx) in enumerate(stencil_boundaries)])])
-        values = average_values[np.ix_(*[indexer.transform_single_dimension(np.arange(mn, mx + 1), i)
-                                         for i, (mn, mx) in enumerate(stencil_boundaries)])]
-        return Stencil(coords=coords, values=values)
+        stencil_values = np.array([average_values[indexer[c]] for c in stencil_coords])
+        # values = average_values[np.ix_(*[indexer.transform_single_dimension(np.arange(mn, mx + 1), i)
+        #                                  for i, (mn, mx) in enumerate(stencil_boundaries)])]
+        return Stencil(coords=stencil_coords, values=stencil_values)

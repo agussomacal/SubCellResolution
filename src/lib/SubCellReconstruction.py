@@ -29,9 +29,10 @@ class ReconstructionErrorMeasure(ReconstructionErrorMeasureBase):
         stencil = self.stencil_creator.get_stencil(
             average_values=average_values, smoothness_index=smoothness_index, coords=proposed_cell.coords,
             independent_axis=independent_axis, indexer=indexer)
-        kernel_vector_error = np.array([proposed_cell.integrate_rectangle(
-            rectangle=np.array([coords, coords + 1])) - average_values[tuple(coords)] for coords in
-                                        np.transpose(indexer[stencil.coords])])
+        kernel_vector_error = np.array([
+            proposed_cell.integrate_rectangle(rectangle=np.array([coords, coords + 1]))
+            - average_values[indexer[coords]]
+            for coords in stencil.coords])
 
         index_central_cell = np.where(np.all(proposed_cell.coords.array == stencil.coords, axis=1))[0][0]
         if self.metric in ["l2"]:
@@ -51,6 +52,7 @@ class SubCellReconstruction:
         self.refinement = refinement
         self.cell_creators = cell_creators
         self.cells = dict()
+        self.stencils = dict()
         self.resolution = None
 
     def __str__(self):
@@ -70,13 +72,15 @@ class SubCellReconstruction:
                         average_values, smoothness_index, coords, independent_axis, indexer)
                     for proposed_cell in cell_creator.cell_creator.create_cells(
                             average_values=average_values, indexer=indexer, cells=self.cells, coords=coords,
-                            smoothness_index=smoothness_index, independent_axis=independent_axis, stencil=stencil):
+                            smoothness_index=smoothness_index, independent_axis=independent_axis, stencil=stencil,
+                            stencils=self.stencils):
                         proposed_cell_reconstruction_error = self.reconstruction_error_measure.calculate_error(
                             proposed_cell, average_values, indexer, smoothness_index, independent_axis)
                         if proposed_cell_reconstruction_error < reconstruction_error[coords.tuple]:
                             reconstruction_error[coords.tuple] = proposed_cell_reconstruction_error
                             # new_cells[coords.tuple] = proposed_cell
                             self.cells[coords.tuple] = proposed_cell
+                            self.stencils[coords.tuple] = stencil.coords
                 # self.cells.update(new_cells)
 
             if r < self.refinement - 1:

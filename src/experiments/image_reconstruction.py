@@ -8,9 +8,9 @@ import matplotlib.pylab as plt
 import config
 from experiments.VizReconstructionUtils import SUB_DISCRETIZATION2BOUND_ERROR, plot_cells, draw_cell_borders, \
     plot_cells_not_regular_classification_core, plot_cells_vh_classification_core, plot_cells_type_of_curve_core, \
-    plot_curve_core
+    plot_curve_core, plot_cells_identity
 from experiments.models import piecewise_constant, calculate_averages_from_image, load_image, elvira, \
-    image_reconstruction, elvira_soc
+    image_reconstruction, elvira_soc, polynomial2
 from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
 from lib.SubCellReconstruction import SubCellReconstruction
 from src.DataManager import DataManager, JOBLIB
@@ -80,8 +80,8 @@ def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction
 @perplex_plot
 def plot_fast_reconstruction(fig, ax, image, num_cells_per_dim, model, alpha=0.5, resolution_factor: int = 3,
                              difference=False, plot_curve=True, plot_curve_winner=False, plot_vh_classification=True,
-                             plot_singular_cells=True, cmap="magma", trim=((0, 0), (0, 0)), numbers_on=True, *args,
-                             **kwargs):
+                             plot_singular_cells=True, plot_original_image=True, cmap="magma", trim=((0, 0), (0, 0)),
+                             numbers_on=True, *args, **kwargs):
     image = image.pop()
     num_cells_per_dim = num_cells_per_dim.pop()
     model = model.pop()
@@ -94,8 +94,9 @@ def plot_fast_reconstruction(fig, ax, image, num_cells_per_dim, model, alpha=0.5
         (im_shape / model_resolution) // ((im_shape / model_resolution) / resolution_factor),
         dtype=int)
 
-    plot_cells(ax, colors=image, mesh_shape=model_resolution, alpha=alpha, cmap="Greys_r",
-               vmin=np.min(image), vmax=np.max(image))
+    if plot_original_image:
+        plot_cells(ax, colors=image, mesh_shape=model_resolution, alpha=alpha, cmap="Greys_r",
+                   vmin=np.min(image), vmax=np.max(image))
     image = calculate_averages_from_image(image, model_resolution * resolution_factor)
     reconstruction = model.reconstruct_by_factor(resolution_factor=resolution_factor)
 
@@ -107,7 +108,8 @@ def plot_fast_reconstruction(fig, ax, image, num_cells_per_dim, model, alpha=0.5
 
     if plot_curve:
         if plot_curve_winner:
-            plot_cells_type_of_curve_core(ax, model.resolution, model.cells, alpha=0.8)
+            plot_cells_identity(ax, model.resolution, model.cells, alpha=0.8)
+            # plot_cells_type_of_curve_core(ax, model.resolution, model.cells, alpha=0.8)
         elif plot_vh_classification:
             plot_cells_vh_classification_core(ax, model.resolution, model.cells, alpha=0.8)
         elif plot_singular_cells:
@@ -127,13 +129,15 @@ def plot_fast_reconstruction(fig, ax, image, num_cells_per_dim, model, alpha=0.5
 
 @perplex_plot
 def plot_original_image(fig, ax, image, num_cells_per_dim, model, alpha=0.5, cmap="Greys_r", trim=((0, 0), (0, 0)),
-                        numbers_on=True, *args, **kwargs):
+                        numbers_on=True, averages=False, *args, **kwargs):
     image = image.pop()
     num_cells_per_dim = num_cells_per_dim.pop()
     model = model.pop()
 
     model_resolution = np.array(model.resolution)
     image = load_image(image)
+    if averages:
+        image = calculate_averages_from_image(image, num_cells_per_dim)
 
     plot_cells(ax, colors=image, mesh_shape=model_resolution, alpha=alpha, cmap=cmap,
                vmin=np.min(image), vmax=np.max(image))
@@ -159,7 +163,8 @@ if __name__ == "__main__":
     lab = LabPipeline()
     lab.define_new_block_of_functions(
         "models",
-        piecewise_constant,
+        polynomial2,
+        # piecewise_constant,
         # elvira,
         elvira_soc
     )
@@ -173,33 +178,64 @@ if __name__ == "__main__":
         data_manager,
         num_cores=1,
         recalculate=False,
-        forget=True,
+        forget=False,
         refinement=[1],
         num_cells_per_dim=[42*2],  # , 28, 42
         # num_cells_per_dim=[28],  # , 28, 42
+        # num_cells_per_dim=[42],  # , 28, 42
         noise=[0],
         image=[
-            # "ShapesVertex_1680x1680.jpg",
-            # "peppers.jpg"
-            # "R2D2.jpeg"
-            "DarthVader.jpeg"
+            "ShapesVertex_1680x1680.jpg",
+            "ShapesVertexRegular_1680x1680.png", # v=128+(64+32*sin((x-w/2+y-h/2)*5*6/w))*(v >0)-(v==0)*(64+32*cos(d*5*6/w))
+            # "peppers.jpg",
+            # "peppers.png",
+            # # "R2D2.jpeg",
+            # # "DarthVader.jpeg",
+            # "mountains_WB.jpg",
+            # "House_in_the_sea.jpg",
+            # "RegularShock.png"  # v=128*cos(d/100)+128*x/w+128*((x*x+y*y)<h*h/4)-128*(x>(w*2/3))
         ]
     )
 
     # plot_convergence_curves(data_manager)
     plot_fast_reconstruction(
         data_manager,
+        name="BackgroundImage",
         folder='reconstruction',
+        image="ShapesVertexRegular_1680x1680.png",
         axes_by=[],
         plot_by=['image', 'models', 'num_cells_per_dim', 'refinement'],
         axes_xy_proportions=(15, 15),
-        resolution_factor=10,
-        difference=True,
+        resolution_factor=5,
+        difference=False,
         plot_curve=True,
         plot_curve_winner=False,
         plot_vh_classification=False,
-        plot_singular_cells=True,
-        numbers_on=True
+        plot_singular_cells=False,
+        plot_original_image=True,
+        numbers_on=True,
+        plot_again=True,
+        num_cores=1
+    )
+
+    plot_fast_reconstruction(
+        data_manager,
+        name="Reconstruction",
+        folder='reconstruction',
+        image="ShapesVertexRegular_1680x1680.png",
+        axes_by=[],
+        plot_by=['image', 'models', 'num_cells_per_dim', 'refinement'],
+        axes_xy_proportions=(15, 15),
+        resolution_factor=5,
+        difference=False,
+        plot_curve=True,
+        plot_curve_winner=False,
+        plot_vh_classification=False,
+        plot_singular_cells=False,
+        plot_original_image=False,
+        numbers_on=True,
+        plot_again=True,
+        num_cores=1
     )
     # plot_original_image(
     #     data_manager,

@@ -54,9 +54,9 @@ class CellBase:
 #        Cell creator definition
 # ======================================== #
 class CellCreatorBase:
-    def create_cells(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
+    def create_cells(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[Tuple[int, ...], CellBase],
                      coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
-                     stencil: Stencil) -> Generator[CellBase, None, None]:
+                     stencil: Stencil, stencils: Dict[Tuple[int, ...], np.ndarray]) -> Generator[CellBase, None, None]:
         raise Exception("Not implemented")
 
     def __str__(self):

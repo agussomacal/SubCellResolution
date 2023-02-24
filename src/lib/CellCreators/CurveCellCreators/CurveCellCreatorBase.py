@@ -29,6 +29,9 @@ class CellCurveBase(CellBase):
         # evaluates where the regular cells are positioned with respect of the curve, if above or below.
         self.regular_opposite_cells = regular_opposite_cells
 
+    def __str__(self):
+        return super(CellCurveBase, self).__str__() + str(self.curve)
+
     def predict_regular_index(self, query_point):
         # is it the regular cell of above or of below.
         return int(self.curve(query_point[self.independent_axis], query_point[self.dependent_axis]))
@@ -57,10 +60,11 @@ class CurveCellCreatorBase(CellCreatorBase):
 
     def create_cells(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
                      coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
-                     stencil: Stencil) -> Generator[CellBase, None, None]:
+                     stencil: Stencil, stencils: Dict[Tuple[int, ...], np.ndarray]) -> Generator[CellBase, None, None]:
         regular_opposite_cells = self.regular_opposite_cell_searcher(
             coords=coords, independent_axis=independent_axis, average_values=average_values,
             smoothness_index=smoothness_index, indexer=indexer, cells=cells, stencil=stencil,
+            stencils=stencils
         )
         if len(regular_opposite_cells) == 2:
             for curve in self.create_curves(average_values, indexer, cells, coords, smoothness_index,

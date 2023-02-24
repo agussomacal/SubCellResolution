@@ -152,6 +152,21 @@ def plot_cells_not_regular_classification_core(ax, mesh_shape, all_cells, alpha=
         rectangle_mode=True)
 
 
+def plot_cells_identity(ax, mesh_shape, all_cells, alpha=1.0):
+    cell_types = defaultdict(list)
+    for cell in all_cells.values():
+        cell_types[str(cell)].append(cell.coords.tuple)
+
+    plot_specific_cells(
+        ax=ax,
+        mesh_shape=mesh_shape,
+        special_cells=[
+            SpecialCellsPlotTuple(name=k, indexes=v, color=sns.color_palette("colorblind")[i % 8], alpha=alpha) for
+            i, (k, v) in enumerate(cell_types.items())],
+        rectangle_mode=True
+    )
+
+
 def plot_cells_type_of_curve_core(ax, mesh_shape, all_cells, alpha=1.0):
     cell_types = defaultdict(list)
     for cell in all_cells.values():

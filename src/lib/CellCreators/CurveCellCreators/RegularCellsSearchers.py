@@ -115,8 +115,8 @@ def get_opposite_cells_by_relative_smoothness(coords: CellCoords, cells: Dict[Tu
 
 
 def get_opposite_cells_by_grad(coords: CellCoords, cells: Dict[Tuple[int], CellBase], independent_axis: int,
-                               average_values: np.ndarray, smoothness_index, indexer: ArrayIndexerNd, **kwargs):
-    # stencil_coords = cell_neighbours(central_ix=coords.tuple, stencil_radius=2)  # 5x5x..x5 stencil
+                               average_values: np.ndarray, smoothness_index, indexer: ArrayIndexerNd,
+                               stencils: Dict[Tuple[int, ...], np.ndarray], **kwargs):
     gradient = approximate_gradient_by(
         average_values=get_fixed_stencil_values(stencil_size=(3, 3), coords=coords, average_values=average_values,
                                                 indexer=indexer),
@@ -126,25 +126,12 @@ def get_opposite_cells_by_grad(coords: CellCoords, cells: Dict[Tuple[int], CellB
     regular_opposite_cell_coords, _ = get_regular_opposite_cell_coords_by_direction(
         coords=coords, cells=cells, average_values=average_values, indexer=indexer, direction=gradient,
         acceptance_criterion=
-        lambda coords_i: indexer[coords_i] in cells.keys() and
-                         (cells[indexer[coords_i]].CELL_TYPE == REGULAR_CELL_TYPE) and
-                         (smoothness_index[indexer[coords_i]] < 0.5 * smoothness_index[indexer[coords.tuple]]),
+        lambda coords_i:
+        indexer[coords_i] in cells.keys() and  # cell exists
+        (cells[indexer[coords_i]].CELL_TYPE == REGULAR_CELL_TYPE) and  # cell is regular
+        (coords.tuple not in set(map(tuple, stencils[indexer[coords_i]].tolist()))) and  # stencil is not polluted
+        (smoothness_index[indexer[coords_i]] < 0.5 * smoothness_index[indexer[coords.tuple]]),
         start=2)
-
-    # regular_opposite_cell_coords, _ = get_regular_opposite_cell_coords_by_direction(
-    #     coords=coords, cells=cells, average_values=average_values, indexer=indexer,
-    #     direction=np.array([0, 1])[[independent_axis, 1 - independent_axis]],
-    #     acceptance_criterion=lambda coords_i: indexer[coords_i] in cells.keys() and
-    #                                           smoothness_index[indexer[coords_i]] <= threshold,
-    #     start=2)
-
-    # sc = sorted(stencil_coords, key=lambda c: smoothness_index[indexer[c]])
-    # first_neighbour = sc.pop(0)
-    # central_cell_value = average_values[indexer[coords.tuple]]
-    # first_neighbour_sign = np.sign(average_values[indexer[first_neighbour]] - central_cell_value)
-    # sc = list(filter(lambda c: np.sign(average_values[indexer[c]] - central_cell_value) != first_neighbour_sign, sc))
-    # second_neighbour = sc.pop(0)
-    # regular_opposite_cell_coords = [indexer[first_neighbour], indexer[second_neighbour]]
 
     # TODO: repeated code
     # order from down to up given dependant axis.
