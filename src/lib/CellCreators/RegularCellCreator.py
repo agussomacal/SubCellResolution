@@ -36,6 +36,10 @@ class PolynomialCell(CellRegularBase):
 #           Regular cell creators
 # ======================================== #
 
+def weight_cells_extra_weight(is_central_cell, smoothness_index_i, central_cell_extra_weight=0):
+    return (1 + central_cell_extra_weight * is_central_cell)
+
+
 def weight_cells(is_central_cell, smoothness_index_i, central_cell_extra_weight=0):
     return (1 + central_cell_extra_weight * is_central_cell) / (1 + smoothness_index_i)
 

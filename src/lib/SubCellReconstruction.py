@@ -102,9 +102,11 @@ class SubCellReconstruction:
         return average_values * np.prod(resolution_factor)
 
     def reconstruct_arbitrary_size(self, size: Union[Tuple, np.ndarray]):
-        # TODO: test
+        # TODO: needs indexer for limits
         size = np.array(size)
         values = np.zeros(size)
-        for ix in mesh_iterator(size, out_type=np.array):
-            values[tuple(ix)] = self.cells[tuple(ix // self.resolution)](*(ix / self.resolution))
+        for ix in itertools.product(
+                *list(map(lambda sr: np.linspace(0, sr[1] + 1, num=sr[0], endpoint=False), zip(size, self.resolution)))):
+            ix = np.array(ix)
+            values[tuple(ix)] = self.cells[tuple(np.floor(ix, dtype=int).tolist())].evaluate(ix)
         return values

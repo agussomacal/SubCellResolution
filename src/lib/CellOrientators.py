@@ -27,7 +27,9 @@ def approximate_gradient_by(average_values, method="scharr", normalize=False):
         raise Exception("Not implemented method {}.".format(method))
     else:
         raise Exception("Not implemented method {}.".format(method))
-    return g / np.sqrt(np.dot(g, g)) if normalize else g
+    if normalize and np.all(g != 0):
+        g /= np.sqrt(np.dot(g, g))
+    return g
 
 
 # ---------------------------------------------- #

@@ -66,8 +66,9 @@ def fit_model_decorator(function):
 def image_reconstruction(image, model):
     image = load_image(image)
     t0 = time.time()
-    reconstruction = model.reconstruct_by_factor(
-        resolution_factor=np.array(np.array(np.shape(image)) / np.array(model.resolution), dtype=int))
+    reconstruction = model.reconstruct_arbitrary_size(np.shape(image))
+    # reconstruction = model.reconstruct_by_factor(
+    #     resolution_factor=np.array(np.array(np.shape(image)) / np.array(model.resolution), dtype=int))
     t_reconstruct = time.time() - t0
 
     reconstruction_error = np.abs(np.array(reconstruction) - image)

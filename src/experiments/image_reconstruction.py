@@ -36,7 +36,7 @@ def plot_convergence_curves(fig, ax, num_cells_per_dim, reconstruction_error, mo
 
 
 @perplex_plot
-def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction, alpha=0.5,
+def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction, alpha=0.5, plot_original_image=True,
                         difference=False, plot_curve=True, plot_curve_winner=False, plot_vh_classification=True,
                         plot_singular_cells=True, cmap="magma", trim=((0, 0), (0, 0)), numbers_on=True, *args,
                         **kwargs):
@@ -48,8 +48,9 @@ def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction
     model_resolution = np.array(model.resolution)
     image = load_image(image)
 
-    plot_cells(ax, colors=image, mesh_shape=model_resolution, alpha=alpha, cmap="Greys_r",
-               vmin=np.min(image), vmax=np.max(image))
+    if plot_original_image:
+        plot_cells(ax, colors=image, mesh_shape=model_resolution, alpha=alpha, cmap="Greys_r",
+                   vmin=np.min(image), vmax=np.max(image))
 
     if difference:
         plot_cells(ax, colors=reconstruction - image, mesh_shape=model.resolution, alpha=alpha, cmap=cmap, vmin=-1,
@@ -59,7 +60,8 @@ def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction
 
     if plot_curve:
         if plot_curve_winner:
-            plot_cells_type_of_curve_core(ax, model.resolution, model.cells, alpha=0.8)
+            plot_cells_identity(ax, model.resolution, model.cells, alpha=0.8)
+            # plot_cells_type_of_curve_core(ax, model.resolution, model.cells, alpha=0.8)
         elif plot_vh_classification:
             plot_cells_vh_classification_core(ax, model.resolution, model.cells, alpha=0.8)
         elif plot_singular_cells:
@@ -169,10 +171,10 @@ if __name__ == "__main__":
         elvira_soc
     )
 
-    # lab.define_new_block_of_functions(
-    #     "image_reconstruction",
-    #     image_reconstruction
-    # )
+    lab.define_new_block_of_functions(
+        "image_reconstruction",
+        image_reconstruction
+    )
 
     lab.execute(
         data_manager,
@@ -180,13 +182,14 @@ if __name__ == "__main__":
         recalculate=False,
         forget=False,
         refinement=[1],
-        num_cells_per_dim=[42*2],  # , 28, 42
+        num_cells_per_dim=[42 * 2],  # , 28, 42
         # num_cells_per_dim=[28],  # , 28, 42
         # num_cells_per_dim=[42],  # , 28, 42
         noise=[0],
         image=[
             "ShapesVertex_1680x1680.jpg",
-            "ShapesVertexRegular_1680x1680.png", # v=128+(64+32*sin((x-w/2+y-h/2)*5*6/w))*(v >0)-(v==0)*(64+32*cos(d*5*6/w))
+            "ShapesVertexRegular_1680x1680.png",
+            # v=128+(64+32*sin((x-w/2+y-h/2)*5*6/w))*(v >0)-(v==0)*(64+32*cos(d*5*6/w))
             # "peppers.jpg",
             # "peppers.png",
             # # "R2D2.jpeg",

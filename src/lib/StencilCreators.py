@@ -133,12 +133,15 @@ class StencilCreatorSmoothnessDistTradeOff(StencilCreatorFixedShape):
                     independent_axis: int, indexer: ArrayIndexerNd) -> Stencil:
         neighbours_smoothness = get_fixed_stencil_values(stencil_size=self.stencil_shape, coords=coords,
                                                          average_values=smoothness_index, indexer=indexer)
+        neighbours_smoothness -= np.min(neighbours_smoothness)
+        neighbours_smoothness /= 1 if np.allclose(neighbours_smoothness, 0) else np.max(neighbours_smoothness)
+
         # index between 0 and 1 to measure if the cell is in the same side of a discontinuity or not
         neighbours_averages_diff = np.abs(get_fixed_stencil_values(stencil_size=self.stencil_shape, coords=coords,
                                                                    average_values=average_values, indexer=indexer) \
                                           - average_values[coords.tuple])
         neighbours_averages_diff -= np.min(neighbours_averages_diff)
-        neighbours_averages_diff /= max((1, np.max(neighbours_averages_diff)))
+        neighbours_averages_diff /= 1 if np.allclose(neighbours_averages_diff, 0) else np.max(neighbours_averages_diff)
 
         # avoid taking cells too far if smoothness doesn't get too better.
         # avoid taking cells at the other side of a discontinuity
