@@ -121,35 +121,60 @@ class StencilCreatorSameRegionAdaptive(StencilCreator):
 
 
 class StencilCreatorSmoothnessDistTradeOff(StencilCreatorFixedShape):
-    def __init__(self, stencil_shape: Tuple[int, int], dist_trade_off: float = 0.5, avg_diff_trade_off: float = 1.0):
+    def __init__(self, stencil_shape: Tuple[int, int], dist_trade_off: float = 0.5):
+        """
+
+        :param stencil_shape:
+        :param dist_trade_off:
+            - 0 means it will only look at the nearest cell (which is the central cell).
+            -  means it will take the smoothner cell.
+            -
+        """
         super().__init__(stencil_shape)
-        self.avg_diff_trade_off = avg_diff_trade_off
+        # self.avg_diff_trade_off = avg_diff_trade_off=1
         self.dist_trade_off = dist_trade_off
         dist_kernel = np.array(np.meshgrid(*list(map(range, stencil_shape)))) - np.reshape(stencil_shape,
                                                                                            (-1, 1, 1)) // 2
         self.dist_kernel = np.sqrt(np.sum(dist_kernel ** 2, axis=0))
+        self.dist_kernel /= np.max(self.dist_kernel)
 
     def get_stencil(self, average_values: np.ndarray, smoothness_index: np.ndarray, coords: CellCoords,
                     independent_axis: int, indexer: ArrayIndexerNd) -> Stencil:
         neighbours_smoothness = get_fixed_stencil_values(stencil_size=self.stencil_shape, coords=coords,
                                                          average_values=smoothness_index, indexer=indexer)
-        neighbours_smoothness -= np.min(neighbours_smoothness)
-        neighbours_smoothness /= 1 if np.allclose(neighbours_smoothness, 0) else np.max(neighbours_smoothness)
+        if smoothness_index[coords.tuple] == 0 or np.allclose(neighbours_smoothness, smoothness_index[coords.tuple]):
+            # if perfectly flat, or all equally smooth
+            center_of_stencil = coords.tuple
+        else:
+            # avoid taking cells at the other side of a discontinuity
+            # index between 0 and 1 to measure if the cell is in the same side of a discontinuity or not
+            neighbours_averages_diff = np.abs(get_fixed_stencil_values(stencil_size=self.stencil_shape, coords=coords,
+                                                                       average_values=average_values, indexer=indexer) \
+                                              - average_values[coords.tuple])
 
-        # index between 0 and 1 to measure if the cell is in the same side of a discontinuity or not
-        neighbours_averages_diff = np.abs(get_fixed_stencil_values(stencil_size=self.stencil_shape, coords=coords,
-                                                                   average_values=average_values, indexer=indexer) \
-                                          - average_values[coords.tuple])
-        neighbours_averages_diff -= np.min(neighbours_averages_diff)
-        neighbours_averages_diff /= 1 if np.allclose(neighbours_averages_diff, 0) else np.max(neighbours_averages_diff)
+            # new version
+            neighbours_averages_diff = np.argsort(neighbours_averages_diff.ravel()).reshape(self.stencil_shape)
+            # only test the half that is near in average value to the central cell.
+            # if the discontinuity is a line (or aproximately regular) the stencil should be devided around half, thats why
+            # we will look only at the fist half (/2).
+            test_indexes = np.where(neighbours_averages_diff < np.product(self.stencil_shape) / 2)
+            near_smooth_index = self.dist_trade_off * self.dist_kernel + neighbours_smoothness / smoothness_index[
+                coords.tuple]
+            # center_of_stencil = np.array(test_indexes).T[np.argmin(near_smooth_index[test_indexes])]
+            # center_of_stencil = indexer[center_of_stencil + coords.array]  # re-center
 
-        # avoid taking cells too far if smoothness doesn't get too better.
-        # avoid taking cells at the other side of a discontinuity
-        near_smooth_index = neighbours_smoothness * (1 + self.dist_kernel * self.dist_trade_off) * (
-                self.avg_diff_trade_off * neighbours_averages_diff + 1)
-        center_of_stencil = np.where(near_smooth_index == np.min(near_smooth_index))
-        pos = np.argsort(self.dist_kernel[center_of_stencil])[0]  # to disambiguate
-        center_of_stencil = indexer[np.array(list(zip(*center_of_stencil))[pos]) + coords.array]  # re-center
+            # old version
+            # neighbours_smoothness -= np.min(neighbours_smoothness)
+            # neighbours_smoothness /= 1 if np.allclose(neighbours_smoothness, 0) else np.max(neighbours_smoothness)
+            # neighbours_averages_diff -= np.min(neighbours_averages_diff)
+            # neighbours_averages_diff /= 1 if np.allclose(neighbours_averages_diff, 0) else np.max(neighbours_averages_diff)
+            # avoid taking cells too far if smoothness doesn't get too better.
+            # near_smooth_index = neighbours_smoothness * (1 + self.dist_kernel * self.dist_trade_off) * (
+            #         self.avg_diff_trade_off * neighbours_averages_diff + 1)
+            center_of_stencil = np.where(near_smooth_index == np.min(near_smooth_index))
+            pos = np.argsort(self.dist_kernel[center_of_stencil])[0]  # to disambiguate
+            center_of_stencil = indexer[np.array(list(zip(*center_of_stencil))[pos]) + coords.array - np.array(
+                self.stencil_shape) // 2]  # re-center
 
         return super(StencilCreatorSmoothnessDistTradeOff, self).get_stencil(
             average_values, smoothness_index, CellCoords(center_of_stencil), independent_axis, indexer)

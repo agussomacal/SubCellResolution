@@ -11,7 +11,8 @@ from experiments.image_reconstruction import plot_reconstruction
 from experiments.models import load_image, calculate_averages_from_image
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_cells_by_grad
-from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells, weight_cells_extra_weight
+from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells, weight_cells_extra_weight, \
+    weight_cells_by_smoothness
 from lib.CellIterators import iterate_all, iterate_by_smoothness
 from lib.CellOrientators import BaseOrientator, OrientByGradient
 from lib.SmoothnessCalculators import indifferent, by_gradient
@@ -25,38 +26,13 @@ from src.LabPipeline import LabPipeline
 from src.viz_utils import perplex_plot
 
 
-def fit_model_decorator(function):
-    def decorated_func(enhanced_image, num_cells_per_dim, noise, refinement, dist_trade_off, avg_diff_trade_off):
-        np.random.seed(42)
-        avg_values = calculate_averages_from_image(enhanced_image, num_cells_per_dim)
-        avg_values += np.random.uniform(-noise, noise, size=avg_values.shape)
-
-        model = function(refinement, dist_trade_off, avg_diff_trade_off)
-
-        t0 = time.time()
-        model.fit(average_values=avg_values,
-                  indexer=ArrayIndexerNd(avg_values, "cyclic"))
-        t_fit = time.time() - t0
-
-        return {
-            "model": model,
-            "time_to_fit": t_fit
-        }
-
-    # need to change the name so the lab experiment saves the correct name and not the uniformly "decorated_func"
-    # the other option is to pass to the block the name we wish to associate to the function.
-    decorated_func.__name__ = function.__name__
-    return decorated_func
-
-
-@fit_model_decorator
-def polynomial2_adapt(refinement: int, dist_trade_off, avg_diff_trade_off):
-    return SubCellReconstruction(
-        name="Polynomial2",
+def experiment(enhanced_image, num_cells_per_dim, noise, dist_trade_off, central_cell_importance, delta, epsilon):
+    model = SubCellReconstruction(
+        name="Polynomial",
         smoothness_calculator=by_gradient,
         reconstruction_error_measure=ReconstructionErrorMeasure(
             stencil_creator=StencilCreatorFixedShape((3, 3)), central_cell_extra_weight=1, metric="l2"),
-        refinement=refinement,
+        refinement=1,
         cell_creators=
         [
             # regular cell with quadratics
@@ -64,15 +40,39 @@ def polynomial2_adapt(refinement: int, dist_trade_off, avg_diff_trade_off):
                 cell_iterator=iterate_all,  # all cells
                 orientator=BaseOrientator(dimensionality=2),
                 stencil_creator=StencilCreatorSmoothnessDistTradeOff(stencil_shape=(3, 3),
-                                                                     dist_trade_off=dist_trade_off,
-                                                                     avg_diff_trade_off=avg_diff_trade_off),
+                                                                     dist_trade_off=dist_trade_off),
                 cell_creator=PolynomialRegularCellCreator(
                     degree=2, dimensionality=2, noisy=False, full_rank=False,
-                    weight_function=partial(weight_cells_extra_weight, central_cell_extra_weight=100)
+                    weight_function=partial(weight_cells_by_smoothness,
+                                            central_cell_importance=central_cell_importance,
+                                            delta=delta, epsilon=epsilon)
                 )
             )
         ]
     )
+
+    np.random.seed(42)
+    avg_values = calculate_averages_from_image(enhanced_image, num_cells_per_dim)
+    avg_values += np.random.uniform(-noise, noise, size=avg_values.shape)
+
+    t0 = time.time()
+    model.fit(average_values=avg_values,
+              indexer=ArrayIndexerNd(avg_values, "cyclic"))
+    t_fit = time.time() - t0
+
+    t0 = time.time()
+    reconstruction = model.reconstruct_arbitrary_size(np.shape(enhanced_image))
+    # reconstruction = model.reconstruct_by_factor(
+    #     resolution_factor=np.array(np.array(np.shape(enhanced_image)) / np.array(model.resolution), dtype=int))
+    t_reconstruct = time.time() - t0
+
+    return {
+        "model": model,
+        "time_to_fit": t_fit,
+        "time_to_reconstruct": t_reconstruct,
+        "reconstruction": reconstruction
+    }
+
 
 
 @perplex_plot
@@ -102,7 +102,7 @@ def plot_convergence_curves(fig, ax, amplitude, reconstruction_error, dist_trade
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
-        name='PolynomialVariations',
+        name='RegularFitAlternatives',
         format=JOBLIB
     )
     data_manager.load()
@@ -115,55 +115,49 @@ if __name__ == "__main__":
     )
 
     lab.define_new_block_of_functions(
-        "models",
-        polynomial2_adapt,
-    )
-
-    lab.define_new_block_of_functions(
         "image_reconstruction",
-        image_reconstruction
+        experiment
     )
 
     lab.execute(
         data_manager,
-        num_cores=3,
+        num_cores=2,
         recalculate=False,
         forget=False,
-        refinement=[1],
-        dist_trade_off=[0, 0.25, 0.5, 1],
-        avg_diff_trade_off=[0, 0.25, 0.5, 1],
-        # num_cells_per_dim=[42*2],  # , 28, 42
-        # num_cells_per_dim=[28, 42, 42 * 2],  # , 28, 42
+        dist_trade_off=[0, 0.5, 0.8, 1],
+        central_cell_importance=[0, 100],
+        delta=[0, 0.05, 0.5],
+        epsilon=[1e-5, 1e5],
         num_cells_per_dim=[
             28,
-            # 42 * 2
-        ],  # , 28, 42
-        # num_cells_per_dim=[42],  # , 28, 42
-        noise=[0],
-        # amplitude=[0, 1],
-        amplitude=[1],
+        ],
+        noise=[0, 1e-2, 1e-1],
+        amplitude=[1e-2, 1e-1, 1],
         image=[
             "Elipsoid_1680x1680.jpg"
-        ]
+        ],
+        save_on_iteration=5
     )
 
-    plot_convergence_curves(data_manager,
-                            axes_by=[],
-                            plot_by=["num_cells_per_dim", "image", "refinement"])
-    plot_reconstruction(
-        data_manager,
-        name="BackgroundImage",
-        folder='reconstruction',
-        axes_by=["amplitude"],
-        plot_by=['models', 'image', 'num_cells_per_dim', 'refinement'],
-        axes_xy_proportions=(15, 15),
-        difference=False,
-        plot_curve=True,
-        plot_curve_winner=False,
-        plot_vh_classification=False,
-        plot_singular_cells=False,
-        plot_original_image=True,
-        numbers_on=True,
-        plot_again=True,
-        num_cores=1
-    )
+    # generic_plot(data_manager, x, y, label, plot_funcsns.lineplot,
+    #              other_plot_funcs = (), log= "", ** kwargs)
+    # plot_convergence_curves(data_manager,
+    #                         axes_by=[],
+    #                         plot_by=["num_cells_per_dim", "image", "refinement"])
+    # plot_reconstruction(
+    #     data_manager,
+    #     name="BackgroundImage",
+    #     folder='reconstruction',
+    #     axes_by=["amplitude"],
+    #     plot_by=['models', 'image', 'num_cells_per_dim', 'refinement'],
+    #     axes_xy_proportions=(15, 15),
+    #     difference=False,
+    #     plot_curve=True,
+    #     plot_curve_winner=False,
+    #     plot_vh_classification=False,
+    #     plot_singular_cells=False,
+    #     plot_original_image=True,
+    #     numbers_on=True,
+    #     plot_again=True,
+    #     num_cores=1
+    # )

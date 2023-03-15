@@ -88,6 +88,11 @@ class SubCellReconstruction:
         return self
 
     def reconstruct_by_factor(self, resolution_factor: Union[int, Tuple, np.ndarray] = 1):
+        """
+        Uses averages to reconstruct.
+        :param resolution_factor:
+        :return:
+        """
         resolution_factor = np.array([resolution_factor] * len(self.resolution), dtype=int) \
             if isinstance(resolution_factor, int) else np.array(resolution_factor)
         average_values = np.zeros(resolution_factor * np.array(self.resolution, dtype=int))
@@ -102,11 +107,15 @@ class SubCellReconstruction:
         return average_values * np.prod(resolution_factor)
 
     def reconstruct_arbitrary_size(self, size: Union[Tuple, np.ndarray]):
+        """
+        Uses evaluation to reconstruct.
+        :param size:
+        :return:
+        """
         # TODO: needs indexer for limits
         size = np.array(size)
         values = np.zeros(size)
         for ix in itertools.product(
-                *list(map(lambda sr: np.linspace(0, sr[1] + 1, num=sr[0], endpoint=False), zip(size, self.resolution)))):
-            ix = np.array(ix)
-            values[tuple(ix)] = self.cells[tuple(np.floor(ix, dtype=int).tolist())].evaluate(ix)
+                *list(map(lambda sr: np.arange(sr[0])/sr[0]*sr[1], zip(size, self.resolution)))):
+            values[tuple(map(int, ix))] = self.cells[tuple(map(int, ix))].evaluate(np.array(ix))
         return values

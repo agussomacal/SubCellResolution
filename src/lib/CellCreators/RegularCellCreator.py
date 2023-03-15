@@ -1,3 +1,4 @@
+from math import comb
 from typing import Generator, Dict, Tuple
 
 import numpy as np
@@ -44,6 +45,33 @@ def weight_cells(is_central_cell, smoothness_index_i, central_cell_extra_weight=
     return (1 + central_cell_extra_weight * is_central_cell) / (1 + smoothness_index_i)
 
 
+def weight_cells_by_smoothness(central_cell_coords: int, average_values: np.ndarray, cells_smoothness: np.ndarray,
+                               num_coefs: int,
+                               central_cell_importance: float = 0, epsilon: float = 1e-5, delta: float = 0):
+    """
+
+    :param central_cell_coords:
+    :param average_values:
+    :param cells_smoothness:
+    :param num_coefs:
+    :param central_cell_importance:
+        - 0 means it weight equally to others, no extra is added.
+        - 1, 2 means it weights the double, triple if all weight equal.
+    :param epsilon: to avoid division by 0 in the index I if smoothness = 0.
+    :param delta:
+        - 0 means only takes into account the cells that are near (in average value) to the central cell
+        - otherwise it weights them like an step function 1-delta and delta. 0.5 delta means no distinction.
+    :return:
+    """
+    I = 1 / (cells_smoothness + epsilon)
+    I /= np.sqrt(np.sum(I ** 2))  # normalized to 1
+    I *= len(average_values)  # normalized so each cell weight one in case of equal smoothness
+    N = 1 + delta * np.sign(np.argsort((average_values - average_values[central_cell_coords]) ** 2) - num_coefs - 0.5)
+    weight = I * N
+    weight[central_cell_coords] += central_cell_importance
+    return weight
+
+
 class PolynomialRegularCellCreator(CellCreatorBase):
     def __init__(self, degree, dimensionality=2, noisy=False, weight_function=None, full_rank=False):
         """
@@ -64,12 +92,21 @@ class PolynomialRegularCellCreator(CellCreatorBase):
                      stencil: Stencil, stencils: Dict[Tuple[int, ...], np.ndarray]) -> Generator[CellBase, None, None]:
         # (self.polynomial_max_degree + 1) * (1 + noisy)
         polynomial_max_degree = int(np.floor(len(stencil.coords) ** (1 / self.dimensionality)) / (1 + self.noisy) - 1)
+        degree = min((self.degree, polynomial_max_degree))
+        if self.weight_function is None:
+            weight = None
+        else:
+            weight = self.weight_function(
+                central_cell_coords=np.where(~np.any(indexer[stencil.coords - coords.array[np.newaxis,:]], axis=0))[0][0],
+                average_values=np.array([average_values[indexer[c]] for c in stencil.coords]),
+                cells_smoothness=np.array([smoothness_index[indexer[c]] for c in stencil.coords]),
+                num_coefs=(1 + degree) ** self.dimensionality if self.full_rank else comb(
+                    degree + self.dimensionality, degree))
         polynomial_coefs = fit_polynomial_from_integrals(
             rectangles=[np.array([c, c + 1]) for c in stencil.coords],
             values=stencil.values,
-            degree=min((self.degree, polynomial_max_degree)),
-            sample_weight=None if self.weight_function is None else [
-                self.weight_function(coords.tuple == indexer[c], smoothness_index[indexer[c]]) for c in stencil.coords],
+            degree=degree,
+            sample_weight=weight,
             full_rank=self.full_rank
         )
         yield PolynomialCell(coords, polynomial_coefs)
