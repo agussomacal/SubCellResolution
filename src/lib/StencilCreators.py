@@ -126,9 +126,9 @@ class StencilCreatorSmoothnessDistTradeOff(StencilCreatorFixedShape):
 
         :param stencil_shape:
         :param dist_trade_off:
-            - 0 means it will only look at the nearest cell (which is the central cell).
-            -  means it will take the smoothner cell.
-            -
+            - 0 means it will only look at the smoothest cell.
+            - 0.5 means it will take the nearby cell only if it is 1/2 smoother then the central cell.
+            - 1 means keep the central cell unless other cell nearby has 0 smoothness.
         """
         super().__init__(stencil_shape)
         # self.avg_diff_trade_off = avg_diff_trade_off=1

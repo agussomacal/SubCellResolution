@@ -2,11 +2,13 @@ import time
 from functools import partial
 
 import matplotlib.pylab as plt
+import seaborn as sns
 import numpy as np
 import pandas as pd
 
 import config
 from experiments.TaylorEffect.taylor_effect import enhance_image, image_reconstruction
+from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders
 from experiments.image_reconstruction import plot_reconstruction
 from experiments.models import load_image, calculate_averages_from_image
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
@@ -23,10 +25,11 @@ from lib.SubCellReconstruction import CellCreatorPipeline, SubCellReconstruction
 from src.DataManager import DataManager, JOBLIB
 from src.Indexers import ArrayIndexerNd
 from src.LabPipeline import LabPipeline
-from src.viz_utils import perplex_plot
+from src.viz_utils import perplex_plot, generic_plot
 
 
-def experiment(enhanced_image, num_cells_per_dim, noise, dist_trade_off, central_cell_importance, delta, epsilon):
+def core_experiment(enhanced_image, num_cells_per_dim, noise, dist_trade_off, central_cell_importance, delta, epsilon,
+                    degree=2):
     model = SubCellReconstruction(
         name="Polynomial",
         smoothness_calculator=by_gradient,
@@ -42,7 +45,7 @@ def experiment(enhanced_image, num_cells_per_dim, noise, dist_trade_off, central
                 stencil_creator=StencilCreatorSmoothnessDistTradeOff(stencil_shape=(3, 3),
                                                                      dist_trade_off=dist_trade_off),
                 cell_creator=PolynomialRegularCellCreator(
-                    degree=2, dimensionality=2, noisy=False, full_rank=False,
+                    degree=degree, dimensionality=2, noisy=False, full_rank=False,
                     weight_function=partial(weight_cells_by_smoothness,
                                             central_cell_importance=central_cell_importance,
                                             delta=delta, epsilon=epsilon)
@@ -62,17 +65,60 @@ def experiment(enhanced_image, num_cells_per_dim, noise, dist_trade_off, central
 
     t0 = time.time()
     reconstruction = model.reconstruct_arbitrary_size(np.shape(enhanced_image))
-    # reconstruction = model.reconstruct_by_factor(
-    #     resolution_factor=np.array(np.array(np.shape(enhanced_image)) / np.array(model.resolution), dtype=int))
     t_reconstruct = time.time() - t0
+    return t_fit, t_reconstruct, reconstruction, model
+
+
+def experiment(enhanced_image, num_cells_per_dim, noise, dist_trade_off, central_cell_importance, delta, epsilon,
+               degree=2):
+    t_fit, t_reconstruct, reconstruction, _ = core_experiment(enhanced_image, num_cells_per_dim, noise, dist_trade_off,
+                                                              central_cell_importance, delta, epsilon,
+                                                              degree)
 
     return {
-        "model": model,
+        # "model": model,
         "time_to_fit": t_fit,
         "time_to_reconstruct": t_reconstruct,
-        "reconstruction": reconstruction
+        "mse": np.sqrt(np.mean((reconstruction - enhanced_image) ** 2))
+        # "reconstruction": reconstruction
     }
 
+
+@perplex_plot
+def plot_reconstruction(fig, ax, enhanced_image, num_cells_per_dim, noise, dist_trade_off, central_cell_importance,
+                        delta, epsilon, degree, alpha=0.5, plot_original_image=True, difference=False, cmap="magma",
+                        trim=((0, 0), (0, 0)), numbers_on=True, *args, **kwargs):
+    image = enhanced_image.pop()
+    num_cells_per_dim = num_cells_per_dim.pop()
+    noise = noise.pop()
+    dist_trade_off = dist_trade_off.pop()
+    central_cell_importance = central_cell_importance.pop(),
+    delta = delta.pop()
+    epsilon = epsilon.pop()
+    degree = degree.pop()
+    _, _, reconstruction, model = core_experiment(
+        image, num_cells_per_dim, noise, dist_trade_off, central_cell_importance, delta, epsilon, degree)
+
+    model_resolution = np.array(model.resolution)
+
+    if plot_original_image:
+        plot_cells(ax, colors=image, mesh_shape=model_resolution, alpha=alpha, cmap="Greys_r",
+                   vmin=np.min(image), vmax=np.max(image))
+
+    if difference:
+        plot_cells(ax, colors=reconstruction - image, mesh_shape=model_resolution, alpha=alpha, cmap=cmap, vmin=-1,
+                   vmax=1)
+    else:
+        plot_cells(ax, colors=reconstruction, mesh_shape=model_resolution, alpha=alpha, cmap=cmap, vmin=-1, vmax=1)
+
+    draw_cell_borders(
+        ax, mesh_shape=num_cells_per_dim,
+        refinement=model_resolution // num_cells_per_dim,
+        numbers_on=numbers_on,
+        prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
+    )
+    ax.set_xlim((-0.5 + trim[0][0], model.resolution[0] - trim[0][1] - 0.5))
+    ax.set_ylim((model.resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
 
 
 @perplex_plot
@@ -121,43 +167,43 @@ if __name__ == "__main__":
 
     lab.execute(
         data_manager,
-        num_cores=2,
+        num_cores=15,
         recalculate=False,
         forget=False,
-        dist_trade_off=[0, 0.5, 0.8, 1],
+        save_on_iteration=None,
+        degree=[2],
+        # dist_trade_off=[0, 0.5, 0.8, 1],
+        dist_trade_off=[0, 0.8, 1],
         central_cell_importance=[0, 100],
-        delta=[0, 0.05, 0.5],
+        # delta=[0, 0.05, 0.5],
+        delta=[0.05],
+        # epsilon=[1e-5, 1e5],
         epsilon=[1e-5, 1e5],
         num_cells_per_dim=[
-            28,
+            28  # , 42 * 2
         ],
-        noise=[0, 1e-2, 1e-1],
-        amplitude=[1e-2, 1e-1, 1],
+        noise=[0],
+        amplitude=[0, 1e-2, 1e-1, 1],
         image=[
             "Elipsoid_1680x1680.jpg"
-        ],
-        save_on_iteration=5
+        ]
     )
 
-    # generic_plot(data_manager, x, y, label, plot_funcsns.lineplot,
-    #              other_plot_funcs = (), log= "", ** kwargs)
-    # plot_convergence_curves(data_manager,
-    #                         axes_by=[],
-    #                         plot_by=["num_cells_per_dim", "image", "refinement"])
-    # plot_reconstruction(
-    #     data_manager,
-    #     name="BackgroundImage",
-    #     folder='reconstruction',
-    #     axes_by=["amplitude"],
-    #     plot_by=['models', 'image', 'num_cells_per_dim', 'refinement'],
-    #     axes_xy_proportions=(15, 15),
-    #     difference=False,
-    #     plot_curve=True,
-    #     plot_curve_winner=False,
-    #     plot_vh_classification=False,
-    #     plot_singular_cells=False,
-    #     plot_original_image=True,
-    #     numbers_on=True,
-    #     plot_again=True,
-    #     num_cores=1
-    # )
+    # plot_reconstruction(data_manager, amplitude=1e-1, num_cells_per_dim=28, noise=0, dist_trade_off=1,
+    #                     central_cell_importance=0, delta=0, epsilon=1e-5, degree=2,
+    #                     alpha=0.5, plot_original_image=True, difference=False, cmap="magma",
+    #                     trim=((0, 0), (0, 0)), numbers_on=True)
+
+    generic_plot(data_manager, x="dist_trade_off", y="mse", label="label_var", plot_fun=sns.lineplot,
+                 other_plot_funcs=(), log="y",
+                 # mse=lambda reconstruction, enhanced_image: np.sqrt(np.mean((reconstruction-enhanced_image)**2)),
+                 label_var=lambda central_cell_importance,
+                                  delta: f"central_cell_importance: {central_cell_importance}, delta: {delta}",
+                 axes_by=["epsilon", "num_cells_per_dim"],
+                 plot_by=["amplitude"])
+
+    generic_plot(data_manager, x="amplitude", y="mse", label="label_var", plot_fun=sns.lineplot,
+                 other_plot_funcs=(), log="y",
+                 # mse=lambda reconstruction, enhanced_image: np.sqrt(np.mean((reconstruction-enhanced_image)**2)),
+                 label_var=lambda dist_trade_off, delta: f"dist weight: {dist_trade_off}, delta: {delta}",
+                 axes_by=["central_cell_importance", "epsilon"])

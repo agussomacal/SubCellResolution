@@ -64,24 +64,28 @@ class SubCellReconstruction:
             smoothness_index = self.smoothness_calculator(average_values, indexer)
             reconstruction_error = np.inf * np.ones(np.shape(smoothness_index))  # everything to be improved
             for cell_creator in self.cell_creators:
-                # new_cells = dict()
                 for coords in cell_creator.cell_iterator(smoothness_index=smoothness_index,
                                                          reconstruction_error=reconstruction_error):
                     independent_axis = cell_creator.orientator.get_independent_axis(coords, average_values, indexer)
                     stencil = cell_creator.stencil_creator.get_stencil(
                         average_values, smoothness_index, coords, independent_axis, indexer)
-                    for proposed_cell in cell_creator.cell_creator.create_cells(
-                            average_values=average_values, indexer=indexer, cells=self.cells, coords=coords,
-                            smoothness_index=smoothness_index, independent_axis=independent_axis, stencil=stencil,
-                            stencils=self.stencils):
-                        proposed_cell_reconstruction_error = self.reconstruction_error_measure.calculate_error(
-                            proposed_cell, average_values, indexer, smoothness_index, independent_axis)
-                        if proposed_cell_reconstruction_error < reconstruction_error[coords.tuple]:
-                            reconstruction_error[coords.tuple] = proposed_cell_reconstruction_error
-                            # new_cells[coords.tuple] = proposed_cell
-                            self.cells[coords.tuple] = proposed_cell
-                            self.stencils[coords.tuple] = stencil.coords
-                # self.cells.update(new_cells)
+                    proposed_cells = list(cell_creator.cell_creator.create_cells(
+                        average_values=average_values, indexer=indexer, cells=self.cells, coords=coords,
+                        smoothness_index=smoothness_index, independent_axis=independent_axis, stencil=stencil,
+                        stencils=self.stencils))
+                    # only calculate error if more than one proposition is done otherwise just keep the only one
+                    if len(self.cell_creators) > 1 or len(proposed_cells) > 1:
+                        for proposed_cell in proposed_cells:
+                            proposed_cell_reconstruction_error = self.reconstruction_error_measure.calculate_error(
+                                proposed_cell, average_values, indexer, smoothness_index, independent_axis)
+                            if proposed_cell_reconstruction_error < reconstruction_error[coords.tuple]:
+                                reconstruction_error[coords.tuple] = proposed_cell_reconstruction_error
+                                # new_cells[coords.tuple] = proposed_cell
+                                self.cells[coords.tuple] = proposed_cell
+                                self.stencils[coords.tuple] = stencil.coords
+                    else:
+                        self.cells[coords.tuple] = proposed_cells.pop()
+                        self.stencils[coords.tuple] = stencil.coords
 
             if r < self.refinement - 1:
                 average_values = self.reconstruct_by_factor(resolution_factor=2)
@@ -112,10 +116,13 @@ class SubCellReconstruction:
         :param size:
         :return:
         """
-        # TODO: needs indexer for limits
         size = np.array(size)
         values = np.zeros(size)
-        for ix in itertools.product(
-                *list(map(lambda sr: np.arange(sr[0])/sr[0]*sr[1], zip(size, self.resolution)))):
-            values[tuple(map(int, ix))] = self.cells[tuple(map(int, ix))].evaluate(np.array(ix))
+        for ix in itertools.product(*list(map(range, size))):
+            values[ix] = self.cells[tuple(map(int, np.array(ix) / size * self.resolution))].evaluate(
+                np.array(ix) / size * self.resolution)
+        # for ix in itertools.product(
+        #         *list(map(lambda sr: np.arange(sr[0]) / sr[0] * sr[1], zip(size, self.resolution)))):
+        #     ix = np.array(ix)
+        #     values[tuple(map(int, ix * size / self.resolution))] = self.cells[tuple(map(int, ix))].evaluate(ix)
         return values
