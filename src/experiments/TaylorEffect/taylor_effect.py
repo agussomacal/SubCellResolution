@@ -31,7 +31,7 @@ def enhance_image(image, amplitude):
     d = np.sqrt((x - h / 2) ** 2 + (y - w / 2) ** 2)
     # v=128+(64+32*sin((x-w/2+y-h/2)*5*6/w))*(v >0)-(v==0)*(64+32*cos(d*5*6/w))
     image += amplitude * (
-            (image >= 0.5) * np.cos(2 * np.pi * (x + y) * 5 / w) +
+            (image >= 0.5) * np.cos(2 * np.pi * x * 5 / w) +
             (image <= 0.5) * np.sin(2 * np.pi * d * 3 / w)
     )
 

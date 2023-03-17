@@ -63,10 +63,15 @@ def weight_cells_by_smoothness(central_cell_coords: int, average_values: np.ndar
         - otherwise it weights them like an step function 1-delta and delta. 0.5 delta means no distinction.
     :return:
     """
-    I = 1 / (cells_smoothness + epsilon)
-    I /= np.sqrt(np.sum(I ** 2))  # normalized to 1
-    I *= len(average_values)  # normalized so each cell weight one in case of equal smoothness
-    N = 1 + delta * np.sign(np.argsort((average_values - average_values[central_cell_coords]) ** 2) - num_coefs - 0.5)
+    if epsilon < np.inf:
+        I = 1.0 / (cells_smoothness + epsilon)
+        I /= np.sqrt(np.sum(I ** 2))  # normalized to 1
+        I *= len(average_values)  # normalized so each cell weight one in case of equal smoothness
+    else:
+        I = 1.0
+    N = np.sign(np.argsort((average_values - average_values[central_cell_coords]) ** 2) - num_coefs - 0.5)
+    # N = (1 - N)/2 + delta * N
+    N = 1 / 2 + (delta - 1 / 2) * N
     weight = I * N
     weight[central_cell_coords] += central_cell_importance
     return weight
@@ -97,7 +102,8 @@ class PolynomialRegularCellCreator(CellCreatorBase):
             weight = None
         else:
             weight = self.weight_function(
-                central_cell_coords=np.where(~np.any(indexer[stencil.coords - coords.array[np.newaxis,:]], axis=0))[0][0],
+                central_cell_coords=np.where(~np.any(indexer[stencil.coords - coords.array[np.newaxis, :]], axis=0))[0][
+                    0],
                 average_values=np.array([average_values[indexer[c]] for c in stencil.coords]),
                 cells_smoothness=np.array([smoothness_index[indexer[c]] for c in stencil.coords]),
                 num_coefs=(1 + degree) ** self.dimensionality if self.full_rank else comb(
