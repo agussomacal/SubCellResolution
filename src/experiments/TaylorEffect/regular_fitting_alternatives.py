@@ -24,6 +24,7 @@ from lib.SubCellReconstruction import CellCreatorPipeline, SubCellReconstruction
     ReconstructionErrorMeasure
 from src.DataManager import DataManager, JOBLIB
 from src.Indexers import ArrayIndexerNd
+from src.LaTexReports import Code2LatexConnector
 from src.LabPipeline import LabPipeline
 from src.viz_utils import perplex_plot, generic_plot, test_plot
 
@@ -129,6 +130,8 @@ def plot_reconstruction(fig, ax, image, amplitude, num_cells_per_dim, noise, dis
 
 
 if __name__ == "__main__":
+    report = Code2LatexConnector(path=config.paper_path, filename='main')
+
     data_manager = DataManager(
         path=config.results_path,
         name='RegularFitDistTradeOff',
@@ -173,7 +176,8 @@ if __name__ == "__main__":
     #                     alpha=0.5, plot_original_image=True, difference=False, cmap="magma",
     #                     trim=((0, 0), (0, 0)), numbers_on=True, reduced_image_size_factor=6)
 
-    generic_plot(data_manager, x="amplitude", y="mse", label="dist_trade_off", plot_fun=sns.lineplot,
+    generic_plot(data_manager, path=report.get_plot_path(), x="amplitude", y="mse", label="dist_trade_off",
+                 plot_fun=sns.lineplot,
                  other_plot_funcs=(), log="y",
                  plot_by=["num_cells_per_dim"])
 
@@ -218,7 +222,8 @@ if __name__ == "__main__":
         ]
     )
 
-    generic_plot(data_manager, x="amplitude", y="mse", label="delta", plot_fun=sns.lineplot,
+    generic_plot(data_manager, path=report.get_plot_path(), x="amplitude", y="mse", label="delta",
+                 plot_fun=sns.lineplot,
                  other_plot_funcs=(), log="y",
                  plot_by=["num_cells_per_dim", "epsilon"])
 
@@ -266,8 +271,11 @@ if __name__ == "__main__":
         ]
     )
 
-    generic_plot(data_manager, x="amplitude", y="mse", label="central_cell_importance", plot_fun=sns.lineplot,
+    generic_plot(data_manager, path=report.get_plot_path(), x="amplitude", y="mse", label="central_cell_importance",
+                 plot_fun=sns.lineplot,
                  other_plot_funcs=(), log="y",
                  plot_by=["num_cells_per_dim", "epsilon"])
 
     # central_cell_importance = 100
+
+    report.compile()
