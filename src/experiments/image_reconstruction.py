@@ -9,8 +9,9 @@ import config
 from experiments.VizReconstructionUtils import SUB_DISCRETIZATION2BOUND_ERROR, plot_cells, draw_cell_borders, \
     plot_cells_not_regular_classification_core, plot_cells_vh_classification_core, plot_cells_type_of_curve_core, \
     plot_curve_core, plot_cells_identity
-from experiments.models import piecewise_constant, calculate_averages_from_image, load_image, elvira, \
+from experiments.models import piecewise_constant, calculate_averages_from_image, elvira, \
     image_reconstruction, elvira_soc, polynomial2
+from experiments.subcell_paper.function_families import load_image
 from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
 from lib.SubCellReconstruction import SubCellReconstruction
 from src.DataManager import DataManager, JOBLIB

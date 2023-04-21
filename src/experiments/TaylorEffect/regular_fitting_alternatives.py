@@ -10,7 +10,8 @@ import config
 from experiments.TaylorEffect.taylor_effect import enhance_image, image_reconstruction
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders
 from experiments.image_reconstruction import plot_reconstruction
-from experiments.models import load_image, calculate_averages_from_image
+from experiments.models import calculate_averages_from_image
+from experiments.subcell_paper.function_families import load_image
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_cells_by_grad
 from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells, weight_cells_extra_weight, \
@@ -130,7 +131,7 @@ def plot_reconstruction(fig, ax, image, amplitude, num_cells_per_dim, noise, dis
 
 
 if __name__ == "__main__":
-    report = Code2LatexConnector(path=config.paper_path, filename='main')
+    report = Code2LatexConnector(path=config.subcell_paper_path, filename='main')
 
     data_manager = DataManager(
         path=config.results_path,

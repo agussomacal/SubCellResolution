@@ -7,7 +7,8 @@ import pandas as pd
 
 import config
 from experiments.image_reconstruction import plot_reconstruction
-from experiments.models import load_image, calculate_averages_from_image
+from experiments.models import calculate_averages_from_image
+from experiments.subcell_paper.function_families import load_image
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_cells_by_grad
 from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells, weight_cells_extra_weight
