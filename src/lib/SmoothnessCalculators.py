@@ -3,7 +3,7 @@ import numpy as np
 from lib.CellIterators import get_coordinates
 from lib.CellOrientators import approximate_gradient_by
 from lib.StencilCreators import get_fixed_stencil_values
-from src.Indexers import ArrayIndexerNd
+from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 
 
 def indifferent(average_values: np.ndarray, indexer: ArrayIndexerNd) -> np.ndarray:

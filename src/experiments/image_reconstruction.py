@@ -16,7 +16,7 @@ from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
 from lib.SubCellReconstruction import SubCellReconstruction
 from src.DataManager import DataManager, JOBLIB
 from src.LabPipeline import LabPipeline
-from src.viz_utils import perplex_plot
+from src.visualization import perplex_plot
 
 
 @perplex_plot

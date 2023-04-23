@@ -1,9 +1,9 @@
 import itertools
-from typing import Tuple, Set, List
+from typing import Tuple, List
 
 import numpy as np
 
-from src.Indexers import ArrayIndexerNd
+from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 
 
 def cell_neighbours(central_ix: Tuple, indexer: ArrayIndexerNd = None, stencil_radius=1) -> List[Tuple[int]]:

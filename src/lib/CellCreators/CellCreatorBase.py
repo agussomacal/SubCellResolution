@@ -5,7 +5,7 @@ import numpy as np
 from lib.AuxiliaryStructures.Constants import NEIGHBOURHOOD_8, neighbourhood_8_ix, NIGHT_NAVY, \
     ELEGANT_EGGPLANT, OLD_OLIVE, REAL_RED
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
-from src.Indexers import ArrayIndexerNd
+from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 
 from src.lib.StencilCreators import Stencil
 

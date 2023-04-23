@@ -7,7 +7,7 @@ import numpy as np
 from lib.AuxiliaryStructures.GraphAuxiliaryFunctions import mesh_iterator
 from lib.CellCreators.CellCreatorBase import CellBase
 from lib.StencilCreators import StencilCreator
-from src.Indexers import ArrayIndexerNd
+from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 
 CellCreatorPipeline = namedtuple("CellCreatorPipeline", "cell_iterator orientator stencil_creator cell_creator")
 

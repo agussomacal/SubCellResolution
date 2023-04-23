@@ -6,7 +6,7 @@ from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.CellCreators.CellCreatorBase import CellBase, REGULAR_CELL_TYPE
 from lib.CellOrientators import approximate_gradient_by
 from lib.StencilCreators import get_fixed_stencil_values
-from src.Indexers import ArrayIndexerNd
+from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 
 
 def get_regular_opposite_cell_coords_by_direction(coords: CellCoords, cells: Dict[Tuple[int, ...], CellBase],

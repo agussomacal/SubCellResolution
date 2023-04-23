@@ -1,33 +1,26 @@
 import time
 from functools import partial
 
-import matplotlib.pylab as plt
 import seaborn as sns
 import numpy as np
-import pandas as pd
 
 import config
-from experiments.TaylorEffect.taylor_effect import enhance_image, image_reconstruction
+from experiments.TaylorEffect.taylor_effect import enhance_image
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders
-from experiments.image_reconstruction import plot_reconstruction
 from experiments.models import calculate_averages_from_image
 from experiments.subcell_paper.function_families import load_image
-from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
-from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_cells_by_grad
-from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells, weight_cells_extra_weight, \
-    weight_cells_by_smoothness
-from lib.CellIterators import iterate_all, iterate_by_smoothness
-from lib.CellOrientators import BaseOrientator, OrientByGradient
-from lib.SmoothnessCalculators import indifferent, by_gradient
-from lib.StencilCreators import StencilCreatorSameRegionAdaptive, StencilCreatorFixedShape, \
+from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells_by_smoothness
+from lib.CellIterators import iterate_all
+from lib.CellOrientators import BaseOrientator
+from lib.SmoothnessCalculators import by_gradient
+from lib.StencilCreators import StencilCreatorFixedShape, \
     StencilCreatorSmoothnessDistTradeOff
-from lib.SubCellReconstruction import CellCreatorPipeline, SubCellReconstruction, ReconstructionErrorMeasureBase, \
-    ReconstructionErrorMeasure
+from lib.SubCellReconstruction import CellCreatorPipeline, SubCellReconstruction, ReconstructionErrorMeasure
 from src.DataManager import DataManager, JOBLIB
-from src.Indexers import ArrayIndexerNd
+from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from src.LaTexReports import Code2LatexConnector
 from src.LabPipeline import LabPipeline
-from src.viz_utils import perplex_plot, generic_plot, test_plot
+from src.visualization import generic_plot, test_plot
 
 
 def core_experiment(enhanced_image, num_cells_per_dim, noise, dist_trade_off, central_cell_importance, delta, epsilon,

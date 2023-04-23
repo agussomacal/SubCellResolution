@@ -6,7 +6,7 @@ from matplotlib import pylab as plt
 import config
 from config import subcell_paper_path
 from src.LaTexReports import Code2LatexConnector
-from src.viz_utils import save_fig
+from src.visualization import save_fig
 
 
 def load_image(image_name):

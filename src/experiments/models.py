@@ -18,7 +18,7 @@ from lib.StencilCreators import StencilCreatorSameRegionAdaptive, StencilCreator
     StencilCreatorSmoothnessDistTradeOff
 from lib.SubCellReconstruction import CellCreatorPipeline, SubCellReconstruction, ReconstructionErrorMeasureBase, \
     ReconstructionErrorMeasure
-from src.Indexers import ArrayIndexerNd
+from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 
 
 def calculate_averages_from_image(image, num_cells_per_dim: Union[int, Tuple[int, int]]):

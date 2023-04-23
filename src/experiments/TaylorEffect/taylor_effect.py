@@ -1,7 +1,6 @@
 import time
 from functools import partial
 
-import matplotlib.pylab as plt
 import numpy as np
 import pandas as pd
 
@@ -11,7 +10,7 @@ from experiments.models import calculate_averages_from_image
 from experiments.subcell_paper.function_families import load_image
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_cells_by_grad
-from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells, weight_cells_extra_weight
+from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells_extra_weight
 from lib.CellIterators import iterate_all, iterate_by_smoothness
 from lib.CellOrientators import BaseOrientator, OrientByGradient
 from lib.SmoothnessCalculators import indifferent, by_gradient
@@ -20,9 +19,9 @@ from lib.StencilCreators import StencilCreatorSameRegionAdaptive, StencilCreator
 from lib.SubCellReconstruction import CellCreatorPipeline, SubCellReconstruction, ReconstructionErrorMeasureBase, \
     ReconstructionErrorMeasure
 from src.DataManager import DataManager, JOBLIB
-from src.Indexers import ArrayIndexerNd
+from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from src.LabPipeline import LabPipeline
-from src.viz_utils import perplex_plot, generic_plot
+from src.visualization import perplex_plot, generic_plot
 
 
 def enhance_image(image, amplitude):

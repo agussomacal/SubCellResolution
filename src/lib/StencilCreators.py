@@ -6,7 +6,7 @@ import numpy as np
 
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, NEIGHBOURHOOD_8_MANHATTAN
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
-from src.Indexers import ArrayIndexerNd, CYCLIC
+from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd, CYCLIC
 
 Stencil = namedtuple("Stencil", "coords values")
 

@@ -8,7 +8,7 @@ from lib.CellCreators.CellCreatorBase import CellCreatorBase, \
     CellBase, CURVE_CELL_TYPE
 from lib.Curves.CurveBase import CurveBase
 from lib.StencilCreators import Stencil
-from src.Indexers import ArrayIndexerNd
+from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 
 
 # ====================================================== #
