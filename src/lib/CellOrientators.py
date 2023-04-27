@@ -2,7 +2,7 @@ import numpy as np
 
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.StencilCreators import get_fixed_stencil_values
-from src.Indexers import ArrayIndexerNd
+from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 
 
 # https://pyimagesearch.com/2021/05/12/image-gradients-with-opencv-sobel-and-scharr/

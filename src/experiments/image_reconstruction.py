@@ -1,21 +1,15 @@
-import time
-
+import matplotlib.pylab as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pylab as plt
 
 import config
-from experiments.VizReconstructionUtils import SUB_DISCRETIZATION2BOUND_ERROR, plot_cells, draw_cell_borders, \
-    plot_cells_not_regular_classification_core, plot_cells_vh_classification_core, plot_cells_type_of_curve_core, \
-    plot_curve_core, plot_cells_identity
-from experiments.models import piecewise_constant, calculate_averages_from_image, load_image, elvira, \
-    image_reconstruction, elvira_soc, polynomial2
+from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, \
+    plot_cells_not_regular_classification_core, plot_cells_vh_classification_core, plot_curve_core, plot_cells_identity
+from experiments.models import calculate_averages_from_image, load_image, image_reconstruction, polynomial2, elvira_go
 from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
-from lib.SubCellReconstruction import SubCellReconstruction
-from src.DataManager import DataManager, JOBLIB
-from src.LabPipeline import LabPipeline
-from src.viz_utils import perplex_plot
+from PerplexityLab.DataManager import DataManager, JOBLIB
+from PerplexityLab.LabPipeline import LabPipeline
+from PerplexityLab.visualization import perplex_plot
 
 
 @perplex_plot
@@ -157,7 +151,7 @@ def plot_original_image(fig, ax, image, num_cells_per_dim, model, alpha=0.5, cma
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
-        name='ImageReconstruction2',
+        name='ImageReconstruction',
         format=JOBLIB
     )
     # data_manager.load()
@@ -168,7 +162,7 @@ if __name__ == "__main__":
         polynomial2,
         # piecewise_constant,
         # elvira,
-        elvira_soc
+        elvira_go
     )
 
     lab.define_new_block_of_functions(
@@ -178,9 +172,9 @@ if __name__ == "__main__":
 
     lab.execute(
         data_manager,
-        num_cores=1,
+        num_cores=15,
         recalculate=False,
-        forget=False,
+        forget=True,
         refinement=[1],
         num_cells_per_dim=[42 * 2],  # , 28, 42
         # num_cells_per_dim=[28],  # , 28, 42
@@ -188,12 +182,11 @@ if __name__ == "__main__":
         noise=[0],
         image=[
             "ShapesVertex_1680x1680.jpg",
-            "ShapesVertexRegular_1680x1680.png",
+            # "ShapesVertexRegular_1680x1680.png",
             # v=128+(64+32*sin((x-w/2+y-h/2)*5*6/w))*(v >0)-(v==0)*(64+32*cos(d*5*6/w))
-            # "peppers.jpg",
-            # "peppers.png",
-            # # "R2D2.jpeg",
-            # # "DarthVader.jpeg",
+            "peppers.jpg",
+            "R2D2.jpeg",
+            "DarthVader.jpeg",
             # "mountains_WB.jpg",
             # "House_in_the_sea.jpg",
             # "RegularShock.png"  # v=128*cos(d/100)+128*x/w+128*((x*x+y*y)<h*h/4)-128*(x>(w*2/3))
@@ -201,31 +194,32 @@ if __name__ == "__main__":
     )
 
     # plot_convergence_curves(data_manager)
-    plot_fast_reconstruction(
-        data_manager,
-        name="BackgroundImage",
-        folder='reconstruction',
-        image="ShapesVertexRegular_1680x1680.png",
-        axes_by=[],
-        plot_by=['image', 'models', 'num_cells_per_dim', 'refinement'],
-        axes_xy_proportions=(15, 15),
-        resolution_factor=5,
-        difference=False,
-        plot_curve=True,
-        plot_curve_winner=False,
-        plot_vh_classification=False,
-        plot_singular_cells=False,
-        plot_original_image=True,
-        numbers_on=True,
-        plot_again=True,
-        num_cores=1
-    )
+    # plot_fast_reconstruction(
+    #     data_manager,
+    #     name="BackgroundImage",
+    #     folder='reconstruction',
+    #     image="ShapesVertexRegular_1680x1680.png",
+    #     axes_by=[],
+    #     plot_by=['image', 'models', 'num_cells_per_dim', 'refinement'],
+    #     axes_xy_proportions=(15, 15),
+    #     resolution_factor=5,
+    #     difference=False,
+    #     plot_curve=True,
+    #     plot_curve_winner=False,
+    #     plot_vh_classification=False,
+    #     plot_singular_cells=False,
+    #     plot_original_image=True,
+    #     numbers_on=True,
+    #     plot_again=True,
+    #     num_cores=1,
+    #     reduced_image_size_factor=6
+    # )
 
     plot_fast_reconstruction(
         data_manager,
         name="Reconstruction",
         folder='reconstruction',
-        image="ShapesVertexRegular_1680x1680.png",
+        # image="ShapesVertexRegular_1680x1680.png",
         axes_by=[],
         plot_by=['image', 'models', 'num_cells_per_dim', 'refinement'],
         axes_xy_proportions=(15, 15),
@@ -238,7 +232,8 @@ if __name__ == "__main__":
         plot_original_image=False,
         numbers_on=True,
         plot_again=True,
-        num_cores=1
+        num_cores=1,
+        reduced_image_size_factor=6
     )
     # plot_original_image(
     #     data_manager,

@@ -3,7 +3,7 @@ from typing import Tuple, Set, List
 
 import numpy as np
 
-from src.Indexers import ArrayIndexerNd
+from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 
 
 def cell_neighbours(central_ix: Tuple, indexer: ArrayIndexerNd = None, stencil_radius=1) -> List[Tuple[int]]:

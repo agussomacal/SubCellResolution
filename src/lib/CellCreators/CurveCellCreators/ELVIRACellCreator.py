@@ -9,7 +9,7 @@ from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CurveCellCre
 from lib.Curves.CurveBase import CurveBase
 from lib.Curves.CurvePolynomial import CurvePolynomial
 from lib.StencilCreators import Stencil
-from src.Indexers import ArrayIndexerNd
+from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 
 
 class ELVIRACurveCellCreator(CurveCellCreatorBase):

@@ -1,15 +1,13 @@
 from collections import defaultdict
-from collections import defaultdict
 from functools import partial
 
-import numpy as np
 import seaborn as sns
-# from lib.CellCreators.VertexCellCreators.VertexCellCreatorBase import VertexLinearExtended
 
-from lib.AuxiliaryStructures.Constants import VERTICAL, HORIZONTAL
 from lib.CellCreators.CellCreatorBase import SPECIAL_CELLS_COLOR_DICT, REGULAR_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CellCurveBase
 from lib.Curves.CurveVertex import CurveVertexPolynomial
+
+# from lib.CellCreators.VertexCellCreators.VertexCellCreatorBase import VertexLinearExtended
 
 CURVE_PLOT_RESOLUTION = 25
 SUB_DISCRETIZATION2BOUND_ERROR = 5

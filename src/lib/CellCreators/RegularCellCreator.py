@@ -10,7 +10,7 @@ from lib.CellCreators.CellCreatorBase import CellCreatorBase, CellBase, REGULAR_
 # ======================================== #
 #           Regular cells
 # ======================================== #
-from src.Indexers import ArrayIndexerNd
+from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 from src.lib.StencilCreators import Stencil
 
 

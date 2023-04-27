@@ -6,8 +6,10 @@ import numpy as np
 import pandas as pd
 
 import config
-from experiments.image_reconstruction import plot_reconstruction
-from experiments.models import load_image, calculate_averages_from_image
+from experiments.VizReconstructionUtils import plot_cells, plot_cells_identity, plot_cells_vh_classification_core, \
+    plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders
+from experiments.models import load_image, calculate_averages_from_image, elvira_go, polynomial2, elvira
+from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_cells_by_grad
 from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells, weight_cells_extra_weight
@@ -18,10 +20,10 @@ from lib.StencilCreators import StencilCreatorSameRegionAdaptive, StencilCreator
     StencilCreatorSmoothnessDistTradeOff
 from lib.SubCellReconstruction import CellCreatorPipeline, SubCellReconstruction, ReconstructionErrorMeasureBase, \
     ReconstructionErrorMeasure
-from src.DataManager import DataManager, JOBLIB
-from src.Indexers import ArrayIndexerNd
-from src.LabPipeline import LabPipeline
-from src.viz_utils import perplex_plot, generic_plot
+from PerplexityLab.DataManager import DataManager, JOBLIB
+from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
+from PerplexityLab.LabPipeline import LabPipeline
+from PerplexityLab.visualization import perplex_plot, generic_plot
 
 
 def enhance_image(image, amplitude):
@@ -64,7 +66,12 @@ def fit_model_decorator(function):
     return decorated_func
 
 
-def image_reconstruction(enhanced_image, model):
+def image_reconstruction(enhanced_image, model, reduced_image_size_factor, num_cells_per_dim):
+    reduced_shape = np.array(np.shape(enhanced_image)) // reduced_image_size_factor
+    resolution_factor = reduced_shape // num_cells_per_dim
+
+    enhanced_image = calculate_averages_from_image(enhanced_image, reduced_shape)
+
     t0 = time.time()
     reconstruction = model.reconstruct_arbitrary_size(np.shape(enhanced_image))
     # reconstruction = model.reconstruct_by_factor(
@@ -77,144 +84,6 @@ def image_reconstruction(enhanced_image, model):
         "reconstruction_error": reconstruction_error,
         "time_to_reconstruct": t_reconstruct
     }
-
-
-@fit_model_decorator
-def piecewise_constant(refinement: int):
-    return SubCellReconstruction(
-        name="PiecewiseConstant",
-        smoothness_calculator=indifferent,
-        reconstruction_error_measure=ReconstructionErrorMeasureBase(),
-        refinement=refinement,
-        cell_creators=
-        [  # regular cell with piecewise_constant
-            CellCreatorPipeline(
-                cell_iterator=iterate_all,
-                orientator=BaseOrientator(dimensionality=2),
-                stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=1, dimensionality=2),
-                cell_creator=PolynomialRegularCellCreator(degree=0, dimensionality=2, noisy=False))
-        ]
-    )
-
-
-@fit_model_decorator
-def polynomial2(refinement: int):
-    return SubCellReconstruction(
-        name="Polynomial2",
-        smoothness_calculator=by_gradient,
-        reconstruction_error_measure=ReconstructionErrorMeasure(
-            stencil_creator=StencilCreatorFixedShape((3, 3)), central_cell_extra_weight=1, metric="l2"),
-        refinement=refinement,
-        cell_creators=
-        [  # regular cell with piecewise_constant
-            # CellCreatorPipeline(
-            #     cell_iterator=iterate_all,
-            #     orientator=BaseOrientator(dimensionality=2),
-            #     stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=1, dimensionality=2),
-            #     cell_creator=PolynomialRegularCellCreator(degree=0, dimensionality=2, noisy=False)),
-            # regular cell with quadratics
-            CellCreatorPipeline(
-                cell_iterator=iterate_all,  # all cells
-                orientator=BaseOrientator(dimensionality=2),
-                # stencil_creator=StencilCreatorSmoothnessDistTradeOff(stencil_shape=(3, 3), dist_trade_off=0.5,
-                #                                                      avg_diff_trade_off=1),
-                stencil_creator=StencilCreatorFixedShape(stencil_shape=(3, 3)),
-                cell_creator=PolynomialRegularCellCreator(
-                    degree=2, dimensionality=2, noisy=False, full_rank=False,
-                    weight_function=None
-                    # partial(weight_cells, central_cell_extra_weight=100)
-                )
-            )
-        ]
-    )
-
-
-@fit_model_decorator
-def polynomial2_adapt(refinement: int):
-    return SubCellReconstruction(
-        name="Polynomial2_adapt",
-        smoothness_calculator=by_gradient,
-        reconstruction_error_measure=ReconstructionErrorMeasure(
-            stencil_creator=StencilCreatorFixedShape((3, 3)), central_cell_extra_weight=1, metric="l2"),
-        refinement=refinement,
-        cell_creators=
-        [
-            # regular cell with quadratics
-            CellCreatorPipeline(
-                cell_iterator=iterate_all,  # all cells
-                orientator=BaseOrientator(dimensionality=2),
-                stencil_creator=StencilCreatorSmoothnessDistTradeOff(stencil_shape=(3, 3), dist_trade_off=0.5,
-                                                                     avg_diff_trade_off=0.1),
-                cell_creator=PolynomialRegularCellCreator(
-                    degree=2, dimensionality=2, noisy=False, full_rank=False,
-                    weight_function=partial(weight_cells_extra_weight, central_cell_extra_weight=100)
-                )
-            )
-        ]
-    )
-
-
-@fit_model_decorator
-def polynomial2_fix(refinement: int):
-    return SubCellReconstruction(
-        name="Polynomial2",
-        smoothness_calculator=by_gradient,
-        reconstruction_error_measure=ReconstructionErrorMeasure(
-            stencil_creator=StencilCreatorFixedShape((3, 3)), central_cell_extra_weight=1, metric="l2"),
-        refinement=refinement,
-        cell_creators=
-        [  # regular cell with piecewise_constant
-            # CellCreatorPipeline(
-            #     cell_iterator=iterate_all,
-            #     orientator=BaseOrientator(dimensionality=2),
-            #     stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=1, dimensionality=2),
-            #     cell_creator=PolynomialRegularCellCreator(degree=0, dimensionality=2, noisy=False)),
-            # regular cell with quadratics
-            CellCreatorPipeline(
-                cell_iterator=iterate_all,  # all cells
-                orientator=BaseOrientator(dimensionality=2),
-                # stencil_creator=StencilCreatorSmoothnessDistTradeOff(stencil_shape=(3, 3), dist_trade_off=0.5,
-                #                                                      avg_diff_trade_off=1),
-                stencil_creator=StencilCreatorFixedShape(stencil_shape=(3, 3)),
-                cell_creator=PolynomialRegularCellCreator(
-                    degree=2, dimensionality=2, noisy=False, full_rank=False,
-                    weight_function=partial(weight_cells_extra_weight, central_cell_extra_weight=100)
-                )
-            )
-        ]
-    )
-
-
-@fit_model_decorator
-def elvira(refinement: int):
-    return SubCellReconstruction(
-        name="ELVIRA",
-        smoothness_calculator=by_gradient,
-        reconstruction_error_measure=ReconstructionErrorMeasure(
-            stencil_creator=StencilCreatorFixedShape((3, 3)), central_cell_extra_weight=1, metric="l2"),
-        refinement=refinement,
-        cell_creators=
-        [  # regular cell with piecewise_constant
-            CellCreatorPipeline(
-                cell_iterator=iterate_all,  # all cells
-                orientator=BaseOrientator(dimensionality=2),
-                # stencil_creator=StencilCreatorSmoothnessDistTradeOff(stencil_shape=(3, 3), dist_trade_off=0.5,
-                #                                                      avg_diff_trade_off=1),
-                stencil_creator=StencilCreatorFixedShape(stencil_shape=(3, 3)),
-                cell_creator=PolynomialRegularCellCreator(
-                    degree=2, dimensionality=2, noisy=False, full_rank=False,
-                    weight_function=partial(weight_cells_extra_weight, central_cell_extra_weight=100)
-                )
-            ),
-            CellCreatorPipeline(
-                cell_iterator=iterate_by_smoothness,
-                orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
-                stencil_creator=StencilCreatorFixedShape((3, 3)),
-                cell_creator=ELVIRACurveCellCreator(
-                    regular_opposite_cell_searcher=get_opposite_cells_by_grad)
-            )
-        ]
-    )
 
 
 @perplex_plot
@@ -242,6 +111,51 @@ def plot_convergence_curves(fig, ax, amplitude, reconstruction_error, models):
     ax.legend()
 
 
+@perplex_plot
+def plot_reconstruction(fig, ax, enhanced_image, num_cells_per_dim, model, reconstruction, alpha=0.5,
+                        plot_original_image=True,
+                        difference=False, plot_curve=True, plot_curve_winner=False, plot_vh_classification=True,
+                        plot_singular_cells=True, cmap="magma", trim=((0, 0), (0, 0)), numbers_on=True, *args,
+                        **kwargs):
+    image = enhanced_image.pop()
+    num_cells_per_dim = num_cells_per_dim.pop()
+    model = model.pop()
+    reconstruction = reconstruction.pop()
+
+    model_resolution = np.array(model.resolution)
+    # image = load_image(image)
+
+    if plot_original_image:
+        plot_cells(ax, colors=image, mesh_shape=model_resolution, alpha=alpha, cmap="Greys_r",
+                   vmin=np.min(image), vmax=np.max(image))
+
+    if difference:
+        plot_cells(ax, colors=reconstruction - image, mesh_shape=model.resolution, alpha=alpha, cmap=cmap, vmin=-1,
+                   vmax=1)
+    else:
+        plot_cells(ax, colors=reconstruction, mesh_shape=model.resolution, alpha=alpha, cmap=cmap, vmin=-1, vmax=1)
+
+    if plot_curve:
+        if plot_curve_winner:
+            plot_cells_identity(ax, model.resolution, model.cells, alpha=0.8)
+            # plot_cells_type_of_curve_core(ax, model.resolution, model.cells, alpha=0.8)
+        elif plot_vh_classification:
+            plot_cells_vh_classification_core(ax, model.resolution, model.cells, alpha=0.8)
+        elif plot_singular_cells:
+            plot_cells_not_regular_classification_core(ax, model.resolution, model.cells, alpha=0.8)
+        plot_curve_core(ax, curve_cells=[cell for cell in model.cells.values() if
+                                         cell.CELL_TYPE == CURVE_CELL_TYPE])
+
+    draw_cell_borders(
+        ax, mesh_shape=num_cells_per_dim,
+        refinement=model_resolution // num_cells_per_dim,
+        numbers_on=numbers_on,
+        prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
+    )
+    ax.set_xlim((-0.5 + trim[0][0], model.resolution[0] - trim[0][1] - 0.5))
+    ax.set_ylim((model.resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
+
+
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
@@ -259,10 +173,8 @@ if __name__ == "__main__":
 
     lab.define_new_block_of_functions(
         "models",
-        # polynomial2,
-        piecewise_constant,
-        polynomial2_fix,
-        polynomial2_adapt,
+        polynomial2,
+        elvira_go,
         elvira
     )
 
@@ -273,9 +185,10 @@ if __name__ == "__main__":
 
     lab.execute(
         data_manager,
-        num_cores=3,
+        num_cores=15,
         recalculate=False,
         forget=False,
+        save_on_iteration=5,
         refinement=[1],
         # num_cells_per_dim=[42*2],  # , 28, 42
         # num_cells_per_dim=[28, 42, 42 * 2],  # , 28, 42
@@ -285,17 +198,18 @@ if __name__ == "__main__":
         ],  # , 28, 42
         # num_cells_per_dim=[42],  # , 28, 42
         noise=[0],
-        # amplitude=[0, 1],
-        amplitude=[0, 1e-3, 1e-2, 1e-1, 0.5, 1],
+        amplitude=[0, 1e-1, 5e-1],
+        reduced_image_size_factor=[6],
+        # amplitude=[0, 1e-3, 1e-2, 1e-1, 0.5, 1],
         image=[
             "Elipsoid_1680x1680.jpg"
         ]
     )
 
-    generic_plot(data_manager, x="N", y="error", label="amplitude",
-                 N=lambda num_cells_per_dim: num_cells_per_dim**2,
-                 error=lambda reconstruction_error: np.sqrt(np.mean(reconstruction_error**2)),
-                 axes_by=["models"],
+    generic_plot(data_manager, x="N", y="error", label="models",
+                 N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                 error=lambda reconstruction_error: np.sqrt(np.mean(reconstruction_error ** 2)),
+                 axes_by=["amplitude"],
                  plot_by=["image", "refinement"])
     # plot_convergence_curves(data_manager,
     #                         axes_by=[],
@@ -316,5 +230,6 @@ if __name__ == "__main__":
         plot_original_image=True,
         numbers_on=True,
         plot_again=True,
-        num_cores=1
+        num_cores=1,
+        reduced_image_size_factor=6
     )

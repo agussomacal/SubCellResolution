@@ -7,7 +7,7 @@ import numpy as np
 from lib.AuxiliaryStructures.GraphAuxiliaryFunctions import mesh_iterator
 from lib.CellCreators.CellCreatorBase import CellBase
 from lib.StencilCreators import StencilCreator
-from src.Indexers import ArrayIndexerNd
+from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 
 CellCreatorPipeline = namedtuple("CellCreatorPipeline", "cell_iterator orientator stencil_creator cell_creator")
 
@@ -120,7 +120,7 @@ class SubCellReconstruction:
         values = np.zeros(size)
         for ix in itertools.product(*list(map(range, size))):
             values[ix] = self.cells[tuple(map(int, np.array(ix) / size * self.resolution))].evaluate(
-                np.array(ix) / size * self.resolution)
+                (np.array(ix) / size * self.resolution)[np.newaxis, :])
         # for ix in itertools.product(
         #         *list(map(lambda sr: np.arange(sr[0]) / sr[0] * sr[1], zip(size, self.resolution)))):
         #     ix = np.array(ix)

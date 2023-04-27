@@ -1,31 +1,38 @@
 import time
 from functools import partial
 
-import matplotlib.pylab as plt
-import seaborn as sns
 import numpy as np
-import pandas as pd
+import seaborn as sns
 
 import config
-from experiments.TaylorEffect.taylor_effect import enhance_image, image_reconstruction
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders
-from experiments.image_reconstruction import plot_reconstruction
 from experiments.models import load_image, calculate_averages_from_image
-from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
-from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_cells_by_grad
-from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells, weight_cells_extra_weight, \
-    weight_cells_by_smoothness
-from lib.CellIterators import iterate_all, iterate_by_smoothness
-from lib.CellOrientators import BaseOrientator, OrientByGradient
-from lib.SmoothnessCalculators import indifferent, by_gradient
-from lib.StencilCreators import StencilCreatorSameRegionAdaptive, StencilCreatorFixedShape, \
-    StencilCreatorSmoothnessDistTradeOff
-from lib.SubCellReconstruction import CellCreatorPipeline, SubCellReconstruction, ReconstructionErrorMeasureBase, \
-    ReconstructionErrorMeasure
-from src.DataManager import DataManager, JOBLIB
-from src.Indexers import ArrayIndexerNd
-from src.LabPipeline import LabPipeline
-from src.viz_utils import perplex_plot, generic_plot, test_plot
+from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells_by_smoothness
+from lib.CellIterators import iterate_all
+from lib.CellOrientators import BaseOrientator
+from lib.SmoothnessCalculators import by_gradient
+from lib.StencilCreators import StencilCreatorFixedShape, StencilCreatorSmoothnessDistTradeOff
+from lib.SubCellReconstruction import CellCreatorPipeline, SubCellReconstruction, ReconstructionErrorMeasure
+from PerplexityLab.DataManager import DataManager, JOBLIB
+from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
+from PerplexityLab.LabPipeline import LabPipeline
+from PerplexityLab.visualization import generic_plot, test_plot
+
+
+def enhance_image(image, amplitude):
+    image = load_image(image)
+    h, w = np.shape(image)
+    y, x = np.meshgrid(*list(map(range, np.shape(image))))
+    d = np.sqrt((x - h / 2) ** 2 + (y - w / 2) ** 2)
+    # v=128+(64+32*sin((x-w/2+y-h/2)*5*6/w))*(v >0)-(v==0)*(64+32*cos(d*5*6/w))
+    image += amplitude + 1e-1 * (
+            (image >= 0.5) * np.cos(2 * np.pi * x * 5 / w) +
+            (image <= 0.5) * np.sin(2 * np.pi * d * 3 / w)
+    )
+
+    return {
+        "enhanced_image": image
+    }
 
 
 def core_experiment(enhanced_image, num_cells_per_dim, noise, dist_trade_off, central_cell_importance, delta, epsilon,
@@ -129,6 +136,9 @@ def plot_reconstruction(fig, ax, image, amplitude, num_cells_per_dim, noise, dis
 
 
 if __name__ == "__main__":
+    num_cores = 15
+    amplitude = [0, 1e-2, 5e-2, 1e-1, 2e-1, 5e-1, 1, 10]
+
     data_manager = DataManager(
         path=config.results_path,
         name='RegularFitDistTradeOff',
@@ -145,7 +155,7 @@ if __name__ == "__main__":
 
     lab.execute(
         data_manager,
-        num_cores=3,
+        num_cores=num_cores,
         recalculate=False,
         forget=False,
         save_on_iteration=None,
@@ -160,18 +170,12 @@ if __name__ == "__main__":
             28, 28 * 2  # , 28 * 4
         ],
         noise=[0],
-        amplitude=[0, 1e-3, 1e-2, 1e-1, 5e-1, 1],
+        amplitude=amplitude,
         reduced_image_size_factor=[6],
         image=[
             "Elipsoid_1680x1680.jpg"
         ]
     )
-
-    # plot_reconstruction(data_manager.path, image="Elipsoid_1680x1680.jpg", amplitude=5e-1, num_cells_per_dim=28,
-    #                     noise=0, dist_trade_off=1,
-    #                     central_cell_importance=0, delta=0.5, epsilon=np.inf, degree=1,
-    #                     alpha=0.5, plot_original_image=True, difference=False, cmap="magma",
-    #                     trim=((0, 0), (0, 0)), numbers_on=True, reduced_image_size_factor=6)
 
     generic_plot(data_manager, x="amplitude", y="mse", label="dist_trade_off", plot_fun=sns.lineplot,
                  other_plot_funcs=(), log="y",
@@ -196,7 +200,7 @@ if __name__ == "__main__":
 
     lab.execute(
         data_manager,
-        num_cores=3,
+        num_cores=num_cores,
         recalculate=False,
         forget=False,
         save_on_iteration=None,
@@ -211,7 +215,7 @@ if __name__ == "__main__":
             28, 28 * 2  # , 28 * 4
         ],
         noise=[0],
-        amplitude=[0, 1e-3, 1e-2, 1e-1, 5e-1, 1],
+        amplitude=amplitude,
         reduced_image_size_factor=[6],
         image=[
             "Elipsoid_1680x1680.jpg"
@@ -244,7 +248,7 @@ if __name__ == "__main__":
 
     lab.execute(
         data_manager,
-        num_cores=3,
+        num_cores=num_cores,
         recalculate=False,
         forget=False,
         save_on_iteration=None,
@@ -259,7 +263,7 @@ if __name__ == "__main__":
             28, 28 * 2  # , 28 * 4
         ],
         noise=[0],
-        amplitude=[0, 1e-3, 1e-2, 1e-1, 5e-1, 1],
+        amplitude=amplitude,
         reduced_image_size_factor=[6],
         image=[
             "Elipsoid_1680x1680.jpg"
@@ -271,3 +275,11 @@ if __name__ == "__main__":
                  plot_by=["num_cells_per_dim", "epsilon"])
 
     # central_cell_importance = 100
+    # dist_trade_off = 0.5
+    # delta = 0.05
+    # epsilon = 1e-5
+    plot_reconstruction(config.results_path, image="Elipsoid_1680x1680.jpg", amplitude=1e-1, num_cells_per_dim=28,
+                        noise=0, dist_trade_off=0.5,
+                        central_cell_importance=100, delta=0.05, epsilon=1e-5, degree=2,
+                        alpha=0.5, plot_original_image=True, difference=False, cmap="magma",
+                        trim=((0, 0), (0, 0)), numbers_on=True, reduced_image_size_factor=6)

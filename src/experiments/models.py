@@ -8,10 +8,11 @@ import numpy as np
 
 import config
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
+from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_cells_by_smoothness_threshold, \
     get_opposite_cells_by_grad, get_opposite_cells_by_relative_smoothness
-from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells
+from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells, weight_cells_by_smoothness
 from lib.CellIterators import iterate_all, iterate_by_condition_on_smoothness, iterate_by_smoothness
 from lib.CellOrientators import BaseOrientator, OrientPredefined, OrientByGradient
 from lib.SmoothnessCalculators import indifferent, naive_piece_wise, by_gradient
@@ -19,7 +20,6 @@ from lib.StencilCreators import StencilCreatorSameRegionAdaptive, StencilCreator
     StencilCreatorSmoothnessDistTradeOff
 from lib.SubCellReconstruction import CellCreatorPipeline, SubCellReconstruction, ReconstructionErrorMeasureBase, \
     ReconstructionErrorMeasure
-from src.Indexers import ArrayIndexerNd
 
 
 def calculate_averages_from_image(image, num_cells_per_dim: Union[int, Tuple[int, int]]):
@@ -100,27 +100,25 @@ def piecewise_constant(refinement: int):
 @fit_model_decorator
 def polynomial2(refinement: int):
     return SubCellReconstruction(
-        name="Polynomial2",
+        name="Polynomial",
         smoothness_calculator=by_gradient,
         reconstruction_error_measure=ReconstructionErrorMeasure(
             stencil_creator=StencilCreatorFixedShape((3, 3)), central_cell_extra_weight=1, metric="l2"),
-        refinement=refinement,
+        refinement=1,
         cell_creators=
-        [  # regular cell with piecewise_constant
-            # CellCreatorPipeline(
-            #     cell_iterator=iterate_all,
-            #     orientator=BaseOrientator(dimensionality=2),
-            #     stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=1, dimensionality=2),
-            #     cell_creator=PolynomialRegularCellCreator(degree=0, dimensionality=2, noisy=False)),
+        [
             # regular cell with quadratics
             CellCreatorPipeline(
                 cell_iterator=iterate_all,  # all cells
                 orientator=BaseOrientator(dimensionality=2),
-                stencil_creator=StencilCreatorSmoothnessDistTradeOff(stencil_shape=(3, 3), dist_trade_off=0.5,
-                                                                     avg_diff_trade_off=1),
+                stencil_creator=StencilCreatorSmoothnessDistTradeOff(stencil_shape=(3, 3),
+                                                                     dist_trade_off=0.5),
                 cell_creator=PolynomialRegularCellCreator(
                     degree=2, dimensionality=2, noisy=False, full_rank=False,
-                    weight_function=partial(weight_cells, central_cell_extra_weight=100))
+                    weight_function=partial(weight_cells_by_smoothness,
+                                            central_cell_importance=100,
+                                            delta=0.05, epsilon=1e-5)
+                )
             )
         ]
     )
@@ -136,12 +134,18 @@ def elvira(refinement: int):
         refinement=refinement,
         cell_creators=
         [  # regular cell with piecewise_constant
+            # regular cell with quadratics
             CellCreatorPipeline(
-                cell_iterator=partial(iterate_by_condition_on_smoothness, value=REGULAR_CELL,
-                                      condition=operator.eq),  # only identified curve cells
+                cell_iterator=iterate_all,  # all cells
                 orientator=BaseOrientator(dimensionality=2),
-                stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=1, dimensionality=2),
-                cell_creator=PolynomialRegularCellCreator(dimensionality=2, noisy=False)
+                stencil_creator=StencilCreatorSmoothnessDistTradeOff(stencil_shape=(3, 3),
+                                                                     dist_trade_off=0.5),
+                cell_creator=PolynomialRegularCellCreator(
+                    degree=2, dimensionality=2, noisy=False, full_rank=False,
+                    weight_function=partial(weight_cells_by_smoothness,
+                                            central_cell_importance=100,
+                                            delta=0.05, epsilon=1e-5)
+                )
             )] +
         [  # curve cells with ELVIRA
             CellCreatorPipeline(
@@ -157,7 +161,7 @@ def elvira(refinement: int):
 
 
 @fit_model_decorator
-def elvira_soc(refinement: int):
+def elvira_go(refinement: int):
     return SubCellReconstruction(
         name="ELVIRA",
         smoothness_calculator=by_gradient,
@@ -165,15 +169,19 @@ def elvira_soc(refinement: int):
             stencil_creator=StencilCreatorFixedShape((3, 3)), central_cell_extra_weight=1, metric="l2"),
         refinement=refinement,
         cell_creators=
-        [   # regular cell with piecewise_constant
+        [  # regular cell with piecewise_constant
+            # regular cell with quadratics
             CellCreatorPipeline(
                 cell_iterator=iterate_all,  # all cells
                 orientator=BaseOrientator(dimensionality=2),
-                stencil_creator=StencilCreatorSmoothnessDistTradeOff(stencil_shape=(3, 3), dist_trade_off=0.5,
-                                                                     avg_diff_trade_off=1),
+                stencil_creator=StencilCreatorSmoothnessDistTradeOff(stencil_shape=(3, 3),
+                                                                     dist_trade_off=0.5),
                 cell_creator=PolynomialRegularCellCreator(
                     degree=2, dimensionality=2, noisy=False, full_rank=False,
-                    weight_function=partial(weight_cells, central_cell_extra_weight=100))
+                    weight_function=partial(weight_cells_by_smoothness,
+                                            central_cell_importance=100,
+                                            delta=0.05, epsilon=1e-5)
+                )
             ),
             CellCreatorPipeline(
                 cell_iterator=iterate_by_smoothness,
