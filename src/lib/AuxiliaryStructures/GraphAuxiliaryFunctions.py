@@ -1,5 +1,5 @@
 import itertools
-from typing import Tuple, Set, List
+from typing import Tuple, List
 
 import numpy as np
 

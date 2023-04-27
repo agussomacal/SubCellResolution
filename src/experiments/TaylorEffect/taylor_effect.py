@@ -1,29 +1,15 @@
 import time
-from functools import partial
 
-import matplotlib.pylab as plt
 import numpy as np
 import pandas as pd
+from experiments.subcell_paper.function_families import load_image
 
 import config
-from experiments.VizReconstructionUtils import plot_cells, plot_cells_identity, plot_cells_vh_classification_core, \
-    plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders
-from experiments.models import load_image, calculate_averages_from_image, elvira_go, polynomial2, elvira
-from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
-from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
-from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_cells_by_grad
-from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells, weight_cells_extra_weight
-from lib.CellIterators import iterate_all, iterate_by_smoothness
-from lib.CellOrientators import BaseOrientator, OrientByGradient
-from lib.SmoothnessCalculators import indifferent, by_gradient
-from lib.StencilCreators import StencilCreatorSameRegionAdaptive, StencilCreatorFixedShape, \
-    StencilCreatorSmoothnessDistTradeOff
-from lib.SubCellReconstruction import CellCreatorPipeline, SubCellReconstruction, ReconstructionErrorMeasureBase, \
-    ReconstructionErrorMeasure
 from PerplexityLab.DataManager import DataManager, JOBLIB
-from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.visualization import perplex_plot, generic_plot
+from experiments.models import calculate_averages_from_image
+from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 
 
 def enhance_image(image, amplitude):
@@ -67,10 +53,10 @@ def fit_model_decorator(function):
 
 
 def image_reconstruction(enhanced_image, model, reduced_image_size_factor, num_cells_per_dim):
-    reduced_shape = np.array(np.shape(enhanced_image)) // reduced_image_size_factor
-    resolution_factor = reduced_shape // num_cells_per_dim
-
-    enhanced_image = calculate_averages_from_image(enhanced_image, reduced_shape)
+    # reduced_shape = np.array(np.shape(enhanced_image)) // reduced_image_size_factor
+    # resolution_factor = reduced_shape // num_cells_per_dim
+    #
+    # enhanced_image = calculate_averages_from_image(enhanced_image, reduced_shape)
 
     t0 = time.time()
     reconstruction = model.reconstruct_arbitrary_size(np.shape(enhanced_image))
@@ -173,8 +159,10 @@ if __name__ == "__main__":
 
     lab.define_new_block_of_functions(
         "models",
-        polynomial2,
-        elvira_go,
+        # polynomial2,
+        piecewise_constant,
+        polynomial2_fix,
+        polynomial2_adapt,
         elvira
     )
 

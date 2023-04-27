@@ -3,8 +3,9 @@ import time
 from functools import partial
 from typing import Union, Tuple
 
-import matplotlib.pylab as plt
 import numpy as np
+
+from experiments.subcell_paper.function_families import load_image
 
 import config
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
@@ -28,14 +29,6 @@ def calculate_averages_from_image(image, num_cells_per_dim: Union[int, Tuple[int
     img_x, img_y = np.shape(image)
     ncx, ncy = (num_cells_per_dim, num_cells_per_dim) if isinstance(num_cells_per_dim, int) else num_cells_per_dim
     return image.reshape((ncx, img_x // ncx, ncy, img_y // ncy)).mean(-1).mean(-2)
-
-
-def load_image(image_name):
-    image = plt.imread(f"{config.images_path}/{image_name}", format=image_name.split(".")[-1])
-    image = np.mean(image, axis=tuple(np.arange(2, len(np.shape(image)), dtype=int)))
-    # image = plt.imread(f"{config.images_path}/{image_name}", format='jpeg').mean(-1)
-    image /= np.max(image)
-    return image
 
 
 def fit_model_decorator(function):

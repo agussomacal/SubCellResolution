@@ -5,34 +5,20 @@ import numpy as np
 import seaborn as sns
 
 import config
+from PerplexityLab.DataManager import DataManager, JOBLIB
+from PerplexityLab.LaTexReports import Code2LatexConnector
+from PerplexityLab.LabPipeline import LabPipeline
+from PerplexityLab.visualization import generic_plot, test_plot
+from experiments.TaylorEffect.taylor_effect import enhance_image
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders
 from experiments.models import load_image, calculate_averages_from_image
+from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells_by_smoothness
 from lib.CellIterators import iterate_all
 from lib.CellOrientators import BaseOrientator
 from lib.SmoothnessCalculators import by_gradient
 from lib.StencilCreators import StencilCreatorFixedShape, StencilCreatorSmoothnessDistTradeOff
 from lib.SubCellReconstruction import CellCreatorPipeline, SubCellReconstruction, ReconstructionErrorMeasure
-from PerplexityLab.DataManager import DataManager, JOBLIB
-from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
-from PerplexityLab.LabPipeline import LabPipeline
-from PerplexityLab.visualization import generic_plot, test_plot
-
-
-def enhance_image(image, amplitude):
-    image = load_image(image)
-    h, w = np.shape(image)
-    y, x = np.meshgrid(*list(map(range, np.shape(image))))
-    d = np.sqrt((x - h / 2) ** 2 + (y - w / 2) ** 2)
-    # v=128+(64+32*sin((x-w/2+y-h/2)*5*6/w))*(v >0)-(v==0)*(64+32*cos(d*5*6/w))
-    image += amplitude + 1e-1 * (
-            (image >= 0.5) * np.cos(2 * np.pi * x * 5 / w) +
-            (image <= 0.5) * np.sin(2 * np.pi * d * 3 / w)
-    )
-
-    return {
-        "enhanced_image": image
-    }
 
 
 def core_experiment(enhanced_image, num_cells_per_dim, noise, dist_trade_off, central_cell_importance, delta, epsilon,
@@ -139,6 +125,8 @@ if __name__ == "__main__":
     num_cores = 15
     amplitude = [0, 1e-2, 5e-2, 1e-1, 2e-1, 5e-1, 1, 10]
 
+    report = Code2LatexConnector(path=config.subcell_paper_path, filename='main')
+
     data_manager = DataManager(
         path=config.results_path,
         name='RegularFitDistTradeOff',
@@ -222,7 +210,8 @@ if __name__ == "__main__":
         ]
     )
 
-    generic_plot(data_manager, x="amplitude", y="mse", label="delta", plot_fun=sns.lineplot,
+    generic_plot(data_manager, path=report.get_plot_path(), x="amplitude", y="mse", label="delta",
+                 plot_fun=sns.lineplot,
                  other_plot_funcs=(), log="y",
                  plot_by=["num_cells_per_dim", "epsilon"])
 
@@ -270,7 +259,8 @@ if __name__ == "__main__":
         ]
     )
 
-    generic_plot(data_manager, x="amplitude", y="mse", label="central_cell_importance", plot_fun=sns.lineplot,
+    generic_plot(data_manager, path=report.get_plot_path(), x="amplitude", y="mse", label="central_cell_importance",
+                 plot_fun=sns.lineplot,
                  other_plot_funcs=(), log="y",
                  plot_by=["num_cells_per_dim", "epsilon"])
 
@@ -283,3 +273,5 @@ if __name__ == "__main__":
                         central_cell_importance=100, delta=0.05, epsilon=1e-5, degree=2,
                         alpha=0.5, plot_original_image=True, difference=False, cmap="magma",
                         trim=((0, 0), (0, 0)), numbers_on=True, reduced_image_size_factor=6)
+
+    report.compile()
