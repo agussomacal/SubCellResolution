@@ -76,6 +76,22 @@ def get_opposite_cells_by_smoothness_threshold(coords: CellCoords, cells: Dict[T
     return tuple([cells[tuple(indexer[o])] for o in regular_opposite_cell_coords])
 
 
+def get_opposite_regular_cells(coords: CellCoords, cells: Dict[Tuple[int], CellBase],
+                               independent_axis: int,
+                               average_values: np.ndarray, smoothness_index: np.ndarray,
+                               indexer: ArrayIndexerNd, **kwargs):
+    regular_opposite_cell_coords, _ = get_regular_opposite_cell_coords_by_direction(
+        coords=coords, cells=cells, average_values=average_values, indexer=indexer,
+        direction=np.array([0, 1])[[independent_axis, 1 - independent_axis]],
+        acceptance_criterion=lambda coords_i: indexer[coords_i] in cells.keys() and
+                                              (cells[indexer[coords_i]].CELL_TYPE == REGULAR_CELL_TYPE),
+        start=1)
+
+    # order from down to up given dependant axis.
+    regular_opposite_cell_coords = sorted(regular_opposite_cell_coords, key=lambda c: c[1 - independent_axis])
+    return tuple([cells[tuple(indexer[o])] for o in regular_opposite_cell_coords])
+
+
 def get_opposite_cells_by_relative_smoothness(coords: CellCoords, cells: Dict[Tuple[int], CellBase],
                                               independent_axis: int,
                                               average_values: np.ndarray, smoothness_index: np.ndarray,

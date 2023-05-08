@@ -35,8 +35,8 @@ class CurvePolynomial(CurveBase):
         return self.polynomial.coef
 
     @params.setter
-    def params(self, *args):
-        self.polynomial = args if isinstance(args, Polynomial) else Polynomial(*args)
+    def params(self, args):
+        self.polynomial = args if isinstance(args, Polynomial) else Polynomial(args)
         self.poly_integral = self.polynomial.integ()
 
     def function(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
@@ -177,7 +177,7 @@ class CurveQuadraticPoints(CurvePolynomial):
         # super(CurveQuadraticPoints, self).params
 
     @params.setter
-    def params(self, *args):
+    def params(self, args):
         CurvePolynomial.params.fset(self, np.ravel(INV_VANDER_MAT_3x3 @ np.reshape(args, (-1, 1))))
         # super(CurveQuadraticPoints, self).params = np.ravel(INV_VANDER_MAT_3x3 @ np.reshape(args, (-1, 1)))
 

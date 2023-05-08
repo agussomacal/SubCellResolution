@@ -10,7 +10,7 @@ from experiments.subcell_paper.function_families import load_image
 import config
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
-from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
+from lib.CellCreators.CurveCellCreators.LinearCurveCellCreators import ELVIRACurveCellCreator
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_cells_by_smoothness_threshold, \
     get_opposite_cells_by_grad, get_opposite_cells_by_relative_smoothness
 from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells, weight_cells_by_smoothness

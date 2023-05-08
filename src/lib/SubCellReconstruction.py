@@ -3,11 +3,12 @@ from collections import namedtuple
 from typing import Tuple, Union, List
 
 import numpy as np
+from scipy.optimize import minimize
 
 from lib.AuxiliaryStructures.GraphAuxiliaryFunctions import mesh_iterator
-from lib.CellCreators.CellCreatorBase import CellBase
-from lib.StencilCreators import StencilCreator
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
+from lib.CellCreators.CellCreatorBase import CellBase, REGULAR_CELL_TYPE
+from lib.StencilCreators import StencilCreator
 
 CellCreatorPipeline = namedtuple("CellCreatorPipeline", "cell_iterator orientator stencil_creator cell_creator")
 
@@ -38,14 +39,17 @@ class ReconstructionErrorMeasure(ReconstructionErrorMeasureBase):
         if self.metric in ["l2"]:
             loss = np.sum(kernel_vector_error ** 2) + \
                    self.central_cell_extra_weight * kernel_vector_error[index_central_cell] ** 2
+        elif self.metric in ["l1"]:
+            loss = np.sum(np.abs(kernel_vector_error)) + \
+                   self.central_cell_extra_weight * np.abs(kernel_vector_error[index_central_cell])
         else:
             raise Exception(f"metric {self.metric} not implemented.")
         return loss
 
 
 class SubCellReconstruction:
-    def __init__(self, name, smoothness_calculator, reconstruction_error_measure,
-                 cell_creators: List[CellCreatorPipeline], refinement: int = 1):
+    def __init__(self, name, smoothness_calculator, reconstruction_error_measure=ReconstructionErrorMeasureBase,
+                 cell_creators: List[CellCreatorPipeline] = [], refinement: int = 1, obera_iterations=0):
         self.name = name
         self.smoothness_calculator = smoothness_calculator
         self.reconstruction_error_measure = reconstruction_error_measure
@@ -54,6 +58,7 @@ class SubCellReconstruction:
         self.cells = dict()
         self.stencils = dict()
         self.resolution = None
+        self.obera_iterations = obera_iterations
 
     def __str__(self):
         return self.name
@@ -86,6 +91,24 @@ class SubCellReconstruction:
                     else:
                         self.cells[coords.tuple] = proposed_cells.pop()
                         self.stencils[coords.tuple] = stencil.coords
+
+                    # Doing OBERA
+                    if self.cells[coords.tuple].CELL_TYPE != REGULAR_CELL_TYPE and self.obera_iterations > 0:
+                        def optim_func(params):
+                            curve = self.cells[coords.tuple].curve
+                            curve.params = params
+                            self.cells[coords.tuple].curve = curve
+                            loss = self.reconstruction_error_measure.calculate_error(
+                                proposed_cell, average_values, indexer, smoothness_index, independent_axis)
+                            return loss
+
+                        # number of function evaluation without gradient is twice the number of parameters
+                        x0 = np.ravel(self.cells[coords.tuple].curve.params)
+                        res = minimize(optim_func, x0=x0, method="L-BFGS-B",
+                                       options={'maxiter': self.obera_iterations * 2 * (1 + len(x0))})
+                        curve = self.cells[coords.tuple].curve
+                        curve.params = res.x
+                        self.cells[coords.tuple].curve = curve
 
             if r < self.refinement - 1:
                 average_values = self.reconstruct_by_factor(resolution_factor=2)

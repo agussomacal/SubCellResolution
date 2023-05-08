@@ -1,17 +1,27 @@
 from operator import le, gt
+from typing import Union, Tuple
 
 import numpy as np
 from matplotlib import pylab as plt
 
 import config
 from config import subcell_paper_path
-from src.LaTexReports import Code2LatexConnector
-from src.visualization import save_fig
+from PerplexityLab.LaTexReports import Code2LatexConnector
+from PerplexityLab.visualization import save_fig
+
+
+def calculate_averages_from_image(image, num_cells_per_dim: Union[int, Tuple[int, int]]):
+    # Example of how to calculate the averages in a single pass:
+    # np.arange(6 * 10).reshape((6, 10)).reshape((2, 3, 5, 2)).mean(-1).mean(-2)
+    img_x, img_y = np.shape(image)
+    ncx, ncy = (num_cells_per_dim, num_cells_per_dim) if isinstance(num_cells_per_dim, int) else num_cells_per_dim
+    return image.reshape((ncx, img_x // ncx, ncy, img_y // ncy)).mean(-1).mean(-2)
 
 
 def load_image(image_name):
     image = plt.imread(f"{config.images_path}/{image_name}", format=image_name.split(".")[-1])
     image = np.mean(image, axis=tuple(np.arange(2, len(np.shape(image)), dtype=int)))
+    image -= np.min(image)
     image /= np.max(image)
     return image
 

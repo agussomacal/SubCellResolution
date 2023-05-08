@@ -143,3 +143,18 @@ class PiecewiseConstantRegularCellCreator(CellCreatorBase):
 
     def __str__(self):
         return super().__str__() + "PiecewiseConstant"
+
+
+class MirrorCellCreator(CellCreatorBase):
+    def __init__(self, dimensionality=2):
+        self.dimensionality = dimensionality
+        # only dimension 1, needs to know the problem dimensionality
+        super().__init__()
+
+    def create_cells(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
+                     coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
+                     stencil: Stencil, stencils: Dict[Tuple[int, ...], np.ndarray]) -> Generator[CellBase, None, None]:
+        yield PolynomialCell(coords, np.reshape(np.mean(stencil.values), np.repeat(1, self.dimensionality)))
+
+    def __str__(self):
+        return super().__str__() + "Mirror"
