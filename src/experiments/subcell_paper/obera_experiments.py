@@ -4,13 +4,12 @@ from functools import partial
 
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 import seaborn as sns
+from matplotlib import pyplot as plt
 
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
-from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import perplex_plot, generic_plot
 from experiments.VizReconstructionUtils import plot_cells, plot_cells_identity, plot_cells_vh_classification_core, \
     plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders
@@ -18,19 +17,21 @@ from experiments.subcell_paper.function_families import load_image, calculate_av
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
-from lib.CellCreators.CurveCellCreators.CircleCurveCellCreator import CircleCurveCellCreator
-from lib.CellCreators.CurveCellCreators.PolynomialCurveCellCreators import PolynomialCurveCellCreator
+from lib.CellCreators.CurveCellCreators.ParametersCurveCellCreators import DefaultCircleCurveCellCreator, \
+    DefaultPolynomialCurveCellCreator
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells
+from lib.CellCreators.CurveCellCreators.VanderCurveCellCreator import VanderCurveCellCreator
 from lib.CellCreators.RegularCellCreator import PiecewiseConstantRegularCellCreator, MirrorCellCreator
 from lib.CellIterators import iterate_by_condition_on_smoothness, iterate_all
-from lib.CellOrientators import BaseOrientator, OrientPredefined, OrientByGradient
+from lib.CellOrientators import BaseOrientator, OrientByGradient
+from lib.Curves.VanderCurves import CurveVandermondePolynomial, CurveVanderCircle
 from lib.SmoothnessCalculators import naive_piece_wise, indifferent
 from lib.StencilCreators import StencilCreatorFixedShape
 from lib.SubCellReconstruction import SubCellReconstruction, CellCreatorPipeline, ReconstructionErrorMeasureBase, \
     ReconstructionErrorMeasure
 
 
-def get_sub_cell_model(curve_cell_creator, refinement, name, iterations):
+def get_sub_cell_model(curve_cell_creator, refinement, name, iterations, central_cell_extra_weight):
     return SubCellReconstruction(
         name=name,
         smoothness_calculator=naive_piece_wise,
@@ -60,13 +61,13 @@ def get_sub_cell_model(curve_cell_creator, refinement, name, iterations):
 
 
 def fit_model(sub_cell_model):
-    def decorated_func(image, num_cells_per_dim, noise, refinement, iterations):
+    def decorated_func(image, num_cells_per_dim, noise, refinement, iterations, central_cell_extra_weight):
         image = load_image(image)
         np.random.seed(42)
         avg_values = calculate_averages_from_image(image, num_cells_per_dim)
         avg_values += np.random.uniform(-noise, noise, size=avg_values.shape)
 
-        model = sub_cell_model(refinement, iterations)
+        model = sub_cell_model(refinement, iterations, central_cell_extra_weight)
 
         t0 = time.time()
         model.fit(average_values=avg_values,
@@ -85,7 +86,7 @@ def fit_model(sub_cell_model):
 
 
 @fit_model
-def piecewise_constant(refinement: int, iterations: int):
+def piecewise_constant(refinement: int, *args):
     return SubCellReconstruction(
         name="PiecewiseConstant",
         smoothness_calculator=indifferent,
@@ -103,19 +104,44 @@ def piecewise_constant(refinement: int, iterations: int):
     )
 
 
-@fit_model
-def linear(refinement: int, iterations: int):
-    return get_sub_cell_model(partial(PolynomialCurveCellCreator, degree=1), refinement, "Linear", iterations)
+# @fit_model
+# def linear(refinement: int, iterations: int, central_cell_extra_weight: float):
+#     return get_sub_cell_model(
+#         partial(VanderCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=1)), refinement,
+#         "Linear", iterations, central_cell_extra_weight)
+#
+#
+# @fit_model
+# def quadratic(refinement: int, iterations: int, central_cell_extra_weight: float):
+#     return get_sub_cell_model(
+#         partial(VanderCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=2)), refinement,
+#         "Quadratic", iterations, central_cell_extra_weight)
+#
+#
+# @fit_model
+# def circle(refinement: int, iterations: int, central_cell_extra_weight: float):
+#     return get_sub_cell_model(partial(VanderCurveCellCreator, vander_curve=CurveVanderCircle), refinement, "Circle",
+#                               iterations, central_cell_extra_weight)
 
 
 @fit_model
-def quadratic(refinement: int, iterations: int):
-    return get_sub_cell_model(partial(PolynomialCurveCellCreator, degree=2), refinement, "Quadratic", iterations)
+def linear(refinement: int, iterations: int, central_cell_extra_weight: float):
+    return get_sub_cell_model(
+        partial(DefaultPolynomialCurveCellCreator, degree=1), refinement,
+        "Linear", iterations, central_cell_extra_weight)
 
 
 @fit_model
-def circle(refinement: int, iterations: int):
-    return get_sub_cell_model(partial(CircleCurveCellCreator), refinement, "Circle", iterations)
+def quadratic(refinement: int, iterations: int, central_cell_extra_weight: float):
+    return get_sub_cell_model(
+        partial(DefaultPolynomialCurveCellCreator, degree=2), refinement,
+        "Quadratic", iterations, central_cell_extra_weight)
+
+
+@fit_model
+def circle(refinement: int, iterations: int, central_cell_extra_weight: float):
+    return get_sub_cell_model(DefaultCircleCurveCellCreator, refinement, "Circle",
+                              iterations, central_cell_extra_weight)
 
 
 def image_reconstruction(image, model, reconstruction_factor):
@@ -206,15 +232,16 @@ if __name__ == "__main__":
         path=config.results_path,
         name='OBERA',
         format=JOBLIB,
-        trackCO2=True
+        trackCO2=True,
+        country_alpha_code="FR"
     )
 
     lab = LabPipeline()
     lab.define_new_block_of_functions(
         "models",
-        piecewise_constant,
-        linear,
-        quadratic,
+        # piecewise_constant,
+        # linear,
+        # quadratic,
         circle
     )
 
@@ -226,29 +253,33 @@ if __name__ == "__main__":
     lab.execute(
         data_manager,
         num_cores=15,
-        recalculate=False,
-        forget=True,
+        recalculate=True,
+        forget=False,
         refinement=[1],
-        num_cells_per_dim=[28, 42, 42 * 2],  # 42 * 2
+        num_cells_per_dim=[14, 20, 28, 42, 42 * 2],  # 42 * 2
+        # num_cells_per_dim=[20],  # 42 * 2
         noise=[0],
         image=[
             "Ellipsoid_1680x1680.png",
         ],
         iterations=[0, 500],  # 500
-        reconstruction_factor=[0]
+        # iterations=[0],  # 500
+        reconstruction_factor=[1],
+        # reconstruction_factor=[6],
+        central_cell_extra_weight=[0, 100],
     )
 
     generic_plot(data_manager, x="N", y="mse", label="models",
                  # plot_func=NamedPartial(sns.lineplot, marker=".", linestyle="--"),
                  log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                  mse=lambda reconstruction_error: np.mean(reconstruction_error),
-                 axes_by=["iterations"])
+                 axes_by=["iterations", "central_cell_extra_weight"])
 
     generic_plot(data_manager, x="time", y="mse", label="models",
                  # plot_func=NamedPartial(sns.lineplot, marker=".", linestyle="--"),
                  log="xy", time=lambda time_to_fit: time_to_fit,
                  mse=lambda reconstruction_error: np.mean(reconstruction_error),
-                 axes_by=["iterations"])
+                 axes_by=["iterations", "central_cell_extra_weight"])
 
 
     def get_number_of_curve_cells(model):
@@ -265,7 +296,7 @@ if __name__ == "__main__":
         name="Reconstruction",
         folder='reconstruction',
         axes_by=['models'],
-        plot_by=['image', 'num_cells_per_dim', 'refinement', "iterations"],
+        plot_by=['image', "num_cells_per_dim", 'refinement', "iterations", 'central_cell_extra_weight'],
         axes_xy_proportions=(15, 15),
         difference=False,
         plot_curve=True,
@@ -285,3 +316,5 @@ if __name__ == "__main__":
     #     axes_xy_proportions=(15, 15),
     #     numbers_on=True
     # )
+
+    print("CO2 consumption: ", data_manager.CO2kg)

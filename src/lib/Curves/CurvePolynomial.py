@@ -151,37 +151,6 @@ class CurveQuadratic(CurvePolynomial):
         super().__init__([c, b, a], value_up, value_down, x_shift)
 
 
-# vandermonde inverse matrix of np.linalg.inv(np.vander(np.linspace(-0.5, 0.5, num=3))[:, ::-1]), first c,
-# second b third a of ax**2+bx+c
-
-# the vander points are in -0.5, 0, 0.5
-VANDER_MAT_3x3 = np.array([[1., -0.5, 0.25],
-                           [1., 0., 0.],
-                           [1., 0.5, 0.25]])
-# np.linalg.inv(np.vander([-0.5, 0, 0.5])[:, ::-1])
-INV_VANDER_MAT_3x3 = np.array(
-    [[0, 1, 0],
-     [-1, 0, 1],
-     [2, -4, 2]]
-)
-
-
-class CurveQuadraticPoints(CurvePolynomial):
-    def __init__(self, y0, y1, y2, value_up=0, value_down=1, x_shift=0):
-        super().__init__(np.ravel(INV_VANDER_MAT_3x3 @ np.reshape([y0, y1, y2], (-1, 1))), value_up, value_down,
-                         x_shift)
-
-    @property
-    def params(self):
-        return VANDER_MAT_3x3 @ CurvePolynomial.params.fget(self)
-        # super(CurveQuadraticPoints, self).params
-
-    @params.setter
-    def params(self, args):
-        CurvePolynomial.params.fset(self, np.ravel(INV_VANDER_MAT_3x3 @ np.reshape(args, (-1, 1))))
-        # super(CurveQuadraticPoints, self).params = np.ravel(INV_VANDER_MAT_3x3 @ np.reshape(args, (-1, 1)))
-
-
 class NoCurveRegion(CurveBase):
     def __init__(self, value, x0: float, direction):
         super().__init__(curve_name="NoCurveRegion", value_up=value)
