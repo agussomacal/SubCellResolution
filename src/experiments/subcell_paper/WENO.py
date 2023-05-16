@@ -1,4 +1,5 @@
 import time
+from functools import partial
 
 import numpy as np
 import seaborn as sns
@@ -12,7 +13,8 @@ from experiments.subcell_paper.function_families import load_image, calculate_av
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
 from lib.CellCreators.RegularCellCreator import MirrorCellCreator, \
-    PolynomialRegularCellCreator
+    PolynomialRegularCellCreator, weight_cells_by_smoothness
+from lib.CellCreators.WENOCellCreators import WENO16RegularCellCreator
 from lib.CellIterators import iterate_all
 from lib.CellOrientators import BaseOrientator
 from lib.SmoothnessCalculators import indifferent
@@ -93,6 +95,41 @@ def fixed_polynomial_degree2(refinement: int):
                               refinement, "FixedPolynomialDegree2")
 
 
+@fit_model
+def fixed_polynomial_degree2_strict(refinement: int):
+    return get_sub_cell_model(PolynomialRegularCellCreator(degree=2, noisy=False, weight_function=None,
+                                                           dimensionality=2, full_rank=False),
+                              StencilCreatorFixedShape(stencil_shape=(3, 3)),
+                              refinement, "FixedPolynomialDegree2Strict")
+
+
+@fit_model
+def fixed_polynomial_degree2_weighted(refinement: int):
+    return get_sub_cell_model(PolynomialRegularCellCreator(
+        degree=2, noisy=False,
+        weight_function=partial(weight_cells_by_smoothness, central_cell_importance=100, epsilon=1e-5, delta=0.05),
+        dimensionality=2, full_rank=True),
+        StencilCreatorFixedShape(stencil_shape=(3, 3)),
+        refinement, "FixedPolynomialDegree2Weighted")
+
+
+@fit_model
+def fixed_polynomial_degree2_strict_weighted(refinement: int):
+    return get_sub_cell_model(PolynomialRegularCellCreator(
+        degree=2, noisy=False,
+        weight_function=partial(weight_cells_by_smoothness, central_cell_importance=100, epsilon=1e-5, delta=0.05),
+        dimensionality=2, full_rank=False),
+        StencilCreatorFixedShape(stencil_shape=(3, 3)),
+        refinement, "FixedPolynomialDegree2StrictWeighted")
+
+
+@fit_model
+def weno16(refinement: int):
+    return get_sub_cell_model(WENO16RegularCellCreator(),
+                              StencilCreatorFixedShape(stencil_shape=(5, 5)),
+                              refinement, "WENO16")
+
+
 def image_reconstruction(enhanced_image, model, reconstruction_factor):
     t0 = time.time()
     reconstruction = model.reconstruct_arbitrary_size(np.array(np.shape(enhanced_image)) // reconstruction_factor)
@@ -131,6 +168,10 @@ if __name__ == "__main__":
         "models",
         piecewise_constant,
         fixed_polynomial_degree2,
+        fixed_polynomial_degree2_strict,
+        fixed_polynomial_degree2_strict_weighted,
+        fixed_polynomial_degree2_weighted,
+        weno16
     )
 
     lab.define_new_block_of_functions(
@@ -143,7 +184,7 @@ if __name__ == "__main__":
         num_cores=15,
         recalculate=False,
         forget=False,
-        amplitude=[0, 1e-2, 2e-2, 5e-2, 1e-1],
+        amplitude=[0, 1e-3, 1e-2, 2e-2, 5e-2, 1e-1, 2e-1, 5e-1, 1],
         refinement=[1],
         # num_cells_per_dim=[14, 20, 28, 42, 42 * 2],  # 42 * 2
         num_cells_per_dim=[20],  # 42 * 2
@@ -151,28 +192,30 @@ if __name__ == "__main__":
         image=[
             "Ellipsoid_1680x1680.png",
         ],
-        # reconstruction_factor=[1],
-        reconstruction_factor=[6],
+        reconstruction_factor=[1, 6],
+        # reconstruction_factor=[6],
     )
 
     generic_plot(data_manager, x="amplitude", y="mse", label="models",
                  # plot_func=NamedPartial(sns.lineplot, marker=".", linestyle="--"),
                  log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                  mse=lambda reconstruction_error: np.mean(reconstruction_error),
-                 axes_by=["num_cells_per_dim"])
+                 axes_by=["num_cells_per_dim"],
+                 plot_by=["reconstruction_factor"])
 
     generic_plot(data_manager, x="time", y="mse", label="models",
                  # plot_func=NamedPartial(sns.lineplot, marker=".", linestyle="--"),
                  log="xy", time=lambda time_to_fit: time_to_fit,
                  mse=lambda reconstruction_error: np.mean(reconstruction_error),
-                 axes_by=["num_cells_per_dim"])
+                 axes_by=["num_cells_per_dim"],
+                 plot_by=["reconstruction_factor"])
 
     plot_reconstruction(
         data_manager,
         name="Reconstruction",
         folder='reconstruction',
         axes_by=['models'],
-        plot_by=['image', "num_cells_per_dim", 'refinement'],
+        plot_by=['image', "num_cells_per_dim", 'refinement', "amplitude", "reconstruction_factor"],
         axes_xy_proportions=(15, 15),
         difference=False,
         plot_curve=True,
