@@ -88,6 +88,14 @@ def piecewise_constant(refinement: int):
 
 
 @fit_model
+def fixed_polynomial_degree1(refinement: int):
+    return get_sub_cell_model(PolynomialRegularCellCreator(degree=2, noisy=False, weight_function=None,
+                                                           dimensionality=2, full_rank=True),
+                              StencilCreatorFixedShape(stencil_shape=(3, 3)),
+                              refinement, "FixedPolynomialDegree1")
+
+
+@fit_model
 def fixed_polynomial_degree2(refinement: int):
     return get_sub_cell_model(PolynomialRegularCellCreator(degree=2, noisy=False, weight_function=None,
                                                            dimensionality=2, full_rank=True),
@@ -151,7 +159,7 @@ def image_reconstruction(enhanced_image, model, reconstruction_factor):
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
-        name='WENO',
+        name='WENO2',
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
@@ -167,10 +175,11 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "models",
         piecewise_constant,
-        fixed_polynomial_degree2,
-        fixed_polynomial_degree2_strict,
-        fixed_polynomial_degree2_strict_weighted,
-        fixed_polynomial_degree2_weighted,
+        fixed_polynomial_degree1,
+        # fixed_polynomial_degree2,
+        # fixed_polynomial_degree2_strict,
+        # fixed_polynomial_degree2_strict_weighted,
+        # fixed_polynomial_degree2_weighted,
         weno16
     )
 
@@ -187,12 +196,12 @@ if __name__ == "__main__":
         amplitude=[0, 1e-3, 1e-2, 2e-2, 5e-2, 1e-1, 2e-1, 5e-1, 1],
         refinement=[1],
         # num_cells_per_dim=[14, 20, 28, 42, 42 * 2],  # 42 * 2
-        num_cells_per_dim=[20],  # 42 * 2
+        num_cells_per_dim=[20, 42],  # 42 * 2
         noise=[0],
         image=[
             "Ellipsoid_1680x1680.png",
         ],
-        reconstruction_factor=[1, 6],
+        reconstruction_factor=[6, 1],
         # reconstruction_factor=[6],
     )
 
