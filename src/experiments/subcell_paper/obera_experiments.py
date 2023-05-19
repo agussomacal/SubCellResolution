@@ -20,7 +20,7 @@ from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.ParametersCurveCellCreators import DefaultCircleCurveCellCreator, \
     DefaultPolynomialCurveCellCreator
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells
-from lib.CellCreators.CurveCellCreators.VanderCurveCellCreator import VanderCurveCellCreator
+from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator
 from lib.CellCreators.RegularCellCreator import PiecewiseConstantRegularCellCreator, MirrorCellCreator
 from lib.CellIterators import iterate_by_condition_on_smoothness, iterate_all
 from lib.CellOrientators import BaseOrientator, OrientByGradient

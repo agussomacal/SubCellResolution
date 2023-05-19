@@ -144,3 +144,39 @@ class CurveBase:
 
     def __sub__(self, other):
         return create_new_curve(self, other, operator.sub)
+
+
+class CurveReparametrized(CurveBase):
+    """
+    Abstract class with common methods for both average and point curves.
+    """
+
+    def __init__(self, x_points, y_points, value_up=0, value_down=1):
+        """
+
+        :param points: Nx2 matrix of points
+        :param value_up:
+        :param value_down:
+        :param x_shift:
+        """
+        self.x_points = x_points
+        self.y_points = y_points
+        super().__init__(self.new_params2natural_params(x_points, y_points), value_up, value_down)
+
+    def new_params2natural_params(self, x_points, y_points):
+        """
+        How to pass from the new parametrization to the natural parametrization
+        :param x_points:
+        :param y_points:
+        :return:
+        """
+        raise Exception("Not implemented.")
+
+    @property
+    def params(self):
+        raise Exception("Not implemented.")
+
+    @params.setter
+    def params(self, args):
+        super(CurveReparametrized, self.__class__).params.fset(self,
+                                                               self.new_params2natural_params(self.x_points, args))

@@ -6,13 +6,12 @@ from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.CellCreators.CellCreatorBase import CellBase
 from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CurveCellCreatorBase, map2unidimensional
-from lib.Curves.CurveBase import CurveBase
-from lib.Curves.VanderCurves import CurveVander
+from lib.Curves.CurveBase import CurveBase, CurveReparametrized
 from lib.StencilCreators import Stencil
 
 
-class VanderCurveCellCreator(CurveCellCreatorBase):
-    def __init__(self, vander_curve: Type[CurveVander], regular_opposite_cell_searcher: Callable):
+class ValuesCurveCellCreator(CurveCellCreatorBase):
+    def __init__(self, vander_curve: Type[CurveReparametrized], regular_opposite_cell_searcher: Callable):
         super().__init__(regular_opposite_cell_searcher)
         self.vander_curve = vander_curve
 
