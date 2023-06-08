@@ -9,7 +9,7 @@ from experiments.models import calculate_averages_from_image, load_image, image_
 from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
-from PerplexityLab.visualization import perplex_plot
+from PerplexityLab.visualization import perplex_plot, one_line_iterator
 
 
 @perplex_plot
@@ -29,16 +29,11 @@ def plot_convergence_curves(fig, ax, num_cells_per_dim, reconstruction_error, mo
     ax.legend()
 
 
-@perplex_plot
+@perplex_plot()
+@one_line_iterator
 def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction, alpha=0.5, plot_original_image=True,
                         difference=False, plot_curve=True, plot_curve_winner=False, plot_vh_classification=True,
-                        plot_singular_cells=True, cmap="magma", trim=((0, 0), (0, 0)), numbers_on=True, *args,
-                        **kwargs):
-    image = image.pop()
-    num_cells_per_dim = num_cells_per_dim.pop()
-    model = model.pop()
-    reconstruction = reconstruction.pop()
-
+                        plot_singular_cells=True, cmap="magma", trim=((0, 0), (0, 0)), numbers_on=True):
     model_resolution = np.array(model.resolution)
     image = load_image(image)
 
@@ -73,15 +68,12 @@ def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction
     ax.set_ylim((model.resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
 
 
-@perplex_plot
+@perplex_plot()
+@one_line_iterator
 def plot_fast_reconstruction(fig, ax, image, num_cells_per_dim, model, alpha=0.5, resolution_factor: int = 3,
                              difference=False, plot_curve=True, plot_curve_winner=False, plot_vh_classification=True,
                              plot_singular_cells=True, plot_original_image=True, cmap="magma", trim=((0, 0), (0, 0)),
-                             numbers_on=True, *args, **kwargs):
-    image = image.pop()
-    num_cells_per_dim = num_cells_per_dim.pop()
-    model = model.pop()
-
+                             numbers_on=True):
     model_resolution = np.array(model.resolution)
     image = load_image(image)
     im_shape = np.array(np.shape(image))
@@ -123,13 +115,10 @@ def plot_fast_reconstruction(fig, ax, image, num_cells_per_dim, model, alpha=0.5
     ax.set_ylim((model.resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
 
 
-@perplex_plot
+@perplex_plot()
+@one_line_iterator
 def plot_original_image(fig, ax, image, num_cells_per_dim, model, alpha=0.5, cmap="Greys_r", trim=((0, 0), (0, 0)),
-                        numbers_on=True, averages=False, *args, **kwargs):
-    image = image.pop()
-    num_cells_per_dim = num_cells_per_dim.pop()
-    model = model.pop()
-
+                        numbers_on=True, averages=False):
     model_resolution = np.array(model.resolution)
     image = load_image(image)
     if averages:
