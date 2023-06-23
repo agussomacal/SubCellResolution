@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
+from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import perplex_plot, generic_plot
 from experiments.VizReconstructionUtils import plot_cells, plot_cells_identity, plot_cells_vh_classification_core, \
     plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders
@@ -29,6 +30,8 @@ from lib.SmoothnessCalculators import naive_piece_wise, indifferent
 from lib.StencilCreators import StencilCreatorFixedShape
 from lib.SubCellReconstruction import SubCellReconstruction, CellCreatorPipeline, ReconstructionErrorMeasureBase, \
     ReconstructionErrorMeasure
+
+EVALUATIONS = True  # if using evaluations or averages to measure error.
 
 
 def get_sub_cell_model(curve_cell_creator, refinement, name, iterations, central_cell_extra_weight):
@@ -147,14 +150,20 @@ def circle(refinement: int, iterations: int, central_cell_extra_weight: float):
 def image_reconstruction(image, model, reconstruction_factor):
     image = load_image(image)
     t0 = time.time()
-    reconstruction = model.reconstruct_arbitrary_size(np.array(np.shape(image)) // reconstruction_factor)
-    # reconstruction = model.reconstruct_by_factor(
-    #     resolution_factor=np.array(np.array(np.shape(image)) / np.array(model.resolution), dtype=int))
+    if EVALUATIONS:
+        reconstruction = model.reconstruct_arbitrary_size(np.array(np.shape(image)) // reconstruction_factor)
+    else:
+        reconstruction = model.reconstruct_by_factor(
+            resolution_factor=np.array(np.array(np.shape(image)) / np.array(model.resolution), dtype=int))
     t_reconstruct = time.time() - t0
 
     if reconstruction_factor > 1:
-        # TODO: should be the evaluations not the averages.
-        image = calculate_averages_from_image(image, num_cells_per_dim=np.shape(reconstruction))
+        if EVALUATIONS:
+            step = np.array(np.array(np.shape(image)) / np.array(np.shape(reconstruction)), dtype=int)
+            image = image[np.arange(0, np.shape(image)[0], step[0], dtype=int)][:,
+                    np.arange(0, np.shape(image)[1], step[1], dtype=int)]
+        else:
+            image = calculate_averages_from_image(image, num_cells_per_dim=np.shape(reconstruction))
     reconstruction_error = np.abs(np.array(reconstruction) - image)
     return {
         "reconstruction": reconstruction,
@@ -180,7 +189,7 @@ def plot_convergence_curves(fig, ax, num_cells_per_dim, reconstruction_error, mo
     ax.legend()
 
 
-@perplex_plot
+@perplex_plot()
 def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction, alpha=0.5,
                         plot_original_image=True,
                         difference=False, plot_curve=True, plot_curve_winner=False, plot_vh_classification=True,
@@ -240,9 +249,9 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "models",
         # piecewise_constant,
-        # linear,
-        # quadratic,
-        circle
+        linear,
+        quadratic,
+        # circle
     )
 
     lab.define_new_block_of_functions(
@@ -253,33 +262,39 @@ if __name__ == "__main__":
     lab.execute(
         data_manager,
         num_cores=15,
-        recalculate=True,
+        recalculate=False,
         forget=False,
         refinement=[1],
-        num_cells_per_dim=[14, 20, 28, 42, 42 * 2],  # 42 * 2
-        # num_cells_per_dim=[20],  # 42 * 2
+        # num_cells_per_dim=[14, 20, 28, 42, 42 * 2],  # 42 * 2
+        num_cells_per_dim=[8, 14, 20, 28, 42, 42 * 2],  # 42 * 2
         noise=[0],
         image=[
             "Ellipsoid_1680x1680.png",
         ],
-        iterations=[0, 500],  # 500
+        iterations=[500],  # 500
         # iterations=[0],  # 500
-        reconstruction_factor=[1],
-        # reconstruction_factor=[6],
+        # reconstruction_factor=[1],
+        reconstruction_factor=[6],
         central_cell_extra_weight=[0, 100],
     )
 
     generic_plot(data_manager, x="N", y="mse", label="models",
-                 # plot_func=NamedPartial(sns.lineplot, marker=".", linestyle="--"),
-                 log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                 log="xy", N=lambda num_cells_per_dim: num_cells_per_dim,
                  mse=lambda reconstruction_error: np.mean(reconstruction_error),
-                 axes_by=["iterations", "central_cell_extra_weight"])
+                 plot_by=["iterations", "central_cell_extra_weight"])
 
     generic_plot(data_manager, x="time", y="mse", label="models",
-                 # plot_func=NamedPartial(sns.lineplot, marker=".", linestyle="--"),
+                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
                  log="xy", time=lambda time_to_fit: time_to_fit,
                  mse=lambda reconstruction_error: np.mean(reconstruction_error),
-                 axes_by=["iterations", "central_cell_extra_weight"])
+                 plot_by=["iterations", "central_cell_extra_weight", "reconstruction_factor"])
+
+    generic_plot(data_manager, x="N", y="time", label="models",
+                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                 log="xy", time=lambda time_to_fit: time_to_fit,
+                 N=lambda num_cells_per_dim: num_cells_per_dim,
+                 plot_by=["iterations", "central_cell_extra_weight"])
 
 
     def get_number_of_curve_cells(model):
@@ -291,23 +306,23 @@ if __name__ == "__main__":
                  models=["linear", "quadratic", "circle"],
                  time=lambda time_to_fit, model: time_to_fit / get_number_of_curve_cells(model))
 
-    plot_reconstruction(
-        data_manager,
-        name="Reconstruction",
-        folder='reconstruction',
-        axes_by=['models'],
-        plot_by=['image', "num_cells_per_dim", 'refinement', "iterations", 'central_cell_extra_weight'],
-        axes_xy_proportions=(15, 15),
-        difference=False,
-        plot_curve=True,
-        plot_curve_winner=False,
-        plot_vh_classification=False,
-        plot_singular_cells=False,
-        plot_original_image=True,
-        numbers_on=True,
-        plot_again=True,
-        num_cores=1,
-    )
+    # plot_reconstruction(
+    #     data_manager,
+    #     name="Reconstruction",
+    #     folder='reconstruction',
+    #     axes_by=['models'],
+    #     plot_by=['image', "num_cells_per_dim", 'refinement', "iterations", 'central_cell_extra_weight'],
+    #     axes_xy_proportions=(15, 15),
+    #     difference=False,
+    #     plot_curve=True,
+    #     plot_curve_winner=False,
+    #     plot_vh_classification=False,
+    #     plot_singular_cells=False,
+    #     plot_original_image=True,
+    #     numbers_on=True,
+    #     plot_again=True,
+    #     num_cores=1,
+    # )
     # plot_original_image(
     #     data_manager,
     #     folder='reconstruction',
