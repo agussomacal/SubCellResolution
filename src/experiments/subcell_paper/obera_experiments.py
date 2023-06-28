@@ -25,7 +25,7 @@ from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposit
 from lib.CellCreators.RegularCellCreator import PiecewiseConstantRegularCellCreator, MirrorCellCreator
 from lib.CellIterators import iterate_by_condition_on_smoothness, iterate_all
 from lib.CellOrientators import BaseOrientator, OrientByGradient
-from lib.Curves.CurveCircle import CurveCircle, CircleParams
+from lib.Curves.CurveCircle import CurveCircle, CircleParams, CurveSemiCircle
 from lib.SmoothnessCalculators import naive_piece_wise, indifferent
 from lib.StencilCreators import StencilCreatorFixedShape
 from lib.SubCellReconstruction import SubCellReconstruction, CellCreatorPipeline, ReconstructionErrorMeasureBase, \
@@ -288,7 +288,7 @@ def plot_reconstruction(fig, ax, image4error, num_cells_per_dim, model, reconstr
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
-        name='OBERAtest',
+        name='OBERA',
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
@@ -297,8 +297,10 @@ if __name__ == "__main__":
 
     def get_shape(shape_name):
         if shape_name == "Circle":
-            return CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232)) - \
-                   CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232), concave=True)
+            return CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232))
+            # # - CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232), concave=True)
+            # return CurveSemiCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232)) \
+            #        - CurveSemiCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232), concave=True)
         # SFSemiCircle(x0=x0, y0=y0, radius=radius) - SFSemiCircle(x0=x0, y0=y0, radius=radius, concave=True)
         else:
             raise Exception("Not implemented.")
@@ -333,8 +335,8 @@ if __name__ == "__main__":
         "models",
         # piecewise_constant,
         linear,
-        quadratic,
-        # circle
+        # quadratic,
+        circle
     )
 
     lab.define_new_block_of_functions(
@@ -349,8 +351,8 @@ if __name__ == "__main__":
         forget=False,
         save_on_iteration=1,
         refinement=[1],
-        num_cells_per_dim=[10, 14] + np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()[:4],
-
+        # num_cells_per_dim=[10, 14] + np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()[:4],
+        num_cells_per_dim=[14],
         # num_cells_per_dim=[8, 14, 20, 28, 42, 42 * 2],  # 42 * 2
         noise=[0],
         shape_name=[
@@ -358,17 +360,15 @@ if __name__ == "__main__":
             "Circle"
         ],
         iterations=[500],  # 500
-        # iterations=[0],  # 500
         # reconstruction_factor=[1],
-        reconstruction_factor=[6],
-        # central_cell_extra_weight=[0, 100],
         central_cell_extra_weight=[0],
+        # central_cell_extra_weight=[0, 100],
         sub_discretization2bound_error=[5]
     )
 
     generic_plot(data_manager, x="N", y="error", label="models",
                  plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                 log="xy", N=lambda num_cells_per_dim: num_cells_per_dim**2,
+                 log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                  error=lambda reconstruction, image4error: np.mean(np.abs(np.array(reconstruction) - image4error)),
                  plot_by=["iterations", "central_cell_extra_weight"])
 
@@ -381,7 +381,7 @@ if __name__ == "__main__":
     generic_plot(data_manager, x="N", y="time", label="models",
                  plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
                  log="xy", time=lambda time_to_fit: time_to_fit,
-                 N=lambda num_cells_per_dim: num_cells_per_dim**2,
+                 N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                  plot_by=["iterations", "central_cell_extra_weight"])
 
 
@@ -398,11 +398,11 @@ if __name__ == "__main__":
         data_manager,
         name="Reconstruction",
         folder='reconstruction',
-        axes_by=['models'],
-        plot_by=['shape_name', "num_cells_per_dim", 'refinement', "iterations", 'central_cell_extra_weight'],
+        axes_by=[],
+        plot_by=['models', 'shape_name', "num_cells_per_dim", 'refinement', "iterations", 'central_cell_extra_weight'],
         axes_xy_proportions=(15, 15),
         difference=False,
-        plot_curve=True,
+        plot_curve=False,
         plot_curve_winner=False,
         plot_vh_classification=False,
         plot_singular_cells=False,
@@ -410,6 +410,7 @@ if __name__ == "__main__":
         numbers_on=True,
         plot_again=True,
         num_cores=1,
+        # trim=()
     )
     # plot_original_image(
     #     data_manager,

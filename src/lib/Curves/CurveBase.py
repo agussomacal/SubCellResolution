@@ -27,7 +27,9 @@ def new_function_inverse(y: float, self, other) -> float:
 
 
 def new_function(x: Union[float, np.ndarray], self, other):
-    return np.concatenate((np.reshape(self.function(x), (len(x), -1)), np.reshape(other.function(x), (len(x), -1))),
+    xsize = tuple(np.append(np.squeeze(np.shape(np.array([x]))), -1))
+    return np.concatenate((np.reshape(self.function(x), xsize),
+                           np.reshape(other.function(x), xsize)),
                           axis=1)
     # return np.array(
     #     [np.append(np.ravel([f1]), np.ravel([f2])) for f1, f2 in

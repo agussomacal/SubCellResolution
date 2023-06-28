@@ -22,7 +22,7 @@ class DefaultCircleCurveCellCreator(CurveCellCreatorBase):
         yield CurveCircle(
             [coords.tuple[independent_axis] + 0.5,
              coords.tuple[1 - independent_axis] + 0.5 + len(x_points) * (2 * (
-                         np.diff(stencil_values, 2).squeeze() > 0) - 1),
+                     np.diff(stencil_values, 2).squeeze() > 0) - 1),
              len(x_points)],
             value_up=value_up,
             value_down=value_down,

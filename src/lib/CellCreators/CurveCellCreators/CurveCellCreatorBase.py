@@ -38,7 +38,7 @@ def get_zone(curve, point, independent_axis, dependent_axis):
         # the other depending on the position with respect to the multiple function values.
         # That's why sorting the values then seeing where to insert and modulus 2 for counting changes.
         # TODO: This fails if we are in a transition a value of y with 0 vertical derivative of the curve.
-        return np.searchsorted(np.sort(y), point[dependent_axis]) % 2
+        return np.searchsorted(np.sort(np.squeeze(y)), point[dependent_axis]) % 2
     return 1 * (y < point[dependent_axis])
 
 

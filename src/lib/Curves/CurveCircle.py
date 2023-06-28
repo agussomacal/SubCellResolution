@@ -1,14 +1,15 @@
 from collections import namedtuple
+from functools import partial
 from typing import Union, List
 
 import numpy as np
 
-from lib.Curves.CurveBase import CurveBase
+from lib.Curves.CurveBase import CurveBase, new_calculate_integrals
 
 CircleParams = namedtuple("CircleParams", "x0 y0 radius")
 
 
-class CurveCircle(CurveBase):
+class CurveSemiCircle(CurveBase):
     # TODO: what happens if circle goes below... Check
     def __init__(self, params: CircleParams, value_up=0, value_down=1, concave=False):
         super().__init__(value_up=value_up, value_down=value_down)
@@ -68,3 +69,20 @@ class CurveCircle(CurveBase):
     #     alpha = np.arccos(dx / self.r)
     #     res[in_circle] = alpha * self.r ** 2
     #     return res
+
+
+class CurveCircle(CurveSemiCircle):
+    # TODO: what happens if circle goes below... Check
+    def __init__(self, params: CircleParams, value_up=0, value_down=1):
+        # super().__init__(params=params, value_up=value_up, value_down=value_down)
+        super().__init__(params, value_up, value_down)
+        new_curve = CurveSemiCircle(params=params, value_down=value_down, value_up=value_up) - \
+                    CurveSemiCircle(params=params, value_down=value_down, value_up=value_up, concave=True)
+        setattr(self, "calculate_integrals", new_curve.calculate_integrals)
+        setattr(self, "function_inverse", new_curve.function_inverse)
+        setattr(self, "function", new_curve.function)
+        setattr(self, "evaluate", new_curve.evaluate)
+
+# def CurveCircle(params: CircleParams, value_up=0, value_down=1):
+#     return CurveSemiCircle(params=params, value_down=value_down, value_up=value_up) - \
+#            CurveSemiCircle(params=params, value_down=value_down, value_up=value_up, concave=True)
