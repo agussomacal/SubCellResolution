@@ -335,7 +335,7 @@ if __name__ == "__main__":
         "models",
         # piecewise_constant,
         linear,
-        # quadratic,
+        quadratic,
         circle
     )
 
@@ -351,8 +351,8 @@ if __name__ == "__main__":
         forget=False,
         save_on_iteration=1,
         refinement=[1],
-        # num_cells_per_dim=[10, 14] + np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()[:4],
-        num_cells_per_dim=[14],
+        num_cells_per_dim=[10, 14] + np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()[:4],
+        # num_cells_per_dim=[14],
         # num_cells_per_dim=[8, 14, 20, 28, 42, 42 * 2],  # 42 * 2
         noise=[0],
         shape_name=[
@@ -361,9 +361,9 @@ if __name__ == "__main__":
         ],
         iterations=[500],  # 500
         # reconstruction_factor=[1],
-        central_cell_extra_weight=[0],
-        # central_cell_extra_weight=[0, 100],
-        sub_discretization2bound_error=[5]
+        # central_cell_extra_weight=[0],
+        central_cell_extra_weight=[0, 100],
+        sub_discretization2bound_error=[10]
     )
 
     generic_plot(data_manager, x="N", y="error", label="models",
@@ -398,11 +398,13 @@ if __name__ == "__main__":
         data_manager,
         name="Reconstruction",
         folder='reconstruction',
-        axes_by=[],
-        plot_by=['models', 'shape_name', "num_cells_per_dim", 'refinement', "iterations", 'central_cell_extra_weight'],
+        num_cells_per_dim=14,
+        axes_by=['models'],
+        # plot_by=['shape_name', "num_cells_per_dim", 'refinement', "iterations", 'central_cell_extra_weight'],
+        plot_by=['central_cell_extra_weight'],
         axes_xy_proportions=(15, 15),
         difference=False,
-        plot_curve=False,
+        plot_curve=True,
         plot_curve_winner=False,
         plot_vh_classification=False,
         plot_singular_cells=False,
@@ -410,8 +412,9 @@ if __name__ == "__main__":
         numbers_on=True,
         plot_again=True,
         num_cores=1,
-        # trim=()
+        trim=((3, 7), (3, 6))
     )
+
     # plot_original_image(
     #     data_manager,
     #     folder='reconstruction',

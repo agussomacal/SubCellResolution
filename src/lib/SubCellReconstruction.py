@@ -81,6 +81,24 @@ class SubCellReconstruction:
                     # only calculate error if more than one proposition is done otherwise just keep the only one
                     if len(self.cell_creators) > 1 or len(proposed_cells) > 1:
                         for proposed_cell in proposed_cells:
+                            # Doing OBERA
+                            if proposed_cell.CELL_TYPE != REGULAR_CELL_TYPE and self.obera_iterations > 0:
+                                def optim_func(params):
+                                    # curve = proposed_cell.curve
+                                    proposed_cell.curve.params = params
+                                    # proposed_cell.curve = curve
+                                    loss = self.reconstruction_error_measure.calculate_error(
+                                        proposed_cell, average_values, indexer, smoothness_index, independent_axis)
+                                    return loss
+
+                                # number of function evaluation without gradient is twice the number of parameters
+                                x0 = np.ravel(proposed_cell.curve.params)
+                                res = minimize(optim_func, x0=x0, method="L-BFGS-B",
+                                               options={'maxiter': self.obera_iterations * 2 * (1 + len(x0))})
+                                # curve = proposed_cell.curve
+                                proposed_cell.curve.params = res.x
+                                # proposed_cell.curve = curve
+
                             proposed_cell_reconstruction_error = self.reconstruction_error_measure.calculate_error(
                                 proposed_cell, average_values, indexer, smoothness_index, independent_axis)
                             if proposed_cell_reconstruction_error < reconstruction_error[coords.tuple]:
@@ -91,24 +109,6 @@ class SubCellReconstruction:
                     else:
                         self.cells[coords.tuple] = proposed_cells.pop()
                         self.stencils[coords.tuple] = stencil.coords
-
-                    # Doing OBERA
-                    if self.cells[coords.tuple].CELL_TYPE != REGULAR_CELL_TYPE and self.obera_iterations > 0:
-                        def optim_func(params):
-                            curve = self.cells[coords.tuple].curve
-                            curve.params = params
-                            self.cells[coords.tuple].curve = curve
-                            loss = self.reconstruction_error_measure.calculate_error(
-                                proposed_cell, average_values, indexer, smoothness_index, independent_axis)
-                            return loss
-
-                        # number of function evaluation without gradient is twice the number of parameters
-                        x0 = np.ravel(self.cells[coords.tuple].curve.params)
-                        res = minimize(optim_func, x0=x0, method="L-BFGS-B",
-                                       options={'maxiter': self.obera_iterations * 2 * (1 + len(x0))})
-                        curve = self.cells[coords.tuple].curve
-                        curve.params = res.x
-                        self.cells[coords.tuple].curve = curve
 
             if r < self.refinement - 1:
                 average_values = self.reconstruct_by_factor(resolution_factor=2)
