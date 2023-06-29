@@ -1,5 +1,8 @@
 import itertools
-from collections import namedtuple
+import time
+from collections import namedtuple, defaultdict
+from contextlib import contextmanager
+from logging import warning
 from typing import Tuple, Union, List
 
 import numpy as np
@@ -7,7 +10,7 @@ from scipy.optimize import minimize
 
 from lib.AuxiliaryStructures.GraphAuxiliaryFunctions import mesh_iterator
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
-from lib.CellCreators.CellCreatorBase import CellBase, REGULAR_CELL_TYPE
+from lib.CellCreators.CellCreatorBase import CellBase, REGULAR_CELL_TYPE, CURVE_CELL_TYPE
 from lib.StencilCreators import StencilCreator
 
 CellCreatorPipeline = namedtuple("CellCreatorPipeline", "cell_iterator orientator stencil_creator cell_creator")
@@ -47,6 +50,10 @@ class ReconstructionErrorMeasure(ReconstructionErrorMeasureBase):
         return loss
 
 
+def ddf():
+    return defaultdict(float)
+
+
 class SubCellReconstruction:
     def __init__(self, name, smoothness_calculator, reconstruction_error_measure=ReconstructionErrorMeasureBase,
                  cell_creators: List[CellCreatorPipeline] = [], refinement: int = 1, obera_iterations=0):
@@ -60,8 +67,18 @@ class SubCellReconstruction:
         self.resolution = None
         self.obera_iterations = obera_iterations
 
+        self.times = defaultdict(ddf)
+        self.obera_fevals = defaultdict(ddf)
+
     def __str__(self):
         return self.name
+
+    @contextmanager
+    def cell_timer(self, coords, cell_creator):
+        if self.refinement > 1: warning("Time calculations won't be correct if refinement > 1")
+        t0 = time.time()
+        yield
+        self.times[str(cell_creator)][coords.tuple] = time.time() - t0
 
     def fit(self, average_values: np.ndarray, indexer: ArrayIndexerNd):
         for r in range(self.refinement):
@@ -71,6 +88,10 @@ class SubCellReconstruction:
             for cell_creator in self.cell_creators:
                 for coords in cell_creator.cell_iterator(smoothness_index=smoothness_index,
                                                          reconstruction_error=reconstruction_error):
+                    if self.refinement > 1: warning("Time calculations won't be correct if refinement > 1")
+                    t0 = time.time()
+                    # with self.cell_timer(coords, cell_creator):
+
                     independent_axis = cell_creator.orientator.get_independent_axis(coords, average_values, indexer)
                     stencil = cell_creator.stencil_creator.get_stencil(
                         average_values, smoothness_index, coords, independent_axis, indexer)
@@ -84,9 +105,7 @@ class SubCellReconstruction:
                             # Doing OBERA
                             if proposed_cell.CELL_TYPE != REGULAR_CELL_TYPE and self.obera_iterations > 0:
                                 def optim_func(params):
-                                    # curve = proposed_cell.curve
                                     proposed_cell.curve.params = params
-                                    # proposed_cell.curve = curve
                                     loss = self.reconstruction_error_measure.calculate_error(
                                         proposed_cell, average_values, indexer, smoothness_index, independent_axis)
                                     return loss
@@ -95,20 +114,20 @@ class SubCellReconstruction:
                                 x0 = np.ravel(proposed_cell.curve.params)
                                 res = minimize(optim_func, x0=x0, method="L-BFGS-B",
                                                options={'maxiter': self.obera_iterations * 2 * (1 + len(x0))})
-                                # curve = proposed_cell.curve
                                 proposed_cell.curve.params = res.x
-                                # proposed_cell.curve = curve
+                                self.obera_fevals[proposed_cell.CELL_TYPE][coords.tuple] += res.nfev
 
                             proposed_cell_reconstruction_error = self.reconstruction_error_measure.calculate_error(
                                 proposed_cell, average_values, indexer, smoothness_index, independent_axis)
                             if proposed_cell_reconstruction_error < reconstruction_error[coords.tuple]:
                                 reconstruction_error[coords.tuple] = proposed_cell_reconstruction_error
-                                # new_cells[coords.tuple] = proposed_cell
                                 self.cells[coords.tuple] = proposed_cell
                                 self.stencils[coords.tuple] = stencil.coords
                     else:
-                        self.cells[coords.tuple] = proposed_cells.pop()
+                        proposed_cell = proposed_cells.pop()
+                        self.cells[coords.tuple] = proposed_cell
                         self.stencils[coords.tuple] = stencil.coords
+                    self.times[proposed_cell.CELL_TYPE][coords.tuple] += time.time() - t0
 
             if r < self.refinement - 1:
                 average_values = self.reconstruct_by_factor(resolution_factor=2)

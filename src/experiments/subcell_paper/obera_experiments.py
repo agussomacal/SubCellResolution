@@ -1,3 +1,4 @@
+import itertools
 import operator
 import time
 from functools import partial
@@ -18,7 +19,7 @@ from experiments.subcell_paper.function_families import load_image, calculate_av
     calculate_averages_from_curve
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
-from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
+from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE, REGULAR_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.ParametersCurveCellCreators import DefaultCircleCurveCellCreator, \
     DefaultPolynomialCurveCellCreator
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells
@@ -363,36 +364,79 @@ if __name__ == "__main__":
         # reconstruction_factor=[1],
         # central_cell_extra_weight=[0],
         central_cell_extra_weight=[0, 100],
-        sub_discretization2bound_error=[10]
+        sub_discretization2bound_error=[5]
     )
-
-    generic_plot(data_manager, x="N", y="error", label="models",
-                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                 log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 error=lambda reconstruction, image4error: np.mean(np.abs(np.array(reconstruction) - image4error)),
-                 plot_by=["iterations", "central_cell_extra_weight"])
-
-    generic_plot(data_manager, x="time", y="error", label="models",
-                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                 log="xy", time=lambda time_to_fit: time_to_fit,
-                 error=lambda reconstruction, image4error: np.mean(np.abs(np.array(reconstruction) - image4error)),
-                 plot_by=["iterations", "central_cell_extra_weight"])
 
     generic_plot(data_manager, x="N", y="time", label="models",
                  plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                 log="xy", time=lambda time_to_fit: time_to_fit,
-                 N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                 log="x", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                 time=lambda model: np.array(list(model.times[CURVE_CELL_TYPE].values())),
+                 # error=lambda reconstruction, image4error: np.mean(np.abs(np.array(reconstruction) - image4error)),
+                 ylim=(0, 0.8),
+                 plot_by=["iterations", "central_cell_extra_weight"])
+
+    generic_plot(data_manager, x="N", y="fevals", label="models",
+                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                 log="x", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                 fevals=lambda model: np.array(list(model.obera_fevals[CURVE_CELL_TYPE].values())),
+                 # error=lambda reconstruction, image4error: np.mean(np.abs(np.array(reconstruction) - image4error)),
+                 ylim=(0, 225),
                  plot_by=["iterations", "central_cell_extra_weight"])
 
 
-    def get_number_of_curve_cells(model):
-        return sum([1 for cell in model.cells.values() if cell.CELL_TYPE == CURVE_CELL_TYPE])
+    def get_reconstructed_subcells_coords(coord, sub_discretization2bound_error, reconstruction):
+        return reconstruction[list(
+            map(lambda i: np.arange(i * sub_discretization2bound_error, (i + 1) * sub_discretization2bound_error),
+                coord))]
 
 
-    generic_plot(data_manager, y="time", x="iterations", label="models",
-                 plot_func=sns.barplot,
-                 models=["linear", "quadratic", "circle"],
-                 time=lambda time_to_fit, model: time_to_fit / get_number_of_curve_cells(model))
+    def singular_error(reconstruction, image4error, model, sub_discretization2bound_error, num_cells_per_dim):
+        return np.array(list(map(np.mean,
+                                 map(partial(get_reconstructed_subcells_coords,
+                                             reconstruction=np.abs(np.array(reconstruction) - image4error),
+                                             sub_discretization2bound_error=sub_discretization2bound_error),
+                                     model.obera_fevals[CURVE_CELL_TYPE].keys()
+                                     )
+                                 )
+                             ))/num_cells_per_dim**2
+
+
+    generic_plot(data_manager, x="fevals", y="error", label="models",
+                 plot_func=NamedPartial(sns.scatterplot, marker="o"),
+                 log="xy",
+                 # N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                 time=lambda model: np.array(list(model.times[CURVE_CELL_TYPE].values())),
+                 fevals=lambda model: np.array(list(model.obera_fevals[CURVE_CELL_TYPE].values())),
+                 error=singular_error,
+                 ylim=(1e-13, 1e-2),
+                 plot_by=["iterations"])
+
+    # generic_plot(data_manager, x="N", y="error", label="models",
+    #              plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+    #              log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+    #              error=lambda reconstruction, image4error: np.mean(np.abs(np.array(reconstruction) - image4error)),
+    #              plot_by=["iterations", "central_cell_extra_weight"])
+    #
+    # generic_plot(data_manager, x="time", y="error", label="models",
+    #              plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+    #              log="xy", time=lambda time_to_fit: time_to_fit,
+    #              error=lambda reconstruction, image4error: np.mean(np.abs(np.array(reconstruction) - image4error)),
+    #              plot_by=["iterations", "central_cell_extra_weight"])
+    #
+    # generic_plot(data_manager, x="N", y="time", label="models",
+    #              plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+    #              log="xy", time=lambda time_to_fit: time_to_fit,
+    #              N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+    #              plot_by=["iterations", "central_cell_extra_weight"])
+
+    # def get_number_of_curve_cells(model):
+    #     return sum([1 for cell in model.cells.values() if cell.CELL_TYPE == CURVE_CELL_TYPE])
+    #
+    #
+    # generic_plot(data_manager, y="time", x="iterations", label="models",
+    #              plot_func=sns.barplot,
+    #              models=["linear", "quadratic", "circle"],
+    #              time=lambda time_to_fit, model: time_to_fit / get_number_of_curve_cells(model))
 
     plot_reconstruction(
         data_manager,
