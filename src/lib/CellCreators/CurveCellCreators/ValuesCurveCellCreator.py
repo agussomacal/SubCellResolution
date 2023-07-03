@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Dict, Generator, Tuple, Callable, Type
 
 import numpy as np
@@ -8,6 +9,7 @@ from lib.CellCreators.CellCreatorBase import CellBase
 from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CurveCellCreatorBase, map2unidimensional, \
     get_x_points
 from lib.CellCreators.CurveCellCreators.ParametersCurveCellCreators import DefaultCircleCurveCellCreator
+from lib.Curves.AverageCurves import CurveAveragePolynomial
 from lib.Curves.CurveBase import CurveBase, CurveReparametrized
 from lib.Curves.CurveCircle import get_concavity, CurveSemiCircle, CircleParams
 from lib.Curves.VanderCurves import CurveVandermondePolynomial, CurveVanderCircle
@@ -44,10 +46,10 @@ class ValuesCurveCellCreator(CurveCellCreatorBase):
             yield curve
 
 
-class ValuesLinearCellCreator(CurveCellCreatorBase):
-    def __init__(self, regular_opposite_cell_searcher: Callable, natural_params=False):
-        super().__init__(regular_opposite_cell_searcher)
-        self.natural_params = natural_params
+class ValuesLinearCellCreator(ValuesCurveCellCreator):
+    def __init__(self, regular_opposite_cell_searcher: Callable, natural_params=False, avg_method=False):
+        super().__init__(partial(CurveAveragePolynomial if avg_method else CurveVandermondePolynomial, degree=1),
+                         regular_opposite_cell_searcher, natural_params)
 
     def create_curves(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
@@ -56,12 +58,11 @@ class ValuesLinearCellCreator(CurveCellCreatorBase):
         value_down = regular_opposite_cells[0].evaluate(coords.coords)
         x_points, stencil_values = map2unidimensional(value_up, value_down, independent_axis, stencil)
 
-        curve = CurveVandermondePolynomial(
+        curve = self.vander_curve(
             x_points=smooth2_avg(x_points),
             y_points=smooth2_avg(stencil_values),
             value_up=value_up,
-            value_down=value_down,
-            degree=1
+            value_down=value_down
         )
         if self.natural_params:
             yield curve.get_natural_parametrization_curve()

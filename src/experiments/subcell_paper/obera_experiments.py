@@ -1,40 +1,34 @@
-import itertools
 import operator
 import time
 from functools import partial
 
 import numpy as np
-import pandas as pd
 import seaborn as sns
-from matplotlib import pyplot as plt
 
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
-from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
+from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import perplex_plot, generic_plot, one_line_iterator
 from experiments.VizReconstructionUtils import plot_cells, plot_cells_identity, plot_cells_vh_classification_core, \
     plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders
-from experiments.subcell_paper.function_families import load_image, calculate_averages_from_image, \
-    calculate_averages_from_curve
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
-from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE, REGULAR_CELL_TYPE
+from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.ParametersCurveCellCreators import DefaultCircleCurveCellCreator, \
     DefaultPolynomialCurveCellCreator
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator, \
     ValuesDefaultCurveCellCreator, ValuesLinearCellCreator, ValuesDefaultLinearCellCreator, \
     ValuesDefaultCircleCellCreator, ValuesCircleCellCreator
-from lib.CellCreators.RegularCellCreator import PiecewiseConstantRegularCellCreator, MirrorCellCreator
-from lib.CellIterators import iterate_by_condition_on_smoothness, iterate_all
+from lib.CellCreators.RegularCellCreator import PiecewiseConstantRegularCellCreator
+from lib.CellIterators import iterate_by_condition_on_smoothness
 from lib.CellOrientators import BaseOrientator, OrientByGradient
-from lib.Curves.CurveCircle import CurveCircle, CircleParams, CurveSemiCircle
-from lib.Curves.VanderCurves import CurveVandermondePolynomial, CurveVanderCircle
-from lib.SmoothnessCalculators import naive_piece_wise, indifferent
+from lib.Curves.CurveCircle import CurveCircle, CircleParams
+from lib.Curves.VanderCurves import CurveVandermondePolynomial
+from lib.SmoothnessCalculators import naive_piece_wise
 from lib.StencilCreators import StencilCreatorFixedShape
-from lib.SubCellReconstruction import SubCellReconstruction, CellCreatorPipeline, ReconstructionErrorMeasureBase, \
-    ReconstructionErrorMeasure
+from lib.SubCellReconstruction import SubCellReconstruction, CellCreatorPipeline, ReconstructionErrorMeasure
 
 CATEGORICAL_PALETTE = sns.color_palette("colorblind")
 
@@ -99,25 +93,6 @@ def fit_model(sub_cell_model):
     # the other option is to pass to the block the name we wish to associate to the function.
     decorated_func.__name__ = sub_cell_model.__name__
     return decorated_func
-
-
-@fit_model
-def piecewise_constant(refinement: int, *args):
-    return SubCellReconstruction(
-        name="PiecewiseConstant",
-        smoothness_calculator=indifferent,
-        reconstruction_error_measure=ReconstructionErrorMeasureBase(),
-        refinement=refinement,
-        cell_creators=
-        [  # regular cell with piecewise_constant
-            CellCreatorPipeline(
-                cell_iterator=iterate_all,  # only regular cells
-                orientator=BaseOrientator(dimensionality=2),
-                stencil_creator=StencilCreatorFixedShape(stencil_shape=(1, 1)),
-                cell_creator=MirrorCellCreator(dimensionality=2)
-            )
-        ]
-    )
 
 
 @fit_model
@@ -217,7 +192,7 @@ def circle(refinement: int, iterations: int, central_cell_extra_weight: float, m
 def plot_reconstruction(fig, ax, image4error, num_cells_per_dim, model, reconstruction, alpha=0.5,
                         plot_original_image=True,
                         difference=False, plot_curve=True, plot_curve_winner=False, plot_vh_classification=True,
-                        plot_singular_cells=True, cmap="magma", trim=((0, 0), (0, 0)), numbers_on=True):
+                        plot_singular_cells=True, cmap="magma", trim=((0, 1), (0, 1)), numbers_on=True):
     """
 
     :param fig:
@@ -361,6 +336,13 @@ def plot_reconstruction(fig, ax, image4error, num_cells_per_dim, model, reconstr
 #     ax.set_ylim((model.resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
 
 
+def get_shape(shape_name):
+    if shape_name == "Circle":
+        return CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232))
+    else:
+        raise Exception("Not implemented.")
+
+
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
@@ -369,18 +351,6 @@ if __name__ == "__main__":
         trackCO2=True,
         country_alpha_code="FR"
     )
-
-
-    def get_shape(shape_name):
-        if shape_name == "Circle":
-            return CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232))
-            # # - CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232), concave=True)
-            # return CurveSemiCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232)) \
-            #        - CurveSemiCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232), concave=True)
-        # SFSemiCircle(x0=x0, y0=y0, radius=radius) - SFSemiCircle(x0=x0, y0=y0, radius=radius, concave=True)
-        else:
-            raise Exception("Not implemented.")
-
 
     lab = LabPipeline()
     # lab.define_new_block_of_functions(
@@ -477,6 +447,7 @@ if __name__ == "__main__":
         'circle_i',
         'circle_pi',
     ]
+
 
     # ---------- Effect of re-parametrization and warm start --------- #
     def variant(models):

@@ -1,51 +1,175 @@
+import time
 from functools import partial
 
 import numpy as np
+import seaborn as sns
 
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
-from PerplexityLab.LabPipeline import LabPipeline
+from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
+from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import generic_plot
-from experiments.subcell_paper.obera_experiments import fit_model, get_sub_cell_model, image_reconstruction, \
-    plot_reconstruction, piecewise_constant
+from experiments.subcell_paper.function_families import calculate_averages_from_curve
+from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
+from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator
+from lib.CellCreators.RegularCellCreator import MirrorCellCreator
+from lib.CellIterators import iterate_all
+from lib.CellOrientators import BaseOrientator
 from lib.Curves.AverageCurves import CurveAveragePolynomial
-from lib.Curves.VanderCurves import CurveVandermondePolynomial, CurveVanderCircle
+from lib.Curves.VanderCurves import CurveVandermondePolynomial
+from lib.SmoothnessCalculators import indifferent
+from lib.StencilCreators import StencilCreatorFixedShape
+from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasureBase, CellCreatorPipeline
+
+OBERA_ITERS = 500
+central_cell_extra_weight = 100
+
+
+def fit_model(sub_cell_model):
+    def decorated_func(image, noise, refinement, metric, sub_discretization2bound_error):
+        # image = load_image(image)
+        # avg_values = calculate_averages_from_image(image, num_cells_per_dim)
+        np.random.seed(42)
+        avg_values = image + np.random.uniform(-noise, noise, size=image.shape)
+
+        model = sub_cell_model(refinement, metric)
+
+        t0 = time.time()
+        model.fit(average_values=avg_values,
+                  indexer=ArrayIndexerNd(avg_values, "cyclic"))
+        t_fit = time.time() - t0
+
+        t0 = time.time()
+        reconstruction = model.reconstruct_by_factor(resolution_factor=sub_discretization2bound_error)
+        t_reconstruct = time.time() - t0
+
+        return {
+            "model": model,
+            "time_to_fit": t_fit,
+            "reconstruction": reconstruction,
+            "time_to_reconstruct": t_reconstruct
+        }
+
+    # need to change the name so the lab experiment saves the correct name and not the uniformly "decorated_func"
+    # the other option is to pass to the block the name we wish to associate to the function.
+    decorated_func.__name__ = sub_cell_model.__name__
+    return decorated_func
 
 
 @fit_model
-def linear(refinement: int, iterations: int, central_cell_extra_weight: float):
+def piecewise_constant(refinement: int, *args):
+    return SubCellReconstruction(
+        name="PiecewiseConstant",
+        smoothness_calculator=indifferent,
+        reconstruction_error_measure=ReconstructionErrorMeasureBase(),
+        refinement=refinement,
+        cell_creators=
+        [  # regular cell with piecewise_constant
+            CellCreatorPipeline(
+                cell_iterator=iterate_all,  # only regular cells
+                orientator=BaseOrientator(dimensionality=2),
+                stencil_creator=StencilCreatorFixedShape(stencil_shape=(1, 1)),
+                cell_creator=MirrorCellCreator(dimensionality=2)
+            )
+        ]
+    )
+
+
+@fit_model
+def linear_obera(refinement: int, metric):
     return get_sub_cell_model(
-        partial(ValuesCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=1)), refinement,
-        "LinearPoint", iterations, central_cell_extra_weight)
+        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=100)), refinement,
+        "LinearOpt", OBERA_ITERS, central_cell_extra_weight, metric)
 
 
 @fit_model
-def linear_avg(refinement: int, iterations: int, central_cell_extra_weight: float):
+def linear_avg_100(refinement: int, metric):
     return get_sub_cell_model(
-        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1)), refinement,
-        "LinearAvg", iterations, central_cell_extra_weight)
+        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=100)), refinement,
+        "LinearAvg", 0, central_cell_extra_weight, metric)
 
 
 @fit_model
-def quadratic(refinement: int, iterations: int, central_cell_extra_weight: float):
+def linear_avg(refinement: int, metric):
     return get_sub_cell_model(
-        partial(ValuesCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=2)), refinement,
-        "QuadraticPoint", iterations, central_cell_extra_weight)
+        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=0)), refinement,
+        "LinearAvg", 0, central_cell_extra_weight, metric)
 
 
 @fit_model
-def quadratic_avg(refinement: int, iterations: int, central_cell_extra_weight: float):
+def quadratic_obera(refinement: int, metric):
     return get_sub_cell_model(
-        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=2)), refinement,
-        "QuadraticAvg", iterations, central_cell_extra_weight)
+        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=100)), refinement,
+        "QuadraticOpt", OBERA_ITERS, central_cell_extra_weight, metric)
 
 
 @fit_model
-def circle(refinement: int, iterations: int, central_cell_extra_weight: float):
-    return get_sub_cell_model(partial(ValuesCurveCellCreator, vander_curve=CurveVanderCircle), refinement,
-                              "CirclePoint", iterations, central_cell_extra_weight)
+def quadratic_avg(refinement: int, metric):
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=100)), refinement,
+        "QuadraticAvg", 0, central_cell_extra_weight, metric)
 
+
+# @fit_model
+# def circle(refinement: int, iterations: int, metric):
+#     return get_sub_cell_model(partial(ValuesCurveCellCreator, vander_curve=CurveVanderCircle), refinement,
+#                               "CirclePoint", iterations, central_cell_extra_weight, metric)
+
+
+# generic_plot(data_manager, x="N", y="mse", label="models",
+#              plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+#              log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+#              mse=lambda reconstruction, image4error: ((np.array(reconstruction) - image4error) ** 2).ravel()
+#              )
+# @plot_decorator(unlist=False, vars_not_to_include_in_name=["model_color", "ylim", "xlim"])
+# def plot_convergence(self, ax, model, num_cells_per_dim, regular_errors, interface_errors, noise,
+#                      model_color=None, log="", ylim=None, xlim=None, style=PLOT_STYLE_DEFAULT,
+#                      indicator_hypothesis=False, **kwargs):
+#     if model_color is None:
+#         model_color = {mn: sns.color_palette("colorblind")[i] for i, mn in enumerate(sorted(list(set(model_name))))}
+#     noise_alpha = np.sort(np.unique(noise))
+#     noise_alpha_dict = dict(zip(noise_alpha, 1 - np.linspace(0, 0.5, len(noise_alpha))))
+#     for mn, df in df2plot(grouping_var_name="model_name", sorting_var_name=["num_cells_per_dim"],
+#                           model_name=model_name, num_cells_per_dim=num_cells_per_dim, noise=noise,
+#                           errors=np.array(list(
+#                               map(lambda rie: np.mean(np.append(*rie)), zip(regular_errors, interface_errors))))):
+#         for eta, data in df.groupby("noise"):
+#             if indicator_hypothesis:
+#                 ax.plot(xlim, np.array(xlim)**(-1/2)*eta, c="gray", alpha=noise_alpha_dict[eta], linestyle=":")
+#             else:
+#                 ax.axhline(eta / 2, c="gray", alpha=noise_alpha_dict[eta], linestyle=":")
+#
+#             ax.text(x=np.min(num_cells_per_dim) * np.exp(-0.5), y=eta,
+#                     s=r"$\eta={} \; 10^{{{}}}$".format(*format(eta, ".1E").replace("E-0", "E-").split("E")),
+#                     fontsize='xx-small', horizontalalignment="left", verticalalignment='center',
+#                     alpha=noise_alpha_dict[eta], fontstyle="italic")
+#
+#             # fit rate in 0 noise case
+#             if eta == 0:
+#                 rate, origin = np.ravel(np.linalg.lstsq(
+#                     np.vstack([np.log(np.array(data.num_cells_per_dim)), np.ones(len(data))]).T,
+#                     np.log(data.errors.values).reshape((-1, 1)), rcond=None)[0])
+#                 ax.plot(data.num_cells_per_dim ** 2, data.num_cells_per_dim ** rate * np.exp(origin), "-",
+#                         c=model_color[mn], label=f"{mn}: {rate:.2f}")
+#
+#             ax.plot(data.num_cells_per_dim ** 2, data.errors, "--", marker=".",
+#                     alpha=noise_alpha_dict[eta], c=model_color[mn])
+#
+#     if 'x' in log:
+#         ax.set_xscale('log')
+#     if 'y' in log:
+#         ax.set_yscale('log')
+#
+#     ax.set_xlabel(r"$n$")
+#     ax.set_ylabel(r"$||u-\tilde u ||_{L_1}$")
+#
+#     if ylim is not None:
+#         ax.set_ylim(ylim)
+#     if xlim is not None:
+#         ax.set_xlim(xlim)
+#
+#     set_style(style)
 
 if __name__ == "__main__":
     data_manager = DataManager(
@@ -58,59 +182,72 @@ if __name__ == "__main__":
 
     lab = LabPipeline()
     lab.define_new_block_of_functions(
-        "models",
-        piecewise_constant,
-        linear,
-        quadratic,
-        circle,
-        linear_avg,
-        quadratic_avg
+        "precompute_images",
+        FunctionBlock(
+            "getimages",
+            lambda shape_name, num_cells_per_dim: {
+                "image": calculate_averages_from_curve(
+                    get_shape(shape_name),
+                    (num_cells_per_dim,
+                     num_cells_per_dim))}
+        )
     )
 
     lab.define_new_block_of_functions(
-        "image_reconstruction",
-        image_reconstruction
+        "precompute_error_resolution",
+        FunctionBlock(
+            "subresolution",
+            lambda shape_name, num_cells_per_dim, sub_discretization2bound_error: {
+                "image4error": calculate_averages_from_curve(
+                    get_shape(shape_name),
+                    (num_cells_per_dim * sub_discretization2bound_error,
+                     num_cells_per_dim * sub_discretization2bound_error))}
+        )
     )
 
+    lab.define_new_block_of_functions(
+        "models",
+        piecewise_constant,
+        linear_obera,
+        quadratic_obera,
+        linear_avg,
+        linear_avg_100,
+        quadratic_avg,
+        recalculate=True
+    )
     lab.execute(
         data_manager,
         num_cores=15,
-        recalculate=False,
         forget=False,
         save_on_iteration=1,
         refinement=[1],
-        num_cells_per_dim=[14, 16, 20, 24, 30, 40, 56],  # 42 * 2
-        # num_cells_per_dim=[20],  # 42 * 2
+        num_cells_per_dim=[10, 14] + np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist(),
         noise=[0],
-        image=[
-            "Ellipsoid_1680x1680.png",
+        shape_name=[
+            "Circle"
         ],
-        iterations=[0],  # 500
-        # iterations=[0],  # 500
-        reconstruction_factor=[1],
-        # reconstruction_factor=[6],
-        # central_cell_extra_weight=[0, 100],
-        central_cell_extra_weight=[0],
+        sub_discretization2bound_error=[5],
+        metric=[2]
     )
 
     generic_plot(data_manager, x="N", y="mse", label="models",
-                 # plot_func=NamedPartial(sns.lineplot, marker=".", linestyle="--"),
+                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
                  log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 mse=lambda reconstruction_error: np.mean(reconstruction_error),
-                 axes_by=["iterations", "central_cell_extra_weight"])
+                 mse=lambda reconstruction, image4error: ((np.array(reconstruction) - image4error) ** 2).ravel()
+                 )
 
-    generic_plot(data_manager, x="time", y="mse", label="models",
-                 # plot_func=NamedPartial(sns.lineplot, marker=".", linestyle="--"),
-                 log="xy", time=lambda time_to_fit: time_to_fit,
-                 mse=lambda reconstruction_error: np.mean(reconstruction_error),
-                 axes_by=["iterations", "central_cell_extra_weight"])
+    # generic_plot(data_manager, x="time", y="mse", label="models",
+    #              plot_func=NamedPartial(sns.lineplot, marker=".", linestyle="--"),
+    #              log="xy", time=lambda time_to_fit: time_to_fit,
+    #              mse=lambda reconstruction_error: np.mean(reconstruction_error**2),
+    #              axes_by=["iterations", "central_cell_extra_weight"])
 
     plot_reconstruction(
         data_manager,
-        name="Reconstruction",
-        folder='reconstruction',
+        name="",
+        folder='ReconstructionComparison',
         axes_by=['models'],
-        plot_by=['image', "num_cells_per_dim", 'refinement', "iterations", 'central_cell_extra_weight'],
+        plot_by=['num_cells_per_dim'],
         axes_xy_proportions=(15, 15),
         difference=False,
         plot_curve=True,
@@ -121,6 +258,7 @@ if __name__ == "__main__":
         numbers_on=True,
         plot_again=True,
         num_cores=1,
+        # trim=trim
     )
     # plot_original_image(
     #     data_manager,
