@@ -11,6 +11,11 @@ from lib.StencilCreators import Stencil
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 
 
+def get_x_points(stencil, independent_axis):
+    return 0.5 + np.arange(np.min(stencil.coords, axis=0)[independent_axis],
+                           np.max(stencil.coords, axis=0)[independent_axis] + 1)
+
+
 def map2unidimensional(value_up, value_down, independent_axis: int, stencil: Stencil) -> [np.ndarray, np.ndarray]:
     dependent_axis = 1 - independent_axis
     # if the values are not 0 or 1
@@ -23,8 +28,7 @@ def map2unidimensional(value_up, value_down, independent_axis: int, stencil: Ste
     if jump > 0:
         stencil_values = shape[dependent_axis] * jump - stencil_values
     stencil_values += np.min(stencil.coords, axis=0)[dependent_axis]
-    x_points = 0.5 + np.arange(np.min(stencil.coords, axis=0)[independent_axis],
-                               np.max(stencil.coords, axis=0)[independent_axis] + 1)
+    x_points = get_x_points(stencil, independent_axis)
     return x_points, stencil_values
 
 

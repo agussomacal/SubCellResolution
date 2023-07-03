@@ -23,24 +23,28 @@ from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE, REGULAR_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.ParametersCurveCellCreators import DefaultCircleCurveCellCreator, \
     DefaultPolynomialCurveCellCreator
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells
+from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator, \
+    ValuesDefaultCurveCellCreator, ValuesLinearCellCreator, ValuesDefaultLinearCellCreator, \
+    ValuesDefaultCircleCellCreator, ValuesCircleCellCreator
 from lib.CellCreators.RegularCellCreator import PiecewiseConstantRegularCellCreator, MirrorCellCreator
 from lib.CellIterators import iterate_by_condition_on_smoothness, iterate_all
 from lib.CellOrientators import BaseOrientator, OrientByGradient
 from lib.Curves.CurveCircle import CurveCircle, CircleParams, CurveSemiCircle
+from lib.Curves.VanderCurves import CurveVandermondePolynomial, CurveVanderCircle
 from lib.SmoothnessCalculators import naive_piece_wise, indifferent
 from lib.StencilCreators import StencilCreatorFixedShape
 from lib.SubCellReconstruction import SubCellReconstruction, CellCreatorPipeline, ReconstructionErrorMeasureBase, \
     ReconstructionErrorMeasure
 
-EVALUATIONS = False  # if using evaluations or averages to measure error.
+CATEGORICAL_PALETTE = sns.color_palette("colorblind")
 
 
-def get_sub_cell_model(curve_cell_creator, refinement, name, iterations, central_cell_extra_weight):
+def get_sub_cell_model(curve_cell_creator, refinement, name, iterations, central_cell_extra_weight, metric):
     return SubCellReconstruction(
         name=name,
         smoothness_calculator=naive_piece_wise,
         reconstruction_error_measure=ReconstructionErrorMeasure(StencilCreatorFixedShape((3, 3)),
-                                                                metric="l2",
+                                                                metric=metric,
                                                                 central_cell_extra_weight=central_cell_extra_weight),
         refinement=refinement,
         cell_creators=
@@ -66,22 +70,29 @@ def get_sub_cell_model(curve_cell_creator, refinement, name, iterations, central
 
 
 def fit_model(sub_cell_model):
-    def decorated_func(image, noise, refinement, iterations, central_cell_extra_weight):
+    def decorated_func(image, noise, refinement, iterations, central_cell_extra_weight, metric,
+                       sub_discretization2bound_error):
         # image = load_image(image)
         # avg_values = calculate_averages_from_image(image, num_cells_per_dim)
         np.random.seed(42)
         avg_values = image + np.random.uniform(-noise, noise, size=image.shape)
 
-        model = sub_cell_model(refinement, iterations, central_cell_extra_weight)
+        model = sub_cell_model(refinement, iterations, central_cell_extra_weight, metric)
 
         t0 = time.time()
         model.fit(average_values=avg_values,
                   indexer=ArrayIndexerNd(avg_values, "cyclic"))
         t_fit = time.time() - t0
 
+        t0 = time.time()
+        reconstruction = model.reconstruct_by_factor(resolution_factor=sub_discretization2bound_error)
+        t_reconstruct = time.time() - t0
+
         return {
             "model": model,
-            "time_to_fit": t_fit
+            "time_to_fit": t_fit,
+            "reconstruction": reconstruction,
+            "time_to_reconstruct": t_reconstruct
         }
 
     # need to change the name so the lab experiment saves the correct name and not the uniformly "decorated_func"
@@ -109,54 +120,96 @@ def piecewise_constant(refinement: int, *args):
     )
 
 
-# @fit_model
-# def linear(refinement: int, iterations: int, central_cell_extra_weight: float):
-#     return get_sub_cell_model(
-#         partial(VanderCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=1)), refinement,
-#         "Linear", iterations, central_cell_extra_weight)
-#
-#
-# @fit_model
-# def quadratic(refinement: int, iterations: int, central_cell_extra_weight: float):
-#     return get_sub_cell_model(
-#         partial(VanderCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=2)), refinement,
-#         "Quadratic", iterations, central_cell_extra_weight)
-#
-#
-# @fit_model
-# def circle(refinement: int, iterations: int, central_cell_extra_weight: float):
-#     return get_sub_cell_model(partial(VanderCurveCellCreator, vander_curve=CurveVanderCircle), refinement, "Circle",
-#                               iterations, central_cell_extra_weight)
+@fit_model
+def linear_i(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+    return get_sub_cell_model(
+        partial(ValuesLinearCellCreator, natural_params=True), refinement,
+        "Linear", iterations, central_cell_extra_weight, metric)
 
 
 @fit_model
-def linear(refinement: int, iterations: int, central_cell_extra_weight: float):
+def quadratic_i(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=2),
+                natural_params=True), refinement,
+        "Quadratic", iterations, central_cell_extra_weight, metric)
+
+
+@fit_model
+def circle_i(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+    return get_sub_cell_model(partial(ValuesCircleCellCreator, natural_params=True), refinement, "Circle",
+                              iterations, central_cell_extra_weight, metric)
+
+
+@fit_model
+def linear_pi(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+    return get_sub_cell_model(
+        ValuesLinearCellCreator, refinement,
+        "Linear", iterations, central_cell_extra_weight, metric)
+
+
+@fit_model
+def quadratic_pi(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=2)), refinement,
+        "Quadratic", iterations, central_cell_extra_weight, metric)
+
+
+@fit_model
+def circle_pi(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+    return get_sub_cell_model(ValuesCircleCellCreator, refinement, "Circle",
+                              iterations, central_cell_extra_weight, metric)
+
+
+@fit_model
+def linear_p(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+    return get_sub_cell_model(ValuesDefaultLinearCellCreator, refinement, "Linear", iterations,
+                              central_cell_extra_weight, metric)
+
+
+@fit_model
+def quadratic_p(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+    return get_sub_cell_model(
+        partial(ValuesDefaultCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=2)), refinement,
+        "Quadratic", iterations, central_cell_extra_weight, metric)
+
+
+@fit_model
+def circle_p(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+    return get_sub_cell_model(ValuesDefaultCircleCellCreator, refinement,
+                              "Circle",
+                              iterations, central_cell_extra_weight, metric)
+
+
+@fit_model
+def linear(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
     return get_sub_cell_model(
         partial(DefaultPolynomialCurveCellCreator, degree=1), refinement,
-        "Linear", iterations, central_cell_extra_weight)
+        "Linear", iterations, central_cell_extra_weight, metric)
 
 
 @fit_model
-def quadratic(refinement: int, iterations: int, central_cell_extra_weight: float):
+def quadratic(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
     return get_sub_cell_model(
         partial(DefaultPolynomialCurveCellCreator, degree=2), refinement,
-        "Quadratic", iterations, central_cell_extra_weight)
+        "Quadratic", iterations, central_cell_extra_weight, metric)
 
 
 @fit_model
-def circle(refinement: int, iterations: int, central_cell_extra_weight: float):
+def circle(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
     return get_sub_cell_model(DefaultCircleCurveCellCreator, refinement, "Circle",
-                              iterations, central_cell_extra_weight)
+                              iterations, central_cell_extra_weight, metric)
 
 
-def image_reconstruction_from_curve(sub_discretization2bound_error, model):
-    t0 = time.time()
-    reconstruction = model.reconstruct_by_factor(resolution_factor=sub_discretization2bound_error)
-    t_reconstruct = time.time() - t0
-    return {
-        "reconstruction": reconstruction,
-        "time_to_reconstruct": t_reconstruct
-    }
+#
+# def image_reconstruction_from_curve(sub_discretization2bound_error, model):
+#     t0 = time.time()
+#     reconstruction = model.reconstruct_by_factor(resolution_factor=sub_discretization2bound_error)
+#     t_reconstruct = time.time() - t0
+#     return {
+#         "reconstruction": reconstruction,
+#         "time_to_reconstruct": t_reconstruct
+#     }
 
 
 @perplex_plot()
@@ -165,6 +218,26 @@ def plot_reconstruction(fig, ax, image4error, num_cells_per_dim, model, reconstr
                         plot_original_image=True,
                         difference=False, plot_curve=True, plot_curve_winner=False, plot_vh_classification=True,
                         plot_singular_cells=True, cmap="magma", trim=((0, 0), (0, 0)), numbers_on=True):
+    """
+
+    :param fig:
+    :param ax:
+    :param image4error:
+    :param num_cells_per_dim:
+    :param model:
+    :param reconstruction:
+    :param alpha:
+    :param plot_original_image:
+    :param difference:
+    :param plot_curve:
+    :param plot_curve_winner:
+    :param plot_vh_classification:
+    :param plot_singular_cells:
+    :param cmap:
+    :param trim: (xlims, ylims)
+    :param numbers_on:
+    :return:
+    """
     model_resolution = np.array(model.resolution)
 
     if plot_original_image:
@@ -193,8 +266,10 @@ def plot_reconstruction(fig, ax, image4error, num_cells_per_dim, model, reconstr
         numbers_on=numbers_on,
         prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
     )
-    ax.set_xlim((-0.5 + trim[0][0], model.resolution[0] - trim[0][1] - 0.5))
-    ax.set_ylim((model.resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
+    # ax.set_xlim((-0.5 + trim[0][0], model.resolution[0] - trim[0][1] - 0.5))
+    # ax.set_ylim((model.resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
+    ax.set_xlim((-0.5 + trim[0][0] * model.resolution[0], model.resolution[0] * trim[0][1] - 0.5))
+    ax.set_ylim((model.resolution[1] * trim[1][0] - 0.5, model.resolution[1] * trim[1][1] - 0.5))
 
 
 # def image_reconstruction(image, shape, model, reconstruction_factor):
@@ -308,80 +383,67 @@ if __name__ == "__main__":
 
 
     lab = LabPipeline()
-    lab.define_new_block_of_functions(
-        "precompute_images",
-        FunctionBlock(
-            "getimages",
-            lambda shape_name, num_cells_per_dim: {
-                "image": calculate_averages_from_curve(
-                    get_shape(shape_name),
-                    (num_cells_per_dim,
-                     num_cells_per_dim))}
-        )
-    )
-
-    lab.define_new_block_of_functions(
-        "precompute_error_resolution",
-        FunctionBlock(
-            "subresolution",
-            lambda shape_name, num_cells_per_dim, sub_discretization2bound_error: {
-                "image4error": calculate_averages_from_curve(
-                    get_shape(shape_name),
-                    (num_cells_per_dim * sub_discretization2bound_error,
-                     num_cells_per_dim * sub_discretization2bound_error))}
-        )
-    )
+    # lab.define_new_block_of_functions(
+    #     "precompute_images",
+    #     FunctionBlock(
+    #         "getimages",
+    #         lambda shape_name, num_cells_per_dim: {
+    #             "image": calculate_averages_from_curve(
+    #                 get_shape(shape_name),
+    #                 (num_cells_per_dim,
+    #                  num_cells_per_dim))}
+    #     )
+    # )
+    #
+    # lab.define_new_block_of_functions(
+    #     "precompute_error_resolution",
+    #     FunctionBlock(
+    #         "subresolution",
+    #         lambda shape_name, num_cells_per_dim, sub_discretization2bound_error: {
+    #             "image4error": calculate_averages_from_curve(
+    #                 get_shape(shape_name),
+    #                 (num_cells_per_dim * sub_discretization2bound_error,
+    #                  num_cells_per_dim * sub_discretization2bound_error))}
+    #     )
+    # )
 
     lab.define_new_block_of_functions(
         "models",
         # piecewise_constant,
-        linear,
-        quadratic,
-        circle
+        # linear,
+        # quadratic,
+        # circle,
+        # linear_p,
+        # quadratic_p,
+        circle_p,
+        # linear_pi,
+        # quadratic_pi,
+        # circle_pi
+        # linear_i,
+        # quadratic_i,
+        # circle_i,
+        recalculate=True
     )
-
-    lab.define_new_block_of_functions(
-        "image_reconstruction",
-        image_reconstruction_from_curve
-    )
-
+    # metrics = [1, 1.5, 2, 4]
+    metrics = [2]
     lab.execute(
         data_manager,
         num_cores=15,
-        recalculate=False,
         forget=False,
         save_on_iteration=1,
         refinement=[1],
-        num_cells_per_dim=[10, 14] + np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()[:4],
-        # num_cells_per_dim=[14],
-        # num_cells_per_dim=[8, 14, 20, 28, 42, 42 * 2],  # 42 * 2
+        # num_cells_per_dim=[10, 14] + np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()[:1],
+        num_cells_per_dim=[20],
         noise=[0],
         shape_name=[
-            # "Ellipsoid_1680x1680.png",
             "Circle"
         ],
         iterations=[500],  # 500
-        # reconstruction_factor=[1],
-        # central_cell_extra_weight=[0],
         central_cell_extra_weight=[0, 100],
-        sub_discretization2bound_error=[5]
+        sub_discretization2bound_error=[5],
+        metric=metrics
     )
-
-    generic_plot(data_manager, x="N", y="time", label="models",
-                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                 log="x", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 time=lambda model: np.array(list(model.times[CURVE_CELL_TYPE].values())),
-                 # error=lambda reconstruction, image4error: np.mean(np.abs(np.array(reconstruction) - image4error)),
-                 ylim=(0, 0.8),
-                 plot_by=["iterations", "central_cell_extra_weight"])
-
-    generic_plot(data_manager, x="N", y="fevals", label="models",
-                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                 log="x", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 fevals=lambda model: np.array(list(model.obera_fevals[CURVE_CELL_TYPE].values())),
-                 # error=lambda reconstruction, image4error: np.mean(np.abs(np.array(reconstruction) - image4error)),
-                 ylim=(0, 225),
-                 plot_by=["iterations", "central_cell_extra_weight"])
+    metrics = [1, 1.5, 2, 4]
 
 
     def get_reconstructed_subcells_coords(coord, sub_discretization2bound_error, reconstruction):
@@ -398,18 +460,113 @@ if __name__ == "__main__":
                                      model.obera_fevals[CURVE_CELL_TYPE].keys()
                                      )
                                  )
-                             ))/num_cells_per_dim**2
+                             )) / num_cells_per_dim ** 2
 
 
-    generic_plot(data_manager, x="fevals", y="error", label="models",
-                 plot_func=NamedPartial(sns.scatterplot, marker="o"),
-                 log="xy",
-                 # N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 time=lambda model: np.array(list(model.times[CURVE_CELL_TYPE].values())),
+    order = [
+        'linear',
+        'linear_p',
+        'linear_i',
+        'linear_pi',
+        'quadratic',
+        'quadratic_p',
+        'quadratic_i',
+        'quadratic_pi',
+        'circle',
+        'circle_p',
+        'circle_i',
+        'circle_pi',
+    ]
+
+    # ---------- Effect of re-parametrization and warm start --------- #
+    def variant(models):
+        if "_" in models:
+            new_name = models.split("_")[1].replace("i", " and warm start")
+            if "p" in new_name:
+                new_name = new_name.replace("p", "re-parameterized")
+            else:
+                new_name = "normal params" + new_name
+        else:
+            new_name = "normal params"
+        print(new_name)
+        return new_name
+
+
+    generic_plot(data_manager, x="curve", y="fevals", label="variant",
+                 plot_func=NamedPartial(sns.barplot, order=["linear", "quadratic", "circle"],
+                                        hue_order=["normal params", "re-parameterized",
+                                                   "normal params and warm start",
+                                                   "re-parameterized and warm start"]),
+                 log="",
+                 curve=lambda models: models.split("_")[0],
+                 variant=variant,
+                 sort_by=["models"],
+                 time=lambda model: np.mean(np.array(list(model.times[CURVE_CELL_TYPE].values()))),
                  fevals=lambda model: np.array(list(model.obera_fevals[CURVE_CELL_TYPE].values())),
-                 error=singular_error,
-                 ylim=(1e-13, 1e-2),
-                 plot_by=["iterations"])
+                 metric=2,
+                 ylim=(0, 200),
+                 plot_by=["central_cell_extra_weight"])
+
+    # ---------- Effect of central_cell_extra_weight metric --------- #
+    generic_plot(data_manager, x="curve", y="error", label="central_cell_extra_weight",
+                 plot_func=NamedPartial(sns.barplot, order=["linear", "quadratic", "circle"], hue_order=[0, 100]),
+                 log="y",
+                 curve=lambda models: models.split("_")[0],
+                 sort_by=["models"],
+                 metric=2,
+                 ylim=(1e-9, 1e-3),
+                 models=["linear_pi", "quadratic_pi", "circle_pi"],
+                 error=lambda reconstruction, image4error, model, sub_discretization2bound_error,
+                              num_cells_per_dim:
+                 singular_error(reconstruction, image4error, model, sub_discretization2bound_error,
+                                num_cells_per_dim),
+                 axes_by=["metric"],
+                 # plot_by=["central_cell_extra_weight"]
+                 )
+
+    # ---------- Effect of p metric --------- #
+    generic_plot(data_manager, x="curve", y="fevals", label="metric",
+                 plot_func=NamedPartial(sns.barplot, order=["linear", "quadratic", "circle"], hue_order=metrics),
+                 log="",
+                 curve=lambda models: models.split("_")[0],
+                 sort_by=["models"],
+                 models=["linear_pi", "quadratic_pi", "circle_pi"],
+                 fevals=lambda model: np.array(list(model.obera_fevals[CURVE_CELL_TYPE].values())),
+                 axes_by=[],
+                 plot_by=["central_cell_extra_weight"])
+
+    generic_plot(data_manager, x="curve", y="error", label="metric",
+                 plot_func=NamedPartial(sns.barplot, order=["linear", "quadratic", "circle"], hue_order=metrics),
+                 log="y",
+                 curve=lambda models: models.split("_")[0],
+                 sort_by=["models"],
+                 models=["linear_pi", "quadratic_pi", "circle_pi"],
+                 error=lambda reconstruction, image4error, model, sub_discretization2bound_error,
+                              num_cells_per_dim:
+                 singular_error(reconstruction, image4error, model, sub_discretization2bound_error,
+                                num_cells_per_dim),
+                 axes_by=[],
+                 plot_by=["central_cell_extra_weight"])
+
+    # generic_plot(data_manager, x="metric", y="errorfevals", label="models",
+    #              plot_func=NamedPartial(sns.scatterplot, palette="deep"),
+    #              categorical_metric=lambda metric: str(metric),
+    #              log="xy",
+    #              curve=lambda models: models.split("_")[0],
+    #              sort_by=["models"],
+    #              models=["linear_pi", "quadratic_pi", "circle_pi"],
+    #              # error=lambda reconstruction, image4error, model, sub_discretization2bound_error,
+    #              #              num_cells_per_dim:
+    #              # np.mean(singular_error(reconstruction, image4error, model, sub_discretization2bound_error,
+    #              #                num_cells_per_dim)),
+    #              # fevals=lambda model: np.mean(np.array(list(model.obera_fevals[CURVE_CELL_TYPE].values()))),
+    #              errorfevals=lambda reconstruction, image4error, model, sub_discretization2bound_error,
+    #                                 num_cells_per_dim: np.mean(
+    #                  singular_error(reconstruction, image4error, model, sub_discretization2bound_error,
+    #                                 num_cells_per_dim)) / np.mean(
+    #                  np.array(list(model.obera_fevals[CURVE_CELL_TYPE].values()))),
+    #              axes_by=["num_cells_per_dim", "central_cell_extra_weight"],
+    #              plot_by=["iterations"])
 
     # generic_plot(data_manager, x="N", y="error", label="models",
     #              plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
@@ -438,14 +595,19 @@ if __name__ == "__main__":
     #              models=["linear", "quadratic", "circle"],
     #              time=lambda time_to_fit, model: time_to_fit / get_number_of_curve_cells(model))
 
+    trim = ((4 / 20, 11 / 20), (5 / 20, 11 / 20))
+    metric = 2
+
     plot_reconstruction(
         data_manager,
-        name="Reconstruction",
-        folder='reconstruction',
-        num_cells_per_dim=14,
+        name="CompareModels",
+        folder='CompareModels',
+        # num_cells_per_dim=20,
+        metric=metric,
+        # models=["linear", "quadratic", "circle"],
+        # models=["linear_pi", "quadratic_pi", "circle_pi"],
         axes_by=['models'],
-        # plot_by=['shape_name', "num_cells_per_dim", 'refinement', "iterations", 'central_cell_extra_weight'],
-        plot_by=['central_cell_extra_weight'],
+        plot_by=['central_cell_extra_weight', "metric"],
         axes_xy_proportions=(15, 15),
         difference=False,
         plot_curve=True,
@@ -456,9 +618,54 @@ if __name__ == "__main__":
         numbers_on=True,
         plot_again=True,
         num_cores=1,
-        trim=((3, 7), (3, 6))
+        trim=trim
     )
 
+    plot_reconstruction(
+        data_manager,
+        name="Reconstruction",
+        folder='reconstruction',
+        num_cells_per_dim=20,
+        metric=metrics,
+        # models=["linear_pi", "quadratic_pi", "circle_pi"],
+        models=["linear", "quadratic", "circle"],
+        axes_by=['metric'],
+        plot_by=['central_cell_extra_weight', "models"],
+        axes_xy_proportions=(15, 15),
+        difference=False,
+        plot_curve=True,
+        plot_curve_winner=False,
+        plot_vh_classification=False,
+        plot_singular_cells=False,
+        plot_original_image=True,
+        numbers_on=True,
+        plot_again=True,
+        num_cores=1,
+        trim=trim
+    )
+
+    plot_reconstruction(
+        data_manager,
+        name="",
+        folder='ReconstructionComparison',
+        num_cells_per_dim=20,
+        metric=metric,
+        # axes_by=['models'],
+        models=["linear", "quadratic", "circle"],
+        # plot_by=['shape_name', "num_cells_per_dim", 'refinement', "iterations", 'central_cell_extra_weight'],
+        plot_by=['models', 'central_cell_extra_weight'],
+        axes_xy_proportions=(15, 15),
+        difference=False,
+        plot_curve=True,
+        plot_curve_winner=False,
+        plot_vh_classification=False,
+        plot_singular_cells=False,
+        plot_original_image=True,
+        numbers_on=True,
+        plot_again=True,
+        num_cores=1,
+        trim=trim
+    )
     # plot_original_image(
     #     data_manager,
     #     folder='reconstruction',

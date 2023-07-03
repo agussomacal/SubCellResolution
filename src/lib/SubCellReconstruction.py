@@ -23,7 +23,7 @@ class ReconstructionErrorMeasureBase:
 
 
 class ReconstructionErrorMeasure(ReconstructionErrorMeasureBase):
-    def __init__(self, stencil_creator: StencilCreator, metric: str = "l2", central_cell_extra_weight=0):
+    def __init__(self, stencil_creator: StencilCreator, metric: int = 2, central_cell_extra_weight=0):
         self.stencil_creator = stencil_creator
         self.metric = metric
         self.central_cell_extra_weight = central_cell_extra_weight
@@ -39,14 +39,8 @@ class ReconstructionErrorMeasure(ReconstructionErrorMeasureBase):
             for coords in stencil.coords])
 
         index_central_cell = np.where(np.all(proposed_cell.coords.array == stencil.coords, axis=1))[0][0]
-        if self.metric in ["l2"]:
-            loss = np.sum(kernel_vector_error ** 2) + \
-                   self.central_cell_extra_weight * kernel_vector_error[index_central_cell] ** 2
-        elif self.metric in ["l1"]:
-            loss = np.sum(np.abs(kernel_vector_error)) + \
-                   self.central_cell_extra_weight * np.abs(kernel_vector_error[index_central_cell])
-        else:
-            raise Exception(f"metric {self.metric} not implemented.")
+        loss = np.sum(np.abs(kernel_vector_error) ** self.metric) + \
+               self.central_cell_extra_weight * np.abs(kernel_vector_error[index_central_cell]) ** self.metric
         return loss
 
 
@@ -163,8 +157,4 @@ class SubCellReconstruction:
         for ix in itertools.product(*list(map(range, size))):
             values[ix] = self.cells[tuple(map(int, np.array(ix) / size * self.resolution))].evaluate(
                 (np.array(ix) / size * self.resolution)[np.newaxis, :])
-        # for ix in itertools.product(
-        #         *list(map(lambda sr: np.arange(sr[0]) / sr[0] * sr[1], zip(size, self.resolution)))):
-        #     ix = np.array(ix)
-        #     values[tuple(map(int, ix * size / self.resolution))] = self.cells[tuple(map(int, ix))].evaluate(ix)
         return values

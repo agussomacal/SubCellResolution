@@ -174,11 +174,14 @@ class CurveReparametrized(CurveBase):
         """
         raise Exception("Not implemented.")
 
-    @property
-    def params(self):
+    def get_natural_parametrization_curve(self):
         raise Exception("Not implemented.")
 
-    @params.setter
-    def params(self, args):
-        super(CurveReparametrized, self.__class__).params.fset(self,
-                                                               self.new_params2natural_params(self.x_points, args))
+    # @property
+    # def params(self):
+    #     raise Exception("Not implemented.")
+
+    # @params.setter
+    # def params(self, args):
+    #     super(CurveReparametrized, self.__class__).params.fset(self,
+    #                                                            self.new_params2natural_params(self.x_points, args))
