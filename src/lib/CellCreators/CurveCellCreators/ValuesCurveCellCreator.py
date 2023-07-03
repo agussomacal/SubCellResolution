@@ -39,6 +39,7 @@ class ValuesCurveCellCreator(CurveCellCreatorBase):
             y_points=stencil_values,
             value_up=value_up,
             value_down=value_down,
+            center=np.argmin(np.abs(x_points-coords[independent_axis]-0.5))
         )
         if self.natural_params:
             yield curve.get_natural_parametrization_curve()

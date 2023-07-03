@@ -5,7 +5,7 @@ from numpy.polynomial import Polynomial
 
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.CellCreators.CellCreatorBase import CellBase
-from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CurveCellCreatorBase
+from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CurveCellCreatorBase, map2unidimensional
 from lib.Curves.CurveBase import CurveBase
 from lib.Curves.CurvePolynomial import CurvePolynomial
 from lib.StencilCreators import Stencil
@@ -18,6 +18,7 @@ class ELVIRACurveCellCreator(CurveCellCreatorBase):
                       stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[CurveBase, None, None]:
         value_up = regular_opposite_cells[1].evaluate(coords.coords)
         value_down = regular_opposite_cells[0].evaluate(coords.coords)
+        # x_points, stencil_values = map2unidimensional(value_up, value_down, independent_axis, stencil)
         # if the values are not 0 or 1
         min_value = np.min((value_up, value_down))
         stencil_values = stencil.values.reshape((3, 3)).sum(axis=1 - independent_axis) - 3 * min_value

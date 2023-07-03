@@ -33,7 +33,9 @@ from lib.SubCellReconstruction import SubCellReconstruction, CellCreatorPipeline
 CATEGORICAL_PALETTE = sns.color_palette("colorblind")
 
 
-def get_sub_cell_model(curve_cell_creator, refinement, name, iterations, central_cell_extra_weight, metric):
+def get_sub_cell_model(curve_cell_creator, refinement, name, iterations, central_cell_extra_weight, metric,
+                       stencil_creator=StencilCreatorFixedShape((3, 3)),
+                       orientators=[OrientByGradient(kernel_size=(3, 3), dimensionality=2)]):
     return SubCellReconstruction(
         name=name,
         smoothness_calculator=naive_piece_wise,
@@ -50,15 +52,16 @@ def get_sub_cell_model(curve_cell_creator, refinement, name, iterations, central
                 stencil_creator=StencilCreatorFixedShape(stencil_shape=(1, 1)),
                 cell_creator=PiecewiseConstantRegularCellCreator(
                     apriori_up_value=1, apriori_down_value=0, dimensionality=2)
-            ),
+            ), ] +
+        [
             # curve cell with piecewise_constant
             CellCreatorPipeline(
                 cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
                                       condition=operator.eq),
-                orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
-                stencil_creator=StencilCreatorFixedShape((3, 3)),
+                orientator=orientator,
+                stencil_creator=stencil_creator,
                 cell_creator=curve_cell_creator(regular_opposite_cell_searcher=get_opposite_regular_cells))
-        ],
+            for orientator in orientators],
         obera_iterations=iterations
     )
 

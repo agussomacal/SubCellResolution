@@ -222,7 +222,7 @@ SURFERS_DIRECTIONS = np.array([-1, 1])
 
 
 class StencilCreatorAdaptive(StencilCreator):
-    def __init__(self, smoothness_threshold: float, independent_dim_stencil_size: int,
+    def __init__(self, independent_dim_stencil_size: int, smoothness_threshold: float = 0,
                  weight_of_growing_on_dependent_direction=0.45):
         self.smoothness_threshold = smoothness_threshold
         self.independent_dim_stencil_size = independent_dim_stencil_size

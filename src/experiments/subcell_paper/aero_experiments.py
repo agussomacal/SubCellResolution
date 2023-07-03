@@ -12,14 +12,14 @@ from PerplexityLab.visualization import generic_plot
 from experiments.subcell_paper.function_families import calculate_averages_from_curve
 from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
+from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator
 from lib.CellCreators.RegularCellCreator import MirrorCellCreator
 from lib.CellIterators import iterate_all
-from lib.CellOrientators import BaseOrientator
+from lib.CellOrientators import BaseOrientator, OrientPredefined
 from lib.Curves.AverageCurves import CurveAveragePolynomial
-from lib.Curves.VanderCurves import CurveVandermondePolynomial
 from lib.SmoothnessCalculators import indifferent
-from lib.StencilCreators import StencilCreatorFixedShape
+from lib.StencilCreators import StencilCreatorFixedShape, StencilCreatorAdaptive
 from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasureBase, CellCreatorPipeline
 
 OBERA_ITERS = 500
@@ -77,6 +77,23 @@ def piecewise_constant(refinement: int, *args):
 
 
 @fit_model
+def elvira(refinement: int, metric):
+    return get_sub_cell_model(ELVIRACurveCellCreator, refinement, "ELVIRA", 0, 0, metric,
+                              orientators=[OrientPredefined(predefined_axis=0), OrientPredefined(predefined_axis=1)])
+
+
+@fit_model
+def elvira_100(refinement: int, metric):
+    return get_sub_cell_model(ELVIRACurveCellCreator, refinement, "ELVIRA100", 0, central_cell_extra_weight, metric,
+                              orientators=[OrientPredefined(predefined_axis=0), OrientPredefined(predefined_axis=1)])
+
+
+@fit_model
+def elvira_grad_oriented(refinement: int, metric):
+    return get_sub_cell_model(ELVIRACurveCellCreator, refinement, "ELVIRAGRAD", 0, central_cell_extra_weight, metric)
+
+
+@fit_model
 def linear_obera(refinement: int, metric):
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=100)), refinement,
@@ -87,7 +104,7 @@ def linear_obera(refinement: int, metric):
 def linear_avg_100(refinement: int, metric):
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=100)), refinement,
-        "LinearAvg", 0, central_cell_extra_weight, metric)
+        "LinearAvg100", 0, central_cell_extra_weight, metric)
 
 
 @fit_model
@@ -98,17 +115,29 @@ def linear_avg(refinement: int, metric):
 
 
 @fit_model
+def quadratic_obera_non_adaptive(refinement: int, metric):
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=central_cell_extra_weight)), refinement,
+        "QuadraticOptNonAdaptive", OBERA_ITERS, central_cell_extra_weight, metric)
+
+
+@fit_model
 def quadratic_obera(refinement: int, metric):
     return get_sub_cell_model(
-        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=100)), refinement,
-        "QuadraticOpt", OBERA_ITERS, central_cell_extra_weight, metric)
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=central_cell_extra_weight)), refinement,
+        "QuadraticOpt", OBERA_ITERS, central_cell_extra_weight, metric,
+        StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
 
 
 @fit_model
 def quadratic_avg(refinement: int, metric):
     return get_sub_cell_model(
-        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=100)), refinement,
-        "QuadraticAvg", 0, central_cell_extra_weight, metric)
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=central_cell_extra_weight)), refinement,
+        "QuadraticAvg", 0, central_cell_extra_weight, metric,
+        StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
 
 
 # @fit_model
@@ -208,20 +237,25 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "models",
         piecewise_constant,
+        elvira,
+        elvira_100,
+        elvira_grad_oriented,
         linear_obera,
-        quadratic_obera,
         linear_avg,
         linear_avg_100,
+        quadratic_obera_non_adaptive,
+        quadratic_obera,
         quadratic_avg,
-        recalculate=True
+        recalculate=False
     )
+    num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()
     lab.execute(
         data_manager,
         num_cores=15,
         forget=False,
         save_on_iteration=1,
         refinement=[1],
-        num_cells_per_dim=[10, 14] + np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist(),
+        num_cells_per_dim=num_cells_per_dim,
         noise=[0],
         shape_name=[
             "Circle"
@@ -230,17 +264,18 @@ if __name__ == "__main__":
         metric=[2]
     )
 
-    generic_plot(data_manager, x="N", y="mse", label="models",
+    generic_plot(data_manager, x="N", y="mse", label="models", num_cells_per_dim=num_cells_per_dim,
                  plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
                  log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 mse=lambda reconstruction, image4error: ((np.array(reconstruction) - image4error) ** 2).ravel()
+                 mse=lambda reconstruction, image4error: np.mean(
+                     ((np.array(reconstruction) - image4error) ** 2).ravel())
                  )
 
-    # generic_plot(data_manager, x="time", y="mse", label="models",
-    #              plot_func=NamedPartial(sns.lineplot, marker=".", linestyle="--"),
-    #              log="xy", time=lambda time_to_fit: time_to_fit,
-    #              mse=lambda reconstruction_error: np.mean(reconstruction_error**2),
-    #              axes_by=["iterations", "central_cell_extra_weight"])
+    generic_plot(data_manager, x="time", y="mse", label="models", num_cells_per_dim=num_cells_per_dim,
+                 plot_func=NamedPartial(sns.lineplot, marker=".", linestyle="--"),
+                 log="xy", time=lambda time_to_fit: time_to_fit,
+                 mse=lambda reconstruction, image4error: ((np.array(reconstruction) - image4error) ** 2).ravel()
+                 )
 
     plot_reconstruction(
         data_manager,

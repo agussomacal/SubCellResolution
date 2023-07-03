@@ -14,7 +14,7 @@ class CurveAvg(CurveReparametrized):
 
 
 class CurveAveragePolynomial(CurveReparametrized, CurvePolynomial):
-    def __init__(self, x_points, y_points, value_up=0, value_down=1, degree=1, ccew=0):
+    def __init__(self, x_points, y_points, value_up=0, value_down=1, degree=1, ccew=0, center=None):
         """
 
         :param x_points:
@@ -25,11 +25,7 @@ class CurveAveragePolynomial(CurveReparametrized, CurvePolynomial):
         :param ccew: central cell extra weight
         """
         self.degree = degree
-        self.ccew = ccew
-        self.weights = np.ones(len(x_points))
-        self.weights[len(x_points) // 2] += self.ccew
-        self.weights = np.sqrt(self.weights)
-        super().__init__(x_points, y_points, value_down=value_down, value_up=value_up)
+        super().__init__(x_points, y_points, value_down=value_down, value_up=value_up, ccew=ccew, center=center)
 
     def new_params2natural_params(self, x_points, y_points):
         return np.linalg.lstsq(

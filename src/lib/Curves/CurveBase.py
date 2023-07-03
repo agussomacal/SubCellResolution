@@ -153,7 +153,7 @@ class CurveReparametrized(CurveBase):
     Abstract class with common methods for both average and point curves.
     """
 
-    def __init__(self, x_points, y_points, value_up=0, value_down=1):
+    def __init__(self, x_points, y_points, value_up=0, value_down=1, ccew=0, center=None):
         """
 
         :param points: Nx2 matrix of points
@@ -163,6 +163,12 @@ class CurveReparametrized(CurveBase):
         """
         self.x_points = x_points
         self.y_points = y_points
+        if center is None:
+            self.center = len(self.x_points) // 2
+        self.ccew = ccew
+        self.weights = np.ones(len(x_points))
+        self.weights[center] += self.ccew
+        self.weights = np.sqrt(self.weights)
         super().__init__(self.new_params2natural_params(x_points, y_points), value_up, value_down)
 
     def new_params2natural_params(self, x_points, y_points):
