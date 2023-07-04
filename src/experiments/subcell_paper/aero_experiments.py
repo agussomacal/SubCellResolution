@@ -10,7 +10,8 @@ from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
 from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import generic_plot
 from experiments.subcell_paper.function_families import calculate_averages_from_curve
-from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
+from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction, \
+    sub_discretization2bound_error
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator
@@ -260,18 +261,22 @@ if __name__ == "__main__":
         shape_name=[
             "Circle"
         ],
-        sub_discretization2bound_error=[5],
+        sub_discretization2bound_error=[sub_discretization2bound_error],
         metric=[2]
     )
 
-    generic_plot(data_manager, x="N", y="mse", label="models", num_cells_per_dim=num_cells_per_dim,
+    generic_plot(data_manager,
+                 name="Convergence",
+                 x="N", y="mse", label="models", num_cells_per_dim=num_cells_per_dim,
                  plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
                  log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                  mse=lambda reconstruction, image4error: np.mean(
                      ((np.array(reconstruction) - image4error) ** 2).ravel())
                  )
 
-    generic_plot(data_manager, x="time", y="mse", label="models", num_cells_per_dim=num_cells_per_dim,
+    generic_plot(data_manager,
+                 name="TimeComplexity",
+                 x="time", y="mse", label="models", num_cells_per_dim=num_cells_per_dim,
                  plot_func=NamedPartial(sns.lineplot, marker=".", linestyle="--"),
                  log="xy", time=lambda time_to_fit: time_to_fit,
                  mse=lambda reconstruction, image4error: ((np.array(reconstruction) - image4error) ** 2).ravel()
