@@ -71,6 +71,10 @@ class CurveBase:
     def params(self, *args):
         raise Exception("Not implemented.")
 
+    @property
+    def dim(self):
+        return len(self.params)
+
     def __call__(self, x: Union[float, np.ndarray], y: Union[float, np.ndarray] = None):
         """
         Evaluate the Curve.
@@ -163,8 +167,7 @@ class CurveReparametrized(CurveBase):
         """
         self.x_points = x_points
         self.y_points = y_points
-        if center is None:
-            self.center = len(self.x_points) // 2
+        self.center = len(self.x_points) // 2 if center is None else center
         self.ccew = ccew
         self.weights = np.ones(len(x_points))
         self.weights[center] += self.ccew

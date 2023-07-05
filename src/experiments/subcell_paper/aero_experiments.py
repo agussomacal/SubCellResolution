@@ -9,41 +9,44 @@ from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
 from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import generic_plot
-from experiments.subcell_paper.function_families import calculate_averages_from_curve
-from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction, \
-    sub_discretization2bound_error
+from experiments.subcell_paper.function_families import calculate_averages_from_curve, calculate_averages_from_image
+from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, OBERA_ITERS, \
+    CCExtraWeight
+from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
+from lib.CellCreators.CurveCellCreators.TaylorCurveCellCreator import TaylorFromVanderCurveCellCreator, \
+    TaylorCircleCurveCellCreator
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator
 from lib.CellCreators.RegularCellCreator import MirrorCellCreator
 from lib.CellIterators import iterate_all
 from lib.CellOrientators import BaseOrientator, OrientPredefined
 from lib.Curves.AverageCurves import CurveAveragePolynomial
+from lib.Curves.VanderCurves import CurveVanderCircle
 from lib.SmoothnessCalculators import indifferent
 from lib.StencilCreators import StencilCreatorFixedShape, StencilCreatorAdaptive
 from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasureBase, CellCreatorPipeline
 
-OBERA_ITERS = 500
-central_cell_extra_weight = 100
-
 
 def fit_model(sub_cell_model):
-    def decorated_func(image, noise, refinement, metric, sub_discretization2bound_error):
+    def decorated_func(image, noise, metric, sub_discretization2bound_error):
         # image = load_image(image)
         # avg_values = calculate_averages_from_image(image, num_cells_per_dim)
         np.random.seed(42)
         avg_values = image + np.random.uniform(-noise, noise, size=image.shape)
 
-        model = sub_cell_model(refinement, metric)
+        model = sub_cell_model(metric)
 
         t0 = time.time()
-        model.fit(average_values=avg_values,
-                  indexer=ArrayIndexerNd(avg_values, "cyclic"))
+        model.fit(average_values=avg_values, indexer=ArrayIndexerNd(avg_values, "cyclic"))
         t_fit = time.time() - t0
 
         t0 = time.time()
         reconstruction = model.reconstruct_by_factor(resolution_factor=sub_discretization2bound_error)
         t_reconstruct = time.time() - t0
+        # if refinement is set in place
+        reconstruction = calculate_averages_from_image(reconstruction, tuple(
+            (np.array(np.shape(image)) * sub_discretization2bound_error).tolist()))
 
         return {
             "model": model,
@@ -59,12 +62,12 @@ def fit_model(sub_cell_model):
 
 
 @fit_model
-def piecewise_constant(refinement: int, *args):
+def piecewise_constant(*args):
     return SubCellReconstruction(
         name="PiecewiseConstant",
         smoothness_calculator=indifferent,
         reconstruction_error_measure=ReconstructionErrorMeasureBase(),
-        refinement=refinement,
+        refinement=1,
         cell_creators=
         [  # regular cell with piecewise_constant
             CellCreatorPipeline(
@@ -78,72 +81,102 @@ def piecewise_constant(refinement: int, *args):
 
 
 @fit_model
-def elvira(refinement: int, metric):
-    return get_sub_cell_model(ELVIRACurveCellCreator, refinement, "ELVIRA", 0, 0, metric,
+def elvira(metric):
+    return get_sub_cell_model(ELVIRACurveCellCreator, 1, "ELVIRA", 0, 0, metric,
                               orientators=[OrientPredefined(predefined_axis=0), OrientPredefined(predefined_axis=1)])
 
 
 @fit_model
-def elvira_100(refinement: int, metric):
-    return get_sub_cell_model(ELVIRACurveCellCreator, refinement, "ELVIRA100", 0, central_cell_extra_weight, metric,
+def elvira_100(metric):
+    return get_sub_cell_model(ELVIRACurveCellCreator, 1, "ELVIRA100", 0, CCExtraWeight, metric,
                               orientators=[OrientPredefined(predefined_axis=0), OrientPredefined(predefined_axis=1)])
 
 
 @fit_model
-def elvira_grad_oriented(refinement: int, metric):
-    return get_sub_cell_model(ELVIRACurveCellCreator, refinement, "ELVIRAGRAD", 0, central_cell_extra_weight, metric)
+def elvira_grad_oriented(metric):
+    return get_sub_cell_model(ELVIRACurveCellCreator, 1, "ELVIRAGRAD", 0, CCExtraWeight, metric)
 
 
 @fit_model
-def linear_obera(refinement: int, metric):
+def elvira_go100_ref2(metric):
+    return get_sub_cell_model(ELVIRACurveCellCreator, 2, "ELVIRAGRAD", 0, CCExtraWeight, metric)
+
+
+@fit_model
+def linear_obera(metric):
     return get_sub_cell_model(
-        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=100)), refinement,
-        "LinearOpt", OBERA_ITERS, central_cell_extra_weight, metric)
+        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=100)), 1,
+        "LinearOpt", OBERA_ITERS, CCExtraWeight, metric)
 
 
 @fit_model
-def linear_avg_100(refinement: int, metric):
+def linear_avg_100(metric):
     return get_sub_cell_model(
-        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=100)), refinement,
-        "LinearAvg100", 0, central_cell_extra_weight, metric)
+        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=100)), 1,
+        "LinearAvg100", 0, CCExtraWeight, metric)
 
 
 @fit_model
-def linear_avg(refinement: int, metric):
+def linear_avg(metric):
     return get_sub_cell_model(
-        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=0)), refinement,
-        "LinearAvg", 0, central_cell_extra_weight, metric)
+        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=0)), 1,
+        "LinearAvg", 0, CCExtraWeight, metric)
 
 
 @fit_model
-def quadratic_obera_non_adaptive(refinement: int, metric):
-    return get_sub_cell_model(
-        partial(ValuesCurveCellCreator,
-                vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=central_cell_extra_weight)), refinement,
-        "QuadraticOptNonAdaptive", OBERA_ITERS, central_cell_extra_weight, metric)
-
-
-@fit_model
-def quadratic_obera(refinement: int, metric):
+def quadratic_obera_non_adaptive(metric):
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator,
-                vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=central_cell_extra_weight)), refinement,
-        "QuadraticOpt", OBERA_ITERS, central_cell_extra_weight, metric,
+                vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=CCExtraWeight)), 1,
+        "QuadraticOptNonAdaptive", OBERA_ITERS, CCExtraWeight, metric)
+
+
+@fit_model
+def quadratic_obera(metric):
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=CCExtraWeight)), 1,
+        "QuadraticOpt", OBERA_ITERS, CCExtraWeight, metric,
         StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
 
 
 @fit_model
-def quadratic_avg(refinement: int, metric):
+def quadratic_avg(metric):
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator,
-                vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=central_cell_extra_weight)), refinement,
-        "QuadraticAvg", 0, central_cell_extra_weight, metric,
+                vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=CCExtraWeight)), 1,
+        "QuadraticAvg", 0, CCExtraWeight, metric,
+        StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
+
+
+@fit_model
+def quadratic_avg_ref2(metric):
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=CCExtraWeight)), 2,
+        "QuadraticAvg", 0, CCExtraWeight, metric,
+        StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
+
+
+@fit_model
+def circle_avg(metric):
+    return get_sub_cell_model(
+        partial(TaylorCircleCurveCellCreator, ccew=CCExtraWeight), 1,
+        "CircleAvg", 0, CCExtraWeight, metric,
+        StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
+
+
+@fit_model
+def circle_vander_avg(metric):
+    return get_sub_cell_model(
+        partial(TaylorFromVanderCurveCellCreator, curve=CurveVanderCircle, degree=2, ccew=CCExtraWeight), 1,
+        "CircleAvg", 0, CCExtraWeight, metric,
         StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
 
 
 # @fit_model
-# def circle(refinement: int, iterations: int, metric):
-#     return get_sub_cell_model(partial(ValuesCurveCellCreator, vander_curve=CurveVanderCircle), refinement,
+# def circle(iterations: int, metric):
+#     return get_sub_cell_model(partial(ValuesCurveCellCreator, vander_curve=CurveVanderCircle), 1,
 #                               "CirclePoint", iterations, central_cell_extra_weight, metric)
 
 
@@ -237,16 +270,20 @@ if __name__ == "__main__":
 
     lab.define_new_block_of_functions(
         "models",
-        piecewise_constant,
-        elvira,
-        elvira_100,
+        # piecewise_constant,
+        # elvira,
+        # elvira_100,
         elvira_grad_oriented,
-        linear_obera,
-        linear_avg,
+        # linear_obera,
+        # linear_avg,
         linear_avg_100,
-        quadratic_obera_non_adaptive,
-        quadratic_obera,
+        # quadratic_obera_non_adaptive,
+        # quadratic_obera,
         quadratic_avg,
+        # elvira_go100_ref2,
+        # quadratic_avg_ref2,
+        circle_avg,
+        circle_vander_avg,
         recalculate=False
     )
     num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()
@@ -255,13 +292,12 @@ if __name__ == "__main__":
         num_cores=15,
         forget=False,
         save_on_iteration=1,
-        refinement=[1],
         num_cells_per_dim=num_cells_per_dim,
         noise=[0],
         shape_name=[
             "Circle"
         ],
-        sub_discretization2bound_error=[sub_discretization2bound_error],
+        sub_discretization2bound_error=[SUB_CELL_DISCRETIZATION2BOUND_ERROR],
         metric=[2]
     )
 

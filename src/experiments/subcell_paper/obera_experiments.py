@@ -13,7 +13,7 @@ from PerplexityLab.visualization import perplex_plot, generic_plot, one_line_ite
 from experiments.VizReconstructionUtils import plot_cells, plot_cells_identity, plot_cells_vh_classification_core, \
     plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders
 from experiments.subcell_paper.function_families import calculate_averages_from_curve
-from experiments.subcell_paper.global_params import sub_discretization2bound_error
+from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
@@ -413,7 +413,7 @@ if __name__ == "__main__":
         ],
         iterations=[500],  # 500
         central_cell_extra_weight=[0, 100],
-        sub_discretization2bound_error=[sub_discretization2bound_error],
+        sub_discretization2bound_error=[SUB_CELL_DISCRETIZATION2BOUND_ERROR],
         metric=metrics
     )
     metrics = [1, 1.5, 2, 4]
@@ -438,7 +438,7 @@ if __name__ == "__main__":
         ],
         iterations=[500],  # 500
         central_cell_extra_weight=[100],
-        sub_discretization2bound_error=[sub_discretization2bound_error],
+        sub_discretization2bound_error=[SUB_CELL_DISCRETIZATION2BOUND_ERROR],
         metric=metrics
     )
 

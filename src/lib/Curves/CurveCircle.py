@@ -15,6 +15,13 @@ def get_concavity(x_points, y):
 class CurveSemiCircle(CurveBase):
     # TODO: what happens if circle goes below... Check
     def __init__(self, params: CircleParams, value_up=0, value_down=1, concave=False):
+        """
+
+        :param params:
+        :param value_up:
+        :param value_down:
+        :param concave: True if down semi-circle or positive curvature. False otherwise.
+        """
         super().__init__(value_up=value_up, value_down=value_down)
         self.x0, self.y0, self.r = params
         self.concave = concave
