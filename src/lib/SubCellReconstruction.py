@@ -76,6 +76,7 @@ class SubCellReconstruction:
 
     def fit(self, average_values: np.ndarray, indexer: ArrayIndexerNd):
         for r in range(self.refinement):
+            self.cells = dict()
             self.resolution = np.shape(average_values)
             smoothness_index = self.smoothness_calculator(average_values, indexer)
             reconstruction_error = np.inf * np.ones(np.shape(smoothness_index))  # everything to be improved
@@ -125,6 +126,7 @@ class SubCellReconstruction:
 
             if r < self.refinement - 1:
                 average_values = self.reconstruct_by_factor(resolution_factor=2)
+                indexer = ArrayIndexerNd(average_values, indexer.modes)
         return self
 
     def reconstruct_by_factor(self, resolution_factor: Union[int, Tuple, np.ndarray] = 1):
