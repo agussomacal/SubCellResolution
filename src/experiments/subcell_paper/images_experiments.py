@@ -187,13 +187,13 @@ if __name__ == "__main__":
     lab.execute(
         data_manager,
         num_cores=15,
-        forget=True,
+        forget=False,
         save_on_iteration=1,
         refinement=[1],
-        num_cells_per_dim=[20, 84],
+        num_cells_per_dim=[20, 42, 84, 168],
         noise=[0],
         image=[
-            # "StarWars.jpeg",
+            "StarWars.jpeg",
             "StarWarsVader.jpeg"
         ],
         iterations=[0],  # 500
@@ -204,7 +204,7 @@ if __name__ == "__main__":
         data_manager,
         name="Reconstruction",
         folder='Reconstruction',
-        plot_by=['models', 'num_cells_per_dim'],
+        plot_by=['image', 'models', 'num_cells_per_dim'],
         axes_xy_proportions=(15, 15),
         difference=False,
         plot_curve=True,
