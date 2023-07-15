@@ -20,6 +20,7 @@ from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCell
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator
 from lib.CellCreators.RegularCellCreator import PiecewiseConstantRegularCellCreator
+from lib.CellCreators.VertexCellCreators.VertexCellCreatorBase import VertexCellCreatorUsingNeighboursLines
 from lib.CellIterators import iterate_by_condition_on_smoothness
 from lib.CellOrientators import BaseOrientator, OrientByGradient
 from lib.Curves.AverageCurves import CurveAveragePolynomial
@@ -31,13 +32,13 @@ EVALUATIONS = True
 
 
 def fit_model(sub_cell_model):
-    def decorated_func(image, noise, num_cells_per_dim, reconstruction_factor):
+    def decorated_func(image, noise, num_cells_per_dim, reconstruction_factor, iterations):
         image = load_image(image)
         avg_values = calculate_averages_from_image(image, num_cells_per_dim)
         np.random.seed(42)
         avg_values = avg_values + np.random.uniform(-noise, noise, size=avg_values.shape)
 
-        model = sub_cell_model()
+        model = sub_cell_model(iterations)
 
         t0 = time.time()
         model.fit(average_values=avg_values, indexer=ArrayIndexerNd(avg_values, "cyclic"))
@@ -82,9 +83,9 @@ def fit_model(sub_cell_model):
 
 
 @fit_model
-def quadratic():
+def vertex(iterations):
     return SubCellReconstruction(
-        name="Quadratic",
+        name="All",
         smoothness_calculator=naive_piece_wise,
         reconstruction_error_measure=ReconstructionErrorMeasure(StencilCreatorFixedShape((3, 3)),
                                                                 metric=2,
@@ -113,7 +114,16 @@ def quadratic():
                 stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3),
                 cell_creator=ValuesCurveCellCreator(regular_opposite_cell_searcher=get_opposite_regular_cells,
                                                     vander_curve=partial(CurveAveragePolynomial, degree=2,
-                                                                         ccew=CCExtraWeight))),
+                                                                         ccew=CCExtraWeight))
+            ),
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
+                                      condition=operator.eq),
+                orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
+                stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3),
+                cell_creator=VertexCellCreatorUsingNeighboursLines(
+                    regular_opposite_cell_searcher=get_opposite_regular_cells)
+            ),
             # CellCreatorPipeline(
             #     cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
             #                           condition=operator.eq),
@@ -123,7 +133,7 @@ def quadratic():
             #                                         vander_curve=partial(CurveAveragePolynomial, degree=2,
             #                                                              ccew=CCExtraWeight))),
         ],
-        obera_iterations=0
+        obera_iterations=iterations
     )
 
 
@@ -181,13 +191,13 @@ if __name__ == "__main__":
     lab = LabPipeline()
     lab.define_new_block_of_functions(
         "models",
-        quadratic,
+        vertex,
         recalculate=False
     )
     lab.execute(
         data_manager,
         num_cores=15,
-        forget=False,
+        forget=True,
         save_on_iteration=1,
         refinement=[1],
         num_cells_per_dim=[20, 42, 84, 168],
@@ -196,7 +206,7 @@ if __name__ == "__main__":
             "StarWars.jpeg",
             "StarWarsVader.jpeg"
         ],
-        iterations=[0],  # 500
+        iterations=[500],  # 500
         reconstruction_factor=[5],
     )
 
@@ -204,7 +214,7 @@ if __name__ == "__main__":
         data_manager,
         name="Reconstruction",
         folder='Reconstruction',
-        plot_by=['image', 'models', 'num_cells_per_dim'],
+        plot_by=['image', 'models', 'num_cells_per_dim', "iterations"],
         axes_xy_proportions=(15, 15),
         difference=False,
         plot_curve=True,
