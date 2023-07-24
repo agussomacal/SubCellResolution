@@ -140,7 +140,7 @@ def plot_original_image(fig, ax, image, num_cells_per_dim, model, alpha=0.5, cma
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
-        name='ImageReconstruction',
+        name='StarWars',
         format=JOBLIB
     )
     # data_manager.load()
@@ -151,7 +151,7 @@ if __name__ == "__main__":
         polynomial2,
         # piecewise_constant,
         # elvira,
-        elvira_go
+        # elvira_go
     )
 
     lab.define_new_block_of_functions(
@@ -165,17 +165,19 @@ if __name__ == "__main__":
         recalculate=False,
         forget=True,
         refinement=[1],
-        num_cells_per_dim=[42 * 2],  # , 28, 42
+        num_cells_per_dim=[20],  # , 28, 42
+        # num_cells_per_dim=[42 * 2],  # , 28, 42
         # num_cells_per_dim=[28],  # , 28, 42
         # num_cells_per_dim=[42],  # , 28, 42
         noise=[0],
         image=[
-            "ShapesVertex_1680x1680.jpg",
+            # "ShapesVertex_1680x1680.jpg",
             # "ShapesVertexRegular_1680x1680.png",
             # v=128+(64+32*sin((x-w/2+y-h/2)*5*6/w))*(v >0)-(v==0)*(64+32*cos(d*5*6/w))
-            "peppers.jpg",
-            "R2D2.jpeg",
-            "DarthVader.jpeg",
+            # "peppers.jpg",
+            # "R2D2.jpeg",
+            # "DarthVader.jpeg",
+            "StarWars.jpeg",
             # "mountains_WB.jpg",
             # "House_in_the_sea.jpg",
             # "RegularShock.png"  # v=128*cos(d/100)+128*x/w+128*((x*x+y*y)<h*h/4)-128*(x>(w*2/3))
