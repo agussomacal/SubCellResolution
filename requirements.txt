@@ -10,4 +10,5 @@ seaborn
 scikit-learn
 makefun
 
+sympy
 # python -m ipykernel install --user --name venv --display-name "SubCell-venv"
