@@ -1,13 +1,13 @@
-from typing import Tuple, Dict, Generator, Union, List
+from typing import Tuple, Dict, Generator
 
 import numpy as np
 
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords, ArrayIndexerNd
-from lib.CellCreators.CellCreatorBase import CellBase
+from lib.CellCreators.CellCreatorBase import CellBase, CURVE_CELL_TYPE, VERTEX_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CurveCellCreatorBase, CellCurveBase
-from lib.Curves.CurveBase import CurveBase
 from lib.Curves.CurveVertex import CurveVertexLinearAngle
-from lib.StencilCreators import get_stencil_same_type, get_neighbouring_singular_coords_under_condition, Stencil
+from lib.Curves.Curves import Curve
+from lib.StencilCreators import get_neighbouring_singular_coords_under_condition, Stencil
 
 
 class VertexLinearExtended(CurveVertexLinearAngle):
@@ -21,16 +21,16 @@ class VertexLinearExtended(CurveVertexLinearAngle):
 # --------------------------------------------------- #
 # ------------- Curve cell creator base ------------- #
 
-def get_singular_neighbours_cells(coords: CellCoords,
-                                  cell_classifier: CellClassifierBase, indexer: ArrayIndexerNd,
-                                  cells: Dict[Tuple[int], CellBase]):
-    singular_neighbours_stencil = list(get_stencil_same_type(coords=coords, indexer=indexer, num_nodes=3,
-                                                             cell_mask=cell_classifier.regularity_mask))
-    # if len(singular_neighbours_stencil) >= 5:
-    if len(singular_neighbours_stencil) == 3:
-        return tuple([cells[c.tuple] for c in singular_neighbours_stencil[-2:]])
-    else:
-        return None
+# def get_singular_neighbours_cells(coords: CellCoords,
+#                                   cell_classifier: CellClassifierBase, indexer: ArrayIndexerNd,
+#                                   cells: Dict[Tuple[int], CellBase]):
+#     singular_neighbours_stencil = list(get_stencil_same_type(coords=coords, indexer=indexer, num_nodes=3,
+#                                                              cell_mask=cell_classifier.regularity_mask))
+#     # if len(singular_neighbours_stencil) >= 5:
+#     if len(singular_neighbours_stencil) == 3:
+#         return tuple([cells[c.tuple] for c in singular_neighbours_stencil[-2:]])
+#     else:
+#         return None
 
 
 def get_neighbouring_singular_cells_under_condition(coords: CellCoords,
@@ -38,11 +38,13 @@ def get_neighbouring_singular_cells_under_condition(coords: CellCoords,
                                                     cells: Dict[Tuple[int], CellBase]):
     # the condition is to search cells at least at 2 of distance (not the immediate ones.
     # TODO: search using the cells whose stencil does not includes the vertex cell.
-    singular_neighbours_stencil = list(
-        get_neighbouring_singular_coords_under_condition(coords, indexer, max_num_nodes=5,
-                                                         cell_mask=cell_mask,
-                                                         condition=lambda coordinates: np.sum(
-                                                             (coordinates - coords).array ** 2) >= 2 ** 2))
+    singular_neighbours_stencil = [
+        cell_coords for cell_coords in
+        get_neighbouring_singular_coords_under_condition(
+            coords, indexer, max_num_nodes=5,
+            cell_mask=cell_mask,
+            condition=lambda coordinates: np.sum((coordinates - coords).array ** 2) >= 2 ** 2)
+        if cells[cell_coords.tuple].CELL_TYPE == CURVE_CELL_TYPE]
     # if len(singular_neighbours_stencil) >= 5:
     if len(singular_neighbours_stencil) == 2:
         return tuple([cells[c.tuple] for c in singular_neighbours_stencil[-2:]])
@@ -68,7 +70,7 @@ class VertexCellCreatorUsingNeighbours(CurveCellCreatorBase):
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
                       stencil: Stencil, regular_opposite_cells: Tuple,
                       singular_neighbours: Tuple[CellCurveBase, CellCurveBase], **kwargs) -> Generator[
-        CurveBase, None, None]:
+        Curve, None, None]:
         raise Exception("Not implemented.")
 
     def create_cells(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
@@ -89,11 +91,14 @@ class VertexCellCreatorUsingNeighbours(CurveCellCreatorBase):
                                             smoothness_index=smoothness_index, independent_axis=independent_axis,
                                             stencil=stencil, regular_opposite_cells=regular_opposite_cells,
                                             singular_neighbours=singular_neighbours):
-                yield CellCurveBase(
+                cell = CellCurveBase(
                     coords=coords,
                     curve=curve,
                     regular_opposite_cells=regular_opposite_cells,
                     dependent_axis=1 - independent_axis)
+                # TODO: specify a new class?!!
+                cell.CELL_TYPE = VERTEX_CELL_TYPE
+                yield cell
 
 
 def eval_neighbour_in_border(coords: CellCoords, singular_neighbour: CellCurveBase, independent_axis):
@@ -102,7 +107,11 @@ def eval_neighbour_in_border(coords: CellCoords, singular_neighbour: CellCurveBa
     crossing = coords[crossing_axis] + 0.5 + np.sign(versor[crossing_axis]) / 2
     if singular_neighbour.independent_axis == crossing_axis:
         # TODO: evaluation is not a value, needs an array, what to do with nans, filter before?
-        evals = np.ravel(singular_neighbour.curve(np.array([crossing])))
+        try:
+            # evals = np.ravel(singular_neighbour.curve(np.array([crossing])))
+            evals = np.ravel(singular_neighbour.curve(crossing))
+        except:
+            evals = np.ravel(singular_neighbour.curve(crossing))
         point = (crossing, evals[~np.isnan(evals)][0])
     else:
         inverse = np.ravel(np.array(singular_neighbour.curve.function_inverse(crossing)))
@@ -110,7 +119,11 @@ def eval_neighbour_in_border(coords: CellCoords, singular_neighbour: CellCurveBa
             return None, None
         # inverse = inverse[(coords[1 - crossing_axis] + 0.5 >= inverse) & (inverse >= coords[1 - crossing_axis] - 0.5)]
         point = (inverse[~np.isnan(inverse)][0], crossing)
-    der_evals = np.ravel(singular_neighbour.curve.derivative(np.array([point[0]])))
+    try:
+        # der_evals = np.ravel(singular_neighbour.curve.derivative(np.array([point[0]])))
+        der_evals = np.ravel(singular_neighbour.curve.derivative(point[0]))
+    except:
+        der_evals = np.ravel(singular_neighbour.curve.derivative(point[0]))
     der_evals = der_evals[~np.isnan(der_evals)]
     if len(der_evals) >= 1:
         versor = (1, der_evals[0])
@@ -133,7 +146,7 @@ class VertexCellCreatorUsingNeighboursLines(VertexCellCreatorUsingNeighbours):
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
                       stencil: Stencil, regular_opposite_cells: Tuple,
                       singular_neighbours: Tuple[CellCurveBase, CellCurveBase], **kwargs) -> Generator[
-        CurveBase, None, None]:
+        Curve, None, None]:
         point1, versor1 = eval_neighbour_in_border(coords, singular_neighbours[0], independent_axis)
         point2, versor2 = eval_neighbour_in_border(coords, singular_neighbours[1], independent_axis)
 

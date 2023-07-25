@@ -3,7 +3,7 @@ from typing import Union, List
 
 import numpy as np
 
-from lib.Curves.CurveBase import CurveBase
+from lib.Curves.Curves import Curve
 
 CircleParams = namedtuple("CircleParams", "x0 y0 radius")
 
@@ -12,7 +12,7 @@ def get_concavity(x_points, y):
     return len(x_points) * (2 * (np.diff(y, 2).squeeze() > 0) - 1)
 
 
-class CurveSemiCircle(CurveBase):
+class CurveSemiCircle(Curve):
     # TODO: what happens if circle goes below... Check
     def __init__(self, params: CircleParams, value_up=0, value_down=1, concave=False):
         """

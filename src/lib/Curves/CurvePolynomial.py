@@ -4,14 +4,14 @@ from typing import Union, List, Tuple
 import numpy as np
 from numpy.polynomial import Polynomial
 
-from lib.Curves.CurveBase import CurveBase
+from lib.Curves.Curves import Curve
 
 LEFT = -1
 RIGHT = 1
 LEFT_RIGHT_OPERATORS = {LEFT: operator.le, RIGHT: operator.ge}
 
 
-class CurvePolynomial(CurveBase):
+class CurvePolynomial(Curve):
     def __init__(self, polynomial: Union[List, np.ndarray, Polynomial], value_up=0, value_down=1, x_shift=0):
         """
         coef : array_like
@@ -101,7 +101,7 @@ class CurveLinearAngle(CurvePolynomial):
         CurvePolynomial.params.fset(self, angle_2slope(args[0], args[1]))
 
 
-class CurveLinearAngleOffset(CurveBase):
+class CurveLinearAngleOffset(Curve):
     def __init__(self, angle, r, x0, y0, value_up=0, value_down=1):
         self.y0 = y0
         self.x0 = x0
@@ -151,7 +151,7 @@ class CurveQuadratic(CurvePolynomial):
         super().__init__([c, b, a], value_up, value_down, x_shift)
 
 
-class NoCurveRegion(CurveBase):
+class NoCurveRegion(Curve):
     def __init__(self, value, x0: float, direction):
         super().__init__(curve_name="NoCurveRegion", value_up=value)
         self.x0 = x0
@@ -161,6 +161,14 @@ class NoCurveRegion(CurveBase):
     @property
     def value(self):
         return self.value_up
+
+    @property
+    def params(self):
+        return [self.x0]
+
+    @params.setter
+    def params(self, *args):
+        self.x0 = args[0]
 
     def function(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return x * np.nan

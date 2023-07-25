@@ -17,7 +17,8 @@ from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL, VERTEX_C
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE, REGULAR_CELL_TYPE, VERTEX_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
-from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells
+from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells, \
+    get_opposite_regular_cells_by_stencil
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator
 from lib.CellCreators.RegularCellCreator import PiecewiseConstantRegularCellCreator
 from lib.CellCreators.VertexCellCreators.VertexCellCreatorBase import VertexCellCreatorUsingNeighboursLines
@@ -106,16 +107,18 @@ def vertex(iterations):
                                       condition=operator.eq),
                 orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
                 stencil_creator=StencilCreatorFixedShape((3, 3)),
-                cell_creator=ELVIRACurveCellCreator(regular_opposite_cell_searcher=get_opposite_regular_cells)),
-            # CellCreatorPipeline(
-            #     cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
-            #                           condition=operator.eq),
-            #     orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
-            #     stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3),
-            #     cell_creator=ValuesCurveCellCreator(regular_opposite_cell_searcher=get_opposite_regular_cells,
-            #                                         vander_curve=partial(CurveAveragePolynomial, degree=2,
-            #                                                              ccew=CCExtraWeight))
-            # ),
+                cell_creator=ELVIRACurveCellCreator(
+                    regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
+                                      condition=operator.eq),
+                orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
+                stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3),
+                cell_creator=ValuesCurveCellCreator(
+                    regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil,
+                    vander_curve=partial(CurveAveragePolynomial, degree=2,
+                                         ccew=CCExtraWeight))
+            ),
             CellCreatorPipeline(
                 cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                                       condition=operator.eq),
@@ -124,14 +127,6 @@ def vertex(iterations):
                 cell_creator=VertexCellCreatorUsingNeighboursLines(
                     regular_opposite_cell_searcher=get_opposite_regular_cells)
             ),
-            # CellCreatorPipeline(
-            #     cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
-            #                           condition=operator.eq),
-            #     orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
-            #     stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3),
-            #     cell_creator=ValuesCurveCellCreator(regular_opposite_cell_searcher=get_opposite_regular_cells,
-            #                                         vander_curve=partial(CurveAveragePolynomial, degree=2,
-            #                                                              ccew=CCExtraWeight))),
         ],
         obera_iterations=iterations
     )
@@ -196,19 +191,17 @@ if __name__ == "__main__":
     )
     lab.execute(
         data_manager,
-        num_cores=1,
-        forget=False,
+        num_cores=3,
+        forget=True,
         save_on_iteration=1,
         refinement=[1],
-        # num_cells_per_dim=[20, 42, 84], # 168
-        num_cells_per_dim=[20], # 168
-        # num_cells_per_dim=[20],
+        num_cells_per_dim=[20, 42, 84],  # 168
         noise=[0],
         image=[
-            "StarWars.jpeg",
+            # "StarWars.jpeg",
             "StarWarsVader.jpeg"
         ],
-        iterations=[10],  # 500
+        iterations=[0],  # 500
         reconstruction_factor=[5],
     )
 

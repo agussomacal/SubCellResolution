@@ -10,7 +10,7 @@ from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CurveCellCre
     get_x_points
 from lib.CellCreators.CurveCellCreators.ParametersCurveCellCreators import DefaultCircleCurveCellCreator
 from lib.Curves.AverageCurves import CurveAveragePolynomial
-from lib.Curves.CurveBase import CurveBase, CurveReparametrized
+from lib.Curves.Curves import Curve, CurveReparametrized
 from lib.Curves.CurveCircle import get_concavity, CurveSemiCircle, CircleParams
 from lib.Curves.VanderCurves import CurveVandermondePolynomial, CurveVanderCircle
 from lib.StencilCreators import Stencil
@@ -29,7 +29,7 @@ class ValuesCurveCellCreator(CurveCellCreatorBase):
 
     def create_curves(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
-                      stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[CurveBase, None, None]:
+                      stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
         value_up = regular_opposite_cells[1].evaluate(coords.coords)
         value_down = regular_opposite_cells[0].evaluate(coords.coords)
         x_points, stencil_values = map2unidimensional(value_up, value_down, independent_axis, stencil)
@@ -54,7 +54,7 @@ class ValuesLinearCellCreator(ValuesCurveCellCreator):
 
     def create_curves(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
-                      stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[CurveBase, None, None]:
+                      stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
         value_up = regular_opposite_cells[1].evaluate(coords.coords)
         value_down = regular_opposite_cells[0].evaluate(coords.coords)
         x_points, stencil_values = map2unidimensional(value_up, value_down, independent_axis, stencil)
@@ -78,7 +78,7 @@ class ValuesCircleCellCreator(CurveCellCreatorBase):
 
     def create_curves(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
-                      stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[CurveBase, None, None]:
+                      stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
         value_up = regular_opposite_cells[1].evaluate(coords.coords)
         value_down = regular_opposite_cells[0].evaluate(coords.coords)
         x_points, stencil_values = map2unidimensional(value_up, value_down, independent_axis, stencil)
@@ -103,7 +103,7 @@ class ValuesDefaultCurveCellCreator(CurveCellCreatorBase):
 
     def create_curves(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
-                      stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[CurveBase, None, None]:
+                      stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
         value_up = regular_opposite_cells[1].evaluate(coords.coords)
         value_down = regular_opposite_cells[0].evaluate(coords.coords)
         x_points = get_x_points(stencil, independent_axis)
@@ -122,7 +122,7 @@ class ValuesDefaultLinearCellCreator(CurveCellCreatorBase):
 
     def create_curves(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
-                      stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[CurveBase, None, None]:
+                      stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
         value_up = regular_opposite_cells[1].evaluate(coords.coords)
         value_down = regular_opposite_cells[0].evaluate(coords.coords)
         x_points = get_x_points(stencil, independent_axis)
@@ -139,7 +139,7 @@ class ValuesDefaultLinearCellCreator(CurveCellCreatorBase):
 class ValuesDefaultCircleCellCreator(DefaultCircleCurveCellCreator):
     def create_curves(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
-                      stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[CurveBase, None, None]:
+                      stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
         circle = next(super(ValuesDefaultCircleCellCreator, self).create_curves(
             average_values=average_values,
             indexer=indexer, cells=cells,

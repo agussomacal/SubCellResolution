@@ -1,6 +1,6 @@
 import numpy as np
 
-from lib.Curves.CurveBase import CurveReparametrized
+from lib.Curves.Curves import CurveReparametrized
 from lib.Curves.CurveCircle import CurveSemiCircle, get_concavity
 from lib.Curves.CurvePolynomial import CurvePolynomial
 

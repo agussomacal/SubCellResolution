@@ -10,7 +10,7 @@ import config
 from config import subcell_paper_path
 from PerplexityLab.LaTexReports import Code2LatexConnector
 from PerplexityLab.visualization import save_fig
-from lib.Curves.CurveBase import CurveBase
+from lib.Curves.Curves import Curve
 
 
 def calculate_averages_from_image(image, num_cells_per_dim: Union[int, Tuple[int, int]]):
@@ -21,7 +21,7 @@ def calculate_averages_from_image(image, num_cells_per_dim: Union[int, Tuple[int
     return image.reshape((ncx, img_x // ncx, ncy, img_y // ncy)).mean(-1).mean(-2)
 
 
-def calculate_averages_from_curve(curve: CurveBase, resolution: Tuple[int, int], deplacement: Tuple = None,
+def calculate_averages_from_curve(curve: Curve, resolution: Tuple[int, int], deplacement: Tuple = None,
                                   origin=(0, 0)):
     "TODO generalize"
     if deplacement is None:

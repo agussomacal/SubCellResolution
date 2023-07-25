@@ -1,16 +1,18 @@
+import operator
 import warnings
 from typing import Union, List, Tuple
 
 import numpy as np
 from numpy.polynomial import Polynomial
 
-from lib.Curves.CurveBase import CurveBase
 from lib.Curves.CurvePolynomial import LEFT, RIGHT, CurvePolynomialByParts, NoCurveRegion
+from lib.Curves.Curves import CurvesCombined
 
 
 def create_curve_vertex_polynomial(polynomials: Tuple[Union[List, np.ndarray, Polynomial], ...], x0: float,
                                    value_up: float = 0, value_down: float = 1, x_shift: float = 0,
-                                   directions=(LEFT, RIGHT)) -> CurveBase:
+                                   directions=(LEFT, RIGHT)) -> Tuple[
+    Union[CurvePolynomialByParts, NoCurveRegion], ...]:
     # this method only works if functions are 0-1
     assert np.allclose(value_up, 1) or np.allclose(value_up, 0)
     if not np.allclose(np.abs(value_up - value_down), 1):
@@ -38,8 +40,8 @@ def create_curve_vertex_polynomial(polynomials: Tuple[Union[List, np.ndarray, Po
         # Check the value in between curves, this should be the opposite in the NoRegion side
         xt = x0 + directions[0]
         polynomial = polynomial_1 + polynomial_2
-        return polynomial + NoCurveRegion(value=1 - polynomial(xt, np.mean(polynomial(np.array([xt])))),
-                                          x0=x0, direction=-1 * directions[0])
+        return polynomial_1, polynomial_2, NoCurveRegion(value=1 - polynomial(xt, np.mean(polynomial(np.array([xt])))),
+                                                         x0=x0, direction=-1 * directions[0])
     else:
         polynomial_1 = CurvePolynomialByParts(
             polynomial=polynomials[0], x_shift=x_shift,
@@ -50,19 +52,38 @@ def create_curve_vertex_polynomial(polynomials: Tuple[Union[List, np.ndarray, Po
             value_up=value_up, value_down=value_down,
             x0=x0, direction=directions[1])
 
-        return polynomial_1 + polynomial_2
+        return polynomial_1, polynomial_2
 
 
-class CurveVertexPolynomial(CurveBase):
+class CurveVertexPolynomial(CurvesCombined):
     def __init__(self, polynomials: Tuple[Union[List, np.ndarray, Polynomial], ...], x0: float, value_up: float = 0,
                  value_down: float = 1, x_shift: float = 0, directions=(LEFT, RIGHT)):
         # TODO: when LEFT RIGHT branches are evaluated exactly in x0 both are summed.
-        curve = create_curve_vertex_polynomial(polynomials, x0, value_up, value_down, x_shift, directions)
-        super().__init__(curve_name=f"Vertex_{curve.curve_name}", value_up=value_up, value_down=value_down)
-        setattr(self, "function_inverse", curve.function_inverse)
-        setattr(self, "calculate_integrals", curve.calculate_integrals)
-        setattr(self, "function", curve.function)
-        setattr(self, "evaluate", curve.evaluate)
+        curves = create_curve_vertex_polynomial(polynomials, x0, value_up, value_down, x_shift, directions)
+        super(CurveVertexPolynomial, self).__init__(operator.add, *curves)
+        self.curve_name = "Vertex" + self.curve_name
+
+    @property
+    def x0(self):
+        return self.curves[0].x0
+
+    @x0.setter
+    def x0(self, value):
+        for i in range(self.num_curves):
+            self.curves[i].x0 = value
+
+    @property
+    def params(self):
+        params = super(CurveVertexPolynomial, self).params
+        # [parameters of first polynomial] [parameters of second polynomial except y0 because is included in first] [x0]
+        return np.hstack((params[:self.curves[0].dim], params[self.curves[0].dim + 1:]))
+
+    @params.setter
+    def params(self, args):
+        self.x0 = args[-1]
+        # [parameters of first polynomial] [] [x0]
+        params = np.hstack((args[:self.curves[0].dim], args[:1], args[self.curves[0].dim:]))
+        super(CurveVertexPolynomial, self.__class__).params.fset(self, params)
 
 
 class CurveVertexLinearAngle(CurveVertexPolynomial):

@@ -5,8 +5,28 @@ import numpy as np
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.CellCreators.CellCreatorBase import CellBase, REGULAR_CELL_TYPE
 from lib.CellOrientators import approximate_gradient_by
-from lib.StencilCreators import get_fixed_stencil_values
+from lib.StencilCreators import get_fixed_stencil_values, StencilCreatorFixedShape
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
+
+
+def get_opposite_regular_cells_by_stencil(coords: CellCoords, cells: Dict[Tuple[int], CellBase],
+                                          independent_axis: int,
+                                          average_values: np.ndarray, smoothness_index: np.ndarray,
+                                          indexer: ArrayIndexerNd, stencil_size=5, **kwargs):
+    stencil = StencilCreatorFixedShape(stencil_shape=(stencil_size, stencil_size)).get_stencil(
+        average_values=average_values, smoothness_index=smoothness_index, coords=coords,
+        independent_axis=independent_axis, indexer=indexer)
+    mask = [indexer[coords_i] in cells.keys() and (cells[indexer[coords_i]].CELL_TYPE == REGULAR_CELL_TYPE) for coords_i
+            in stencil.coords]
+
+    eps = 1e-10
+    dealignement = stencil.coords[mask, 1 - independent_axis] - coords[1 - independent_axis]
+    regular_opposite_cell_coords = (stencil.coords[mask][np.argmin(stencil.values[mask] + eps * dealignement)],
+                                    stencil.coords[mask][np.argmax(stencil.values[mask] - eps * dealignement)])
+
+    # order from down to up given dependant axis.
+    regular_opposite_cell_coords = sorted(regular_opposite_cell_coords, key=lambda c: c[1 - independent_axis])
+    return tuple([cells[tuple(indexer[o])] for o in regular_opposite_cell_coords])
 
 
 def get_regular_opposite_cell_coords_by_direction(coords: CellCoords, cells: Dict[Tuple[int, ...], CellBase],
@@ -79,10 +99,32 @@ def get_opposite_cells_by_smoothness_threshold(coords: CellCoords, cells: Dict[T
 def get_opposite_regular_cells(coords: CellCoords, cells: Dict[Tuple[int], CellBase],
                                independent_axis: int,
                                average_values: np.ndarray, smoothness_index: np.ndarray,
-                               indexer: ArrayIndexerNd, **kwargs):
+                               indexer: ArrayIndexerNd, direction="grad", **kwargs):
+    """
+
+    Given the direction of the dependent axis will go up and down searching for the two regular cells.
+    :param coords:
+    :param cells:
+    :param independent_axis:
+    :param average_values:
+    :param smoothness_index:
+    :param indexer:
+    :param kwargs:
+    :return:
+    """
+    if direction == "grad":
+        direction = approximate_gradient_by(
+            average_values=get_fixed_stencil_values(stencil_size=(3, 3), coords=coords, average_values=average_values,
+                                                    indexer=indexer),
+            method="scharr",
+            normalize=True
+        )
+    else:
+        direction = np.array([0, 1])
+
     regular_opposite_cell_coords, _ = get_regular_opposite_cell_coords_by_direction(
         coords=coords, cells=cells, average_values=average_values, indexer=indexer,
-        direction=np.array([0, 1])[[independent_axis, 1 - independent_axis]],
+        direction=direction[[independent_axis, 1 - independent_axis]],
         acceptance_criterion=lambda coords_i: indexer[coords_i] in cells.keys() and
                                               (cells[indexer[coords_i]].CELL_TYPE == REGULAR_CELL_TYPE),
         start=1)

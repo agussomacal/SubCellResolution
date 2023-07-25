@@ -6,7 +6,7 @@ import numpy as np
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.CellCreators.CellCreatorBase import CellCreatorBase, \
     CellBase, CURVE_CELL_TYPE
-from lib.Curves.CurveBase import CurveBase
+from lib.Curves.Curves import Curve
 from lib.StencilCreators import Stencil
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 
@@ -49,7 +49,7 @@ def get_zone(curve, point, independent_axis, dependent_axis):
 class CellCurveBase(CellBase):
     CELL_TYPE = CURVE_CELL_TYPE
 
-    def __init__(self, coords: CellCoords, curve: CurveBase, regular_opposite_cells: Tuple[CellBase, CellBase],
+    def __init__(self, coords: CellCoords, curve: Curve, regular_opposite_cells: Tuple[CellBase, CellBase],
                  dependent_axis: int = 1):
         super().__init__(coords)
 
@@ -83,10 +83,12 @@ class CellCurveBase(CellBase):
         )
 
     def evaluate(self, query_points: np.ndarray) -> np.ndarray:
-        return np.array([self.regular_opposite_cells[
-                             (get_zone(self.curve, point, self.independent_axis,
-                                       self.dependent_axis) - self.zone_roc0) % 2].evaluate(point)
-                         for point in query_points])
+        return self.curve.evaluate(x=query_points[:, self.independent_axis],
+                                   y=query_points[:, self.dependent_axis])
+        # return np.array([self.regular_opposite_cells[
+        #                      (get_zone(self.curve, point, self.independent_axis,
+        #                                self.dependent_axis) - self.zone_roc0) % 2].evaluate(point)
+        #                  for point in query_points])
 
 
 # ====================================================== #
@@ -118,5 +120,5 @@ class CurveCellCreatorBase(CellCreatorBase):
 
     def create_curves(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
-                      stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[CurveBase, None, None]:
+                      stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
         raise Exception("Not implemented.")
