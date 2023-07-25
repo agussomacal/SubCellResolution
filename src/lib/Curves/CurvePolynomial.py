@@ -65,8 +65,8 @@ class CurvePolynomialByParts(CurvePolynomial):
         self.x0_integral = super(CurvePolynomialByParts, self).function_integral(self.x0)
 
     def function(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
-        f = super(CurvePolynomialByParts, self).function(x)
-        f[~self.direction_op(x, self.x0)] = np.nan  # because there is n definition of the function there
+        f = np.array(super(CurvePolynomialByParts, self).function(x))
+        f[~self.direction_op(x, self.x0)] = np.nan  # because there is no definition of the function there
         return f
 
     def function_inverse(self, y: float) -> List[float]:

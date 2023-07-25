@@ -38,3 +38,10 @@ def iterate_by_reconstruction_error(reconstruction_error: np.ndarray, **kwargs):
     coords = get_coordinates(reconstruction_error)
     for i in np.argsort(-reconstruction_error.ravel()):
         yield CellCoords(tuple([int(c[i]) for c in coords]))
+
+
+def iterate_by_reconstruction_error_and_smoothness(reconstruction_error: np.ndarray, smoothness_index, value=0,
+                                                   condition: operator = operator.ge, **kwargs):
+    for cell in sorted(iterate_by_condition_on_smoothness(smoothness_index, value, condition, **kwargs),
+                       key=lambda cell: -reconstruction_error[cell.tuple]):
+        yield cell

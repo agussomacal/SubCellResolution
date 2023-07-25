@@ -3,7 +3,7 @@ from functools import partial
 
 import seaborn as sns
 
-from lib.CellCreators.CellCreatorBase import SPECIAL_CELLS_COLOR_DICT, REGULAR_CELL_TYPE
+from lib.CellCreators.CellCreatorBase import SPECIAL_CELLS_COLOR_DICT, REGULAR_CELL_TYPE, CURVE_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CellCurveBase
 from lib.Curves.CurveVertex import CurveVertexPolynomial
 
@@ -227,5 +227,6 @@ def plot_curve_core(ax, curve_cells):
     for curve_cell in curve_cells:
         # for points in (get_curve_vertex(curve_cell) if
         # isinstance(curve_cell.curve, VertexLinearExtended) else get_curve(curve_cell)):
-        for points in get_curve(curve_cell):
+        for points in get_curve(curve_cell) if curve_cell.CELL_TYPE == CURVE_CELL_TYPE else get_curve_vertex(
+                curve_cell):
             ax.plot(*transform_points2plot(points).T, '-', c=COLOR_CURVE, alpha=1, linewidth=2.5)

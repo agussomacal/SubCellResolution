@@ -13,15 +13,15 @@ from experiments.VizReconstructionUtils import plot_cells, plot_cells_identity, 
 from experiments.subcell_paper.function_families import load_image, calculate_averages_from_image
 from experiments.subcell_paper.global_params import CCExtraWeight
 from experiments.subcell_paper.obera_experiments import get_sub_cell_model
-from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
+from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL, VERTEX_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
-from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
+from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE, REGULAR_CELL_TYPE, VERTEX_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator
 from lib.CellCreators.RegularCellCreator import PiecewiseConstantRegularCellCreator
 from lib.CellCreators.VertexCellCreators.VertexCellCreatorBase import VertexCellCreatorUsingNeighboursLines
-from lib.CellIterators import iterate_by_condition_on_smoothness
+from lib.CellIterators import iterate_by_condition_on_smoothness, iterate_by_reconstruction_error_and_smoothness
 from lib.CellOrientators import BaseOrientator, OrientByGradient
 from lib.Curves.AverageCurves import CurveAveragePolynomial
 from lib.SmoothnessCalculators import naive_piece_wise
@@ -107,17 +107,17 @@ def vertex(iterations):
                 orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
                 stencil_creator=StencilCreatorFixedShape((3, 3)),
                 cell_creator=ELVIRACurveCellCreator(regular_opposite_cell_searcher=get_opposite_regular_cells)),
+            # CellCreatorPipeline(
+            #     cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
+            #                           condition=operator.eq),
+            #     orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
+            #     stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3),
+            #     cell_creator=ValuesCurveCellCreator(regular_opposite_cell_searcher=get_opposite_regular_cells,
+            #                                         vander_curve=partial(CurveAveragePolynomial, degree=2,
+            #                                                              ccew=CCExtraWeight))
+            # ),
             CellCreatorPipeline(
-                cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
-                                      condition=operator.eq),
-                orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
-                stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3),
-                cell_creator=ValuesCurveCellCreator(regular_opposite_cell_searcher=get_opposite_regular_cells,
-                                                    vander_curve=partial(CurveAveragePolynomial, degree=2,
-                                                                         ccew=CCExtraWeight))
-            ),
-            CellCreatorPipeline(
-                cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
+                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                                       condition=operator.eq),
                 orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
                 stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3),
@@ -167,7 +167,7 @@ def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction
         elif plot_singular_cells:
             plot_cells_not_regular_classification_core(ax, model.resolution, model.cells, alpha=0.8)
         plot_curve_core(ax, curve_cells=[cell for cell in model.cells.values() if
-                                         cell.CELL_TYPE == CURVE_CELL_TYPE])
+                                         cell.CELL_TYPE != REGULAR_CELL_TYPE])
 
     draw_cell_borders(
         ax, mesh_shape=num_cells_per_dim,
@@ -196,19 +196,26 @@ if __name__ == "__main__":
     )
     lab.execute(
         data_manager,
-        num_cores=15,
-        forget=True,
+        num_cores=1,
+        forget=False,
         save_on_iteration=1,
         refinement=[1],
-        num_cells_per_dim=[20, 42, 84, 168],
+        # num_cells_per_dim=[20, 42, 84], # 168
+        num_cells_per_dim=[20], # 168
+        # num_cells_per_dim=[20],
         noise=[0],
         image=[
             "StarWars.jpeg",
             "StarWarsVader.jpeg"
         ],
-        iterations=[500],  # 500
+        iterations=[10],  # 500
         reconstruction_factor=[5],
     )
+
+    for model in data_manager["model"]:
+        print(f"{model}: "
+              f"#CURVES={sum([1 for cell in model.cells.values() if cell.CELL_TYPE == CURVE_CELL_TYPE])}"
+              f"#VERTICES={sum([1 for cell in model.cells.values() if cell.CELL_TYPE == VERTEX_CELL_TYPE])}", )
 
     plot_reconstruction(
         data_manager,

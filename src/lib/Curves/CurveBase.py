@@ -44,6 +44,16 @@ def new_evaluate(x: Union[float, np.ndarray], y: Union[float, np.ndarray] = None
 def create_new_curve(self, other, operator_function: Callable[[float, float], float]):
     if isinstance(other, CurveBase):
         new_curve = CurveBase(curve_name=f"{self}{operator_function.__name__}{other}")
+
+        # TODO: new_curve.params https://stackoverflow.com/questions/75050310/python-dynamically-add-properties-to-class-instance-properties-return-function
+        def params_get():
+            return list(self.params) + list(other.params)
+
+        def params_set(params):
+            self.params = params[self.dim:]
+            other.params = params[-other.dim:]
+
+        setattr(new_curve, "params", property(fget=params_get, fset=params_set))
         # the partial is needed to make the function picklable so it can be used in experiments and paralelize
         setattr(new_curve, "calculate_integrals",
                 partial(new_calculate_integrals, self=self, other=other, operator_function=operator_function))
@@ -150,6 +160,11 @@ class CurveBase:
 
     def __sub__(self, other):
         return create_new_curve(self, other, operator.sub)
+
+
+# class CurvesCombined(CurveBase):
+#     def __init__(self, *curves: CurveBase):
+#         self.curves = curves
 
 
 class CurveReparametrized(CurveBase):
