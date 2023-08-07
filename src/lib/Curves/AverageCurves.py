@@ -38,3 +38,15 @@ class CurveAveragePolynomial(CurveReparametrized, CurvePolynomial):
     def get_natural_parametrization_curve(self):
         return CurvePolynomial(self.new_params2natural_params(self.x_points, self.y_points), value_up=self.value_up,
                                value_down=self.value_down, x_shift=self.x_shift)
+
+
+if __name__ == "__main__":
+    degree = 2
+    x_points = np.arange(3)+0.5
+    A = (np.vander(x_points + 0.5, N=degree + 2, increasing=True)[:, 1:] -
+         np.vander(x_points - 0.5, N=degree + 2, increasing=True)[:, 1:]) / np.arange(1, degree + 2)[np.newaxis, :]
+    print(A)
+    # np.linalg.lstsq(
+    #     A  * weights[:, np.newaxis],
+    #     (y_points * weights).reshape((-1, 1)),
+    #     rcond=None)[0].ravel()

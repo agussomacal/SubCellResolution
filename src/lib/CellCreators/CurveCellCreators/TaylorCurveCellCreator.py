@@ -6,14 +6,12 @@ import numpy as np
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.CellCreators.CellCreatorBase import CellBase
-from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import map2unidimensional
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator
 from lib.Curves.AverageCurves import CurveAveragePolynomial
-from lib.Curves.Curves import Curve
-from lib.Curves.Curves import CurveReparametrized
 from lib.Curves.CurveCircle import CurveSemiCircle, CircleParams
 from lib.Curves.CurvePolynomial import CurvePolynomial
-from lib.Curves.VanderCurves import CurveVandermondePolynomial
+from lib.Curves.Curves import Curve
+from lib.Curves.Curves import CurveReparametrized
 from lib.StencilCreators import Stencil
 
 
@@ -38,6 +36,9 @@ class TaylorCurveCellCreator(ValuesCurveCellCreator):
 
 
 class TaylorFromVanderCurveCellCreator(TaylorCurveCellCreator):
+    """
+    Uses a quadratic fit (AERO) to then infer evaluation points and values to estimate the final curve prameters.
+    """
     def get_curve_from_taylor(self, curve_polynomial: CurveReparametrized) -> CurveReparametrized:
         xc = curve_polynomial.x_points[curve_polynomial.center]
         x_points = np.linspace(xc - 0.5, xc + 0.5, num=curve_polynomial.dim)
@@ -51,6 +52,9 @@ class TaylorFromVanderCurveCellCreator(TaylorCurveCellCreator):
 
 
 class TaylorCircleCurveCellCreator(TaylorCurveCellCreator):
+    """
+    For the case of the circle uses the quadratic to get the curvature and then the radius and positions of the center.
+    """
     def __init__(self, regular_opposite_cell_searcher: Callable, ccew=0):
         super().__init__(curve=CurveSemiCircle, degree=2, regular_opposite_cell_searcher=regular_opposite_cell_searcher,
                          ccew=ccew)
