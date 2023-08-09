@@ -99,7 +99,7 @@ def get_opposite_cells_by_smoothness_threshold(coords: CellCoords, cells: Dict[T
 def get_opposite_regular_cells(coords: CellCoords, cells: Dict[Tuple[int], CellBase],
                                independent_axis: int,
                                average_values: np.ndarray, smoothness_index: np.ndarray,
-                               indexer: ArrayIndexerNd, direction="grad", **kwargs):
+                               indexer: ArrayIndexerNd, direction="vertical", **kwargs):
     """
 
     Given the direction of the dependent axis will go up and down searching for the two regular cells.
@@ -119,8 +119,10 @@ def get_opposite_regular_cells(coords: CellCoords, cells: Dict[Tuple[int], CellB
             method="scharr",
             normalize=True
         )
-    else:
+    elif direction == "vertical":
         direction = np.array([0, 1])
+    else:
+        raise Exception(f"Direction {direction} not implemented.")
 
     regular_opposite_cell_coords, _ = get_regular_opposite_cell_coords_by_direction(
         coords=coords, cells=cells, average_values=average_values, indexer=indexer,

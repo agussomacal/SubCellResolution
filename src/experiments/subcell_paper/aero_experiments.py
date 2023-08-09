@@ -7,7 +7,7 @@ import seaborn as sns
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
-from PerplexityLab.miscellaneous import NamedPartial
+from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
 from PerplexityLab.visualization import generic_plot
 from experiments.subcell_paper.function_families import calculate_averages_from_curve, calculate_averages_from_image
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, OBERA_ITERS, \
@@ -237,7 +237,7 @@ def circle_vander_avg(metric):
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
-        name='AERO',
+        name='AEROFull',
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
@@ -280,11 +280,11 @@ if __name__ == "__main__":
         quadratic_obera_non_adaptive,
         quadratic_obera,
         quadratic_avg,
-        elvira_go100_ref2,
-        quadratic_avg_ref2,
+        # elvira_go100_ref2,
+        # quadratic_avg_ref2,
         circle_avg,
         circle_vander_avg,
-        recalculate=False
+        recalculate=True
     )
     num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()
     lab.execute(
@@ -301,21 +301,149 @@ if __name__ == "__main__":
         metric=[2]
     )
 
+    mse = lambda reconstruction, image4error: np.mean(((np.array(reconstruction) - image4error) ** 2).ravel())
+
     generic_plot(data_manager,
                  name="Convergence",
                  x="N", y="mse", label="models", num_cells_per_dim=num_cells_per_dim,
                  plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
                  log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 mse=lambda reconstruction, image4error: np.mean(
-                     ((np.array(reconstruction) - image4error) ** 2).ravel())
+                 mse=mse,
+                 models=[
+                     "piecewise_constant",
+                     "elvira",
+                     "elvira_100",
+                     "elvira_grad_oriented",
+                     "linear_obera",
+                     "linear_avg",
+                     "linear_avg_100",
+                     "quadratic_obera_non_adaptive",
+                     "quadratic_obera",
+                     "quadratic_avg",
+                     "elvira_go100_ref2",
+                     "quadratic_avg_ref2",
+                     "circle_avg",
+                     "circle_vander_avg",
+                 ],
                  )
 
     generic_plot(data_manager,
-                 name="TimeComplexity",
-                 x="time", y="mse", label="models", num_cells_per_dim=num_cells_per_dim,
+                 name="TimeComplexityLinearModels",
+                 x="N", y="time", label="models", num_cells_per_dim=num_cells_per_dim,
                  plot_func=NamedPartial(sns.lineplot, marker=".", linestyle="--"),
-                 log="xy", time=lambda time_to_fit: time_to_fit,
-                 mse=lambda reconstruction, image4error: ((np.array(reconstruction) - image4error) ** 2).ravel()
+                 log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                 mse=mse,
+                 models=[
+                     # "piecewise_constant",
+                     "elvira",
+                     "elvira_100",
+                     "elvira_grad_oriented",
+                     "linear_avg",
+                     "linear_avg_100",
+                     "linear_obera",
+                     # "quadratic_obera_non_adaptive",
+                     # "quadratic_obera",
+                     # "quadratic_avg",
+                     # "elvira_go100_ref2",
+                     # "quadratic_avg_ref2",
+                     # "circle_avg",
+                     # "circle_vander_avg",
+                 ],
+                 )
+
+    generic_plot(data_manager,
+                 name="ConvergenceModels",
+                 x="N", y="mse", label="models", num_cells_per_dim=num_cells_per_dim,
+                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                 log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                 mse=mse,
+                 models=[
+                     "piecewise_constant",
+                     # "elvira",
+                     # "elvira_100",
+                     "elvira_grad_oriented",
+                     # "linear_obera",
+                     # "linear_avg",
+                     # "linear_avg_100",
+                     "quadratic_obera_non_adaptive",
+                     "quadratic_obera",
+                     "quadratic_avg",
+                     # "elvira_go100_ref2",
+                     # "quadratic_avg_ref2",
+                     "circle_avg",
+                     # "circle_vander_avg",
+                 ],
+                 )
+
+    generic_plot(data_manager,
+                 name="TimeComplexityModels",
+                 x="N", y="time", label="models", num_cells_per_dim=num_cells_per_dim,
+                 plot_func=NamedPartial(sns.lineplot, marker=".", linestyle="--"),
+                 log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                 mse=mse,
+                 models=[
+                     "piecewise_constant",
+                     # "elvira",
+                     # "elvira_100",
+                     "elvira_grad_oriented",
+                     # "linear_obera",
+                     # "linear_avg",
+                     # "linear_avg_100",
+                     "quadratic_obera_non_adaptive",
+                     "quadratic_obera",
+                     "quadratic_avg",
+                     # "elvira_go100_ref2",
+                     # "quadratic_avg_ref2",
+                     "circle_avg",
+                     # "circle_vander_avg",
+                 ],
+                 )
+
+    generic_plot(data_manager,
+                 name="ConvergenceRefinement",
+                 x="N", y="mse", label="models", num_cells_per_dim=num_cells_per_dim,
+                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                 log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                 mse=mse,
+                 models=[
+                     "piecewise_constant",
+                     # "elvira",
+                     # "elvira_100",
+                     "elvira_grad_oriented",
+                     # "linear_obera",
+                     # "linear_avg",
+                     # "linear_avg_100",
+                     # "quadratic_obera_non_adaptive",
+                     # "quadratic_obera",
+                     "quadratic_avg",
+                     "elvira_go100_ref2",
+                     "quadratic_avg_ref2",
+                     # "circle_avg",
+                     # "circle_vander_avg",
+                 ],
+                 )
+
+    generic_plot(data_manager,
+                 name="TimeComplexityRefinement",
+                 x="N", y="time", label="models", num_cells_per_dim=num_cells_per_dim,
+                 plot_func=NamedPartial(sns.lineplot, marker=".", linestyle="--"),
+                 log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                 models=[
+                     "piecewise_constant",
+                     # "elvira",
+                     # "elvira_100",
+                     "elvira_grad_oriented",
+                     # "linear_obera",
+                     # "linear_avg",
+                     # "linear_avg_100",
+                     # "quadratic_obera_non_adaptive",
+                     # "quadratic_obera",
+                     "quadratic_avg",
+                     "elvira_go100_ref2",
+                     "quadratic_avg_ref2",
+                     # "circle_avg",
+                     # "circle_vander_avg",
+                 ],
                  )
 
     plot_reconstruction(
@@ -333,7 +461,7 @@ if __name__ == "__main__":
         plot_original_image=True,
         numbers_on=True,
         plot_again=True,
-        num_cores=1,
+        num_cores=15,
         # trim=trim
     )
     # plot_original_image(
@@ -346,3 +474,4 @@ if __name__ == "__main__":
     # )
 
     print("CO2 consumption: ", data_manager.CO2kg)
+    copy_main_script_version(__file__, data_manager.path)
