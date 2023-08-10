@@ -9,6 +9,6 @@ matplotlib
 seaborn
 scikit-learn
 makefun
-
+tensorflow
 sympy
 # python -m ipykernel install --user --name venv --display-name "SubCell-venv"
