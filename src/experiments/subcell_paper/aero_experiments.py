@@ -36,6 +36,7 @@ def fit_model(sub_cell_model):
         avg_values = image + np.random.uniform(-noise, noise, size=image.shape)
 
         model = sub_cell_model(metric)
+        print(f"Doing model: {model}")
 
         t0 = time.time()
         model.fit(average_values=avg_values, indexer=ArrayIndexerNd(avg_values, "cyclic"))
@@ -242,6 +243,7 @@ if __name__ == "__main__":
         trackCO2=True,
         country_alpha_code="FR"
     )
+    data_manager.load()
 
     lab = LabPipeline()
     lab.define_new_block_of_functions(
@@ -270,20 +272,20 @@ if __name__ == "__main__":
 
     lab.define_new_block_of_functions(
         "models",
-        piecewise_constant,
-        elvira,
-        elvira_100,
-        elvira_grad_oriented,
-        linear_obera,
-        linear_avg,
-        linear_avg_100,
-        quadratic_obera_non_adaptive,
-        quadratic_obera,
-        quadratic_avg,
-        # elvira_go100_ref2,
-        # quadratic_avg_ref2,
-        circle_avg,
-        circle_vander_avg,
+        # piecewise_constant,
+        # elvira,
+        # elvira_100,
+        # elvira_grad_oriented,
+        # linear_obera,
+        # linear_avg,
+        # linear_avg_100,
+        # quadratic_obera_non_adaptive,
+        # quadratic_obera,
+        # quadratic_avg,
+        elvira_go100_ref2,
+        quadratic_avg_ref2,
+        # circle_avg,
+        # circle_vander_avg,
         recalculate=True
     )
     num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()
@@ -300,6 +302,40 @@ if __name__ == "__main__":
         sub_discretization2bound_error=[SUB_CELL_DISCRETIZATION2BOUND_ERROR],
         metric=[2]
     )
+
+    # color_dict = {
+    #     "piecewise_constant": "gray",
+    #     "elvira": ,
+    #     "elvira_100",
+    #     "elvira_grad_oriented",
+    #     "linear_obera",
+    #     "linear_avg",
+    #     "linear_avg_100",
+    #     "quadratic_obera_non_adaptive",
+    #     "quadratic_obera",
+    #     "quadratic_avg",
+    #     "elvira_go100_ref2",
+    #     "quadratic_avg_ref2",
+    #     "circle_avg",
+    #     "circle_vander_avg",
+    # }
+    #
+    # names_dict = {
+    #     "piecewise_constant",
+    #     "elvira",
+    #     "elvira_100",
+    #     "elvira_grad_oriented",
+    #     "linear_obera",
+    #     "linear_avg",
+    #     "linear_avg_100",
+    #     "quadratic_obera_non_adaptive",
+    #     "quadratic_obera",
+    #     "quadratic_avg",
+    #     "elvira_go100_ref2",
+    #     "quadratic_avg_ref2",
+    #     "circle_avg",
+    #     "circle_vander_avg",
+    # }
 
     mse = lambda reconstruction, image4error: np.mean(((np.array(reconstruction) - image4error) ** 2).ravel())
 
@@ -330,7 +366,31 @@ if __name__ == "__main__":
     generic_plot(data_manager,
                  name="TimeComplexityLinearModels",
                  x="N", y="time", label="models", num_cells_per_dim=num_cells_per_dim,
-                 plot_func=NamedPartial(sns.lineplot, marker=".", linestyle="--"),
+                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                 log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                 mse=mse,
+                 models=[
+                     # "piecewise_constant",
+                     "elvira",
+                     "elvira_100",
+                     "elvira_grad_oriented",
+                     "linear_avg",
+                     "linear_avg_100",
+                     "linear_obera",
+                     # "quadratic_obera_non_adaptive",
+                     # "quadratic_obera",
+                     # "quadratic_avg",
+                     # "elvira_go100_ref2",
+                     # "quadratic_avg_ref2",
+                     # "circle_avg",
+                     # "circle_vander_avg",
+                 ],
+                 )
+
+    generic_plot(data_manager,
+                 name="TimeComplexityMSELinearModels",
+                 x="time", y="mse", label="models", num_cells_per_dim=num_cells_per_dim,
+                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
                  log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                  mse=mse,
                  models=[
@@ -378,7 +438,30 @@ if __name__ == "__main__":
     generic_plot(data_manager,
                  name="TimeComplexityModels",
                  x="N", y="time", label="models", num_cells_per_dim=num_cells_per_dim,
-                 plot_func=NamedPartial(sns.lineplot, marker=".", linestyle="--"),
+                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                 log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                 mse=mse,
+                 models=[
+                     "piecewise_constant",
+                     # "elvira",
+                     # "elvira_100",
+                     "elvira_grad_oriented",
+                     # "linear_obera",
+                     # "linear_avg",
+                     # "linear_avg_100",
+                     "quadratic_obera_non_adaptive",
+                     "quadratic_obera",
+                     "quadratic_avg",
+                     # "elvira_go100_ref2",
+                     # "quadratic_avg_ref2",
+                     "circle_avg",
+                     # "circle_vander_avg",
+                 ],
+                 )
+    generic_plot(data_manager,
+                 name="TimeComplexityMSEModels",
+                 x="time", y="mse", label="models", num_cells_per_dim=num_cells_per_dim,
+                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
                  log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                  mse=mse,
                  models=[
@@ -424,9 +507,9 @@ if __name__ == "__main__":
                  )
 
     generic_plot(data_manager,
-                 name="TimeComplexityRefinement",
-                 x="N", y="time", label="models", num_cells_per_dim=num_cells_per_dim,
-                 plot_func=NamedPartial(sns.lineplot, marker=".", linestyle="--"),
+                 name="TimeComplexityMSERefinement",
+                 x="time", y="mse", label="models", num_cells_per_dim=num_cells_per_dim,
+                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
                  log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                  models=[
                      "piecewise_constant",
@@ -446,24 +529,47 @@ if __name__ == "__main__":
                  ],
                  )
 
-    plot_reconstruction(
-        data_manager,
-        name="",
-        folder='ReconstructionComparison',
-        axes_by=['models'],
-        plot_by=['num_cells_per_dim'],
-        axes_xy_proportions=(15, 15),
-        difference=False,
-        plot_curve=True,
-        plot_curve_winner=False,
-        plot_vh_classification=False,
-        plot_singular_cells=False,
-        plot_original_image=True,
-        numbers_on=True,
-        plot_again=True,
-        num_cores=15,
-        # trim=trim
-    )
+    generic_plot(data_manager,
+                 name="TimeComplexityRefinement",
+                 x="N", y="time", label="models", num_cells_per_dim=num_cells_per_dim,
+                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                 log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                 models=[
+                     "piecewise_constant",
+                     # "elvira",
+                     # "elvira_100",
+                     "elvira_grad_oriented",
+                     # "linear_obera",
+                     # "linear_avg",
+                     # "linear_avg_100",
+                     # "quadratic_obera_non_adaptive",
+                     # "quadratic_obera",
+                     "quadratic_avg",
+                     "elvira_go100_ref2",
+                     "quadratic_avg_ref2",
+                     # "circle_avg",
+                     # "circle_vander_avg",
+                 ],
+                 )
+
+    # plot_reconstruction(
+    #     data_manager,
+    #     name="",
+    #     folder='ReconstructionComparison',
+    #     axes_by=['models'],
+    #     plot_by=['num_cells_per_dim'],
+    #     axes_xy_proportions=(15, 15),
+    #     difference=False,
+    #     plot_curve=True,
+    #     plot_curve_winner=False,
+    #     plot_vh_classification=False,
+    #     plot_singular_cells=False,
+    #     plot_original_image=True,
+    #     numbers_on=True,
+    #     plot_again=True,
+    #     num_cores=15,
+    #     # trim=trim
+    # )
     # plot_original_image(
     #     data_manager,
     #     folder='reconstruction',
