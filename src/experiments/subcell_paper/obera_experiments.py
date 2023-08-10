@@ -399,11 +399,12 @@ if __name__ == "__main__":
         recalculate=False
     )
     metrics = [2]
+    num_cores= 15
     lab.execute(
         data_manager,
-        num_cores=15,
+        num_cores=num_cores,
         forget=False,
-        save_on_iteration=1,
+        save_on_iteration=num_cores,
         refinement=[1],
         # num_cells_per_dim=[10, 14] + np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()[:1],
         num_cells_per_dim=[20],

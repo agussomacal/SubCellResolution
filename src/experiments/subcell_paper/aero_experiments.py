@@ -289,11 +289,13 @@ if __name__ == "__main__":
         recalculate=False
     )
     num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()
+    metrics = [2]
+    num_cores = 15
     lab.execute(
         data_manager,
-        num_cores=15,
+        num_cores=num_cores,
         forget=False,
-        save_on_iteration=1,
+        save_on_iteration=num_cores,
         num_cells_per_dim=num_cells_per_dim,
         noise=[0],
         shape_name=[
