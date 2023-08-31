@@ -112,7 +112,7 @@ skkeras_20x20_relu = Pipeline(
     [
         ("Flatter", FunctionTransformer(flatter)),
         ("SKKerasFNN20x20", SKKerasFNN(hidden_layer_sizes=(20, 20),
-                                       epochs=10000, activation='relu', validation_size=0.1,
+                                       epochs=100000, activation='relu', validation_size=0.1,
                                        restarts=1, max_time4fitting=np.Inf, workers=1,
                                        batch_size=0.1, criterion="mse", solver="Adam",
                                        lr=None, lr_lower_limit=1e-12,

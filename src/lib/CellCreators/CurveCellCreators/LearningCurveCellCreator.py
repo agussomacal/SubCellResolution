@@ -28,10 +28,12 @@ class LearningCurveCellCreator(CurveCellCreatorBase):
         value_down = regular_opposite_cells[0].evaluate(coords.coords)
         # x_points, stencil_values = map2unidimensional(value_up, value_down, independent_axis, stencil)
         # if the values are not 0 or 1
-        min_value = np.min((value_up, value_down))
-        stencil_values = stencil.values - np.min(stencil.values)
-        stencil_values /= np.max(stencil_values)
-        curve_params = self.learning_manager.predict_curve_params(kernel=stencil.values.reshape((3, 3)))
+        stencil_values = stencil.values - np.min((value_up, value_down))
+        stencil_values /= np.max((value_up, value_down))
+
+        stencil_values = stencil.values.reshape((3, 3))
+        stencil_values = np.transpose(stencil_values, [independent_axis, 1 - independent_axis])
+        curve_params = self.learning_manager.predict_curve_params(kernel=stencil_values)
         curve = self.learning_manager.dataset_manager.create_curve_from_params(
             curve_params=curve_params,
             coords=coords,
