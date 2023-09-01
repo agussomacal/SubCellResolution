@@ -56,13 +56,13 @@ dataset_manager_vander7 = DatasetsManagerVanderCurves(
     points_sampler=POINTS_SAMPLER_EQUISPACE,
 )
 
-# dataset_manager_vander7circle = DatasetsManagerVanderCurves(
-#     curve=CurveVanderCircle,
-#     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
-#     workers=workers, recalculate=False, learning_objective=POINTS_OBJECTIVE,
-#     curve_position_radius=(3.5, 1.5, 3.5), points_interval_size=3, value_up_random=True, num_points=3,
-#     points_sampler=POINTS_SAMPLER_EQUISPACE,
-# )
+dataset_manager_vander7circle = DatasetsManagerVanderCurves(
+    curve=CurveVanderCircle,
+    velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
+    workers=workers, recalculate=False, learning_objective=POINTS_OBJECTIVE,
+    curve_position_radius=(3.5, 1.5, 3.5), points_interval_size=3, value_up_random=True, num_points=3,
+    points_sampler=POINTS_SAMPLER_EQUISPACE,
+)
 
 nnlm = LearningMethodManager(
     dataset_manager=dataset_manager_3_8pi,
@@ -131,6 +131,19 @@ nnlmq7 = LearningMethodManager(
     training_noise=1e-5, train_percentage=0.9
 )
 
+nnlmc7 = LearningMethodManager(
+    dataset_manager=dataset_manager_vander7circle,
+    type_of_problem=CURVE_PROBLEM,
+    trainable_model=Pipeline(
+        [
+            ("Flatter", FunctionTransformer(flatter)),
+            ("NN", MLPRegressor(hidden_layer_sizes=(20, 20, 20), activation='relu', learning_rate_init=0.1,
+                                learning_rate="adaptive", solver="lbfgs"))
+        ]
+    ), refit=False, n2use=-1,
+    training_noise=1e-5, train_percentage=0.9
+)
+
 
 @fit_model
 def nn_linear(metric):
@@ -162,6 +175,13 @@ def nn_quadratic3x7(metric):
     return get_sub_cell_model(
         partial(LearningCurveCellCreator, learning_manager=nnlmq7), 1, "NN_quadratic3x7", 0, CCExtraWeight, metric,
         stencil_creator=StencilCreatorFixedShape(nnlmq7.dataset_manager.kernel_size))
+
+
+@fit_model
+def nn_circle3x7(metric):
+    return get_sub_cell_model(
+        partial(LearningCurveCellCreator, learning_manager=nnlmc7), 1, "NN_circle3x7", 0, CCExtraWeight, metric,
+        stencil_creator=StencilCreatorFixedShape(nnlmc7.dataset_manager.kernel_size))
 
 
 if __name__ == "__main__":
@@ -213,7 +233,8 @@ if __name__ == "__main__":
         nn_quadratic,
         nn_quadratic_1,
         nn_quadratic3x7,
-        recalculate=True
+        nn_circle3x7,
+        recalculate=False
     )
     num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()
     lab.execute(
