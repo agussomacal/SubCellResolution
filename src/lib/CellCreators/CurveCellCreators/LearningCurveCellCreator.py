@@ -31,7 +31,8 @@ class LearningCurveCellCreator(CurveCellCreatorBase):
         stencil_values = stencil.values - np.min((value_up, value_down))
         stencil_values /= np.max((value_up, value_down))
 
-        stencil_values = stencil.values.reshape((3, 3))
+        ks = self.learning_manager.dataset_manager.kernel_size
+        stencil_values = stencil.values.reshape((ks[independent_axis], ks[1-independent_axis]))
         stencil_values = np.transpose(stencil_values, [independent_axis, 1 - independent_axis])
         curve_params = self.learning_manager.predict_curve_params(kernel=stencil_values)
         curve = self.learning_manager.dataset_manager.create_curve_from_params(

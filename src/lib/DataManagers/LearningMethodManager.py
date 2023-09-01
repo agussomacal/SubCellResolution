@@ -74,14 +74,10 @@ class LearningMethodManager:
                 predictions_test = self.trainable_model.predict(test_x)
                 print(f"L1 Loss in test set: {l1_error(predictions_test, test_y)}")
                 print(f"Linf Loss in test set: {linf_error(predictions_test, test_y)}")
-            self.save_model()
+            save_joblib(self.path2model, self.trainable_model)
         else:
             with timeit("Loading trained model: {}".format(self.model_filename)):
                 self.trainable_model = load_joblib(self.path2model)
-
-    # --------- save ---------- #
-    def save_model(self):
-        save_joblib(self.path2model, self.trainable_model)
 
     # -------------- predict --------------- #
     def predict_flux(self, kernel: np.ndarray, velocity: np.ndarray) -> (List[Tuple[int]], np.ndarray):

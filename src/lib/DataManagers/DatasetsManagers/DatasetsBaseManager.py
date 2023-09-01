@@ -1,6 +1,7 @@
 import itertools
 from pathlib import Path
-from typing import Union, Tuple, Type
+from time import time
+from typing import Union, Tuple, Type, List
 
 import joblib
 import numpy as np
@@ -124,7 +125,7 @@ class DatasetsBaseManager:
                     self.__data = data
             else:
                 data = self.__data
-        return {k: v[:n] for k, v in data.items()}
+        return {k: v[:n] if isinstance(v, List) else v for k, v in data.items()}
 
     def transform_curve_data(self, *args):
         """
@@ -166,13 +167,16 @@ class DatasetsBaseManager:
         """
         raise Exception("Not implemented.")
 
+    def get_curve(self, curve_data):
+        return self.curve(*curve_data)
+
     def generate_dataset(self):
         print(f"Generating data {self.base_name}...")
         np.random.seed(self.seed)
 
         def par_func(params):
             curve_data, velocity = params
-            curve = self.curve(*curve_data)
+            curve = self.get_curve(curve_data)
 
             # Calculate averages
             # The coordinates must be so the origin is in the center of the central cell
@@ -202,12 +206,14 @@ class DatasetsBaseManager:
             # TODO: harcoded only one direction
             return kernel, velocity, classification, np.ravel(curve_data[:-2]), [flux[1]]
 
+        t0 = time()
         map_func = get_map_function(self.workers)
         params = list(zip([self.get_curve_data() for _ in range(self.N)],
                           [self.get_velocity() for _ in range(self.N)]))
 
         data = [line for line in tqdm(map_func(par_func, params), desc="Creating dataset.")]
         data = {k: v for k, v in zip(["kernel", "velocity", "classification", "curve", "flux"], zip(*data))}
+        data["time_building_database"] = time() - t0
         return data
 
     # --------- create curve ---------- #
