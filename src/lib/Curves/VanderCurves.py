@@ -47,16 +47,16 @@ def points2circle(a, b, c):
                               (c + b) / 2 @ (c - b)],
                              rcond=None)[0]
     return x0, y0, \
-           (np.sqrt((a[0] - x0) ** 2 + (a[1] - y0) ** 2) +
-            np.sqrt((b[0] - x0) ** 2 + (b[1] - y0) ** 2) +
-            np.sqrt((c[0] - x0) ** 2 + (c[1] - y0) ** 2)) / 3
+        (np.sqrt((a[0] - x0) ** 2 + (a[1] - y0) ** 2) +
+         np.sqrt((b[0] - x0) ** 2 + (b[1] - y0) ** 2) +
+         np.sqrt((c[0] - x0) ** 2 + (c[1] - y0) ** 2)) / 3
 
 
 class CurveVanderCircle(CurveVander, CurveSemiCircle):
-    def __init__(self, x_points, y_points, value_up=0, value_down=1, concave=False, ccew=0, center=None):
+    def __init__(self, x_points, y_points, value_up=0, value_down=1, ccew=0, center=None):
         super().__init__(x_points=x_points, y_points=y_points, value_up=value_up, value_down=value_down, ccew=ccew,
                          center=center)
-        self.concave = concave
+        self.concave = get_concavity(x_points, y_points) > 0  # concave
 
     def new_params2natural_params(self, x_points, y_points):
         self.concave = get_concavity(x_points, y_points) > 0
