@@ -32,6 +32,21 @@ def map2unidimensional(value_up, value_down, independent_axis: int, stencil: Ste
     return x_points, stencil_values
 
 
+def prepare_stencil4one_dimensionalization(coords, independent_axis, regular_opposite_cells, stencil):
+    value_up = regular_opposite_cells[1].evaluate(coords.coords)
+    value_down = regular_opposite_cells[0].evaluate(coords.coords)
+    # x_points, stencil_values = map2unidimensional(value_up, value_down, independent_axis, stencil)
+    # if the values are not 0 or 1
+    stencil_values = stencil.values - np.min((value_up, value_down))
+    stencil_values /= np.max((value_up, value_down))
+
+    ks = np.max(stencil.coords, axis=0) - np.min(stencil.coords, axis=0) + 1
+    stencil_values = stencil.values.reshape(ks)
+    stencil_values = np.transpose(stencil_values, [independent_axis, 1 - independent_axis])
+    stencil_values = (1 - stencil_values) if value_up > value_down else stencil_values
+    return stencil_values, value_up, value_down
+
+
 # ====================================================== #
 #                    Curve cell Base                     #
 # ====================================================== #

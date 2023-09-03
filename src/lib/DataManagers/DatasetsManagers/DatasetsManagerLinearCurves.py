@@ -52,7 +52,7 @@ class DatasetsManagerLinearCurves(DatasetsBaseManager):
     def get_curve_data(self):
         angle = np.random.uniform(*(np.array(self.angle_limits) * np.pi))
         r = np.random.uniform(-self.curve_position_radius, self.curve_position_radius)
-        value_up = np.random.randint(0, 2) if self.value_up_random else 1
+        value_up = np.random.randint(0, 2) if self.value_up_random else 0
         return angle, r, value_up, 1 - value_up
 
     # --------- predict/find curve ---------- #

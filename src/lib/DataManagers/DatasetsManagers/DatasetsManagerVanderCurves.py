@@ -68,7 +68,7 @@ class DatasetsManagerVanderCurves(DatasetsBaseManager):
     @property
     def base_name(self):
         return f"{super(DatasetsManagerVanderCurves, self).base_name}_{self.learning_objective}" + \
-            f"radius{self.curve_position_radius}{'' if self.value_up_random else '_value_up_fixed'}"
+               f"radius{self.curve_position_radius}{'' if self.value_up_random else '_value_up_fixed'}"
 
     @property
     def name4learning(self):
@@ -86,7 +86,7 @@ class DatasetsManagerVanderCurves(DatasetsBaseManager):
             return self.curve(x_points=self.x_points, y_points=args, value_up=1, value_down=0).params
 
     def get_curve_data(self):
-        value_up = np.random.randint(0, 2) if self.value_up_random else 1
+        value_up = np.random.randint(0, 2) if self.value_up_random else 0
         # saves the polynomial coefficients
         if isinstance(self.curve_position_radius, tuple):
             # the x points are in -1.5, 0, 1.5 -> the full stencil.

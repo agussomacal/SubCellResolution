@@ -29,14 +29,15 @@ N = int(1e6)
 workers = 10
 dataset_manager_3_8pi = DatasetsManagerLinearCurves(
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
-    workers=workers, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8)
+    workers=workers, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
+    value_up_random=False
 )
 
 dataset_manager_vander = DatasetsManagerVanderCurves(
     curve=NamedPartial(CurveVandermondePolynomial, degree=2),
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
     workers=workers, recalculate=False, learning_objective=POINTS_OBJECTIVE,
-    curve_position_radius=(0.5, 0.5, 0.5), points_interval_size=1, value_up_random=True, num_points=3,
+    curve_position_radius=(0.5, 0.5, 0.5), points_interval_size=1, value_up_random=False, num_points=3,
     points_sampler=POINTS_SAMPLER_EQUISPACE,
 )
 
@@ -44,7 +45,7 @@ dataset_manager_vander1 = DatasetsManagerVanderCurves(
     curve=NamedPartial(CurveVandermondePolynomial, degree=2),
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
     workers=workers, recalculate=False, learning_objective=POINTS_OBJECTIVE,
-    curve_position_radius=(1, 1, 1), points_interval_size=1, value_up_random=True, num_points=3,
+    curve_position_radius=(1, 1, 1), points_interval_size=1, value_up_random=False, num_points=3,
     points_sampler=POINTS_SAMPLER_EQUISPACE,
 )
 
@@ -52,7 +53,7 @@ dataset_manager_vander7 = DatasetsManagerVanderCurves(
     curve=NamedPartial(CurveVandermondePolynomial, degree=2),
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
     workers=workers, recalculate=False, learning_objective=POINTS_OBJECTIVE,
-    curve_position_radius=(3.5, 1.5, 3.5), points_interval_size=3, value_up_random=True, num_points=3,
+    curve_position_radius=(3.5, 1.5, 3.5), points_interval_size=3, value_up_random=False, num_points=3,
     points_sampler=POINTS_SAMPLER_EQUISPACE,
 )
 
@@ -60,7 +61,7 @@ dataset_manager_vander7circle = DatasetsManagerVanderCurves(
     curve=CurveVanderCircle,
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
     workers=workers, recalculate=False, learning_objective=POINTS_OBJECTIVE,
-    curve_position_radius=(3.5, 1.5, 3.5), points_interval_size=3, value_up_random=True, num_points=3,
+    curve_position_radius=(3.5, 1.5, 3.5), points_interval_size=3, value_up_random=False, num_points=3,
     points_sampler=POINTS_SAMPLER_EQUISPACE,
 )
 
