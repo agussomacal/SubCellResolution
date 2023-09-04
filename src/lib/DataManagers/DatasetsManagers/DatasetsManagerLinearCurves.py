@@ -26,7 +26,7 @@ class DatasetsManagerLinearCurves(DatasetsBaseManager):
         self.curve_position_radius = curve_position_radius
         self.value_up_random = value_up_random
         super().__init__(path2data=path2data, N=N, kernel_size=kernel_size, min_val=min_val, max_val=max_val,
-                         recalculate=recalculate, workers=workers, curve=CurveLinearAngle,
+                         recalculate=recalculate, workers=workers, curve_type=CurveLinearAngle,
                          velocity_range=velocity_range)
 
     @property

@@ -24,7 +24,7 @@ class LearningCurveCellCreator(CurveCellCreatorBase):
     def create_curves(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
                       stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
-        stencil_values, value_up, value_down = stencil_values = \
+        stencil_values, value_up, value_down = \
             prepare_stencil4one_dimensionalization(coords, independent_axis, regular_opposite_cells, stencil)
         curve_params = self.learning_manager.predict_curve_params(kernel=stencil_values)
         curve = self.learning_manager.dataset_manager.create_curve_from_params(
@@ -32,7 +32,8 @@ class LearningCurveCellCreator(CurveCellCreatorBase):
             coords=coords,
             independent_axis=independent_axis,
             value_up=value_up,
-            value_down=value_down
+            value_down=value_down,
+            stencil=stencil
         )
 
         yield curve

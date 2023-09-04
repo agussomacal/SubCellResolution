@@ -11,6 +11,7 @@ from lib.Curves.CurvePolynomial import CurveQuadraticAngle, CurveQuadratic
 
 from lib.Curves.VanderCurves import CurveVander
 from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import DatasetsBaseManager
+from lib.StencilCreators import Stencil
 
 ANGLE_OBJECTIVE = "angle_objective"
 POINTS_OBJECTIVE = "points_objective"
@@ -44,7 +45,7 @@ def get_evaluation_points(amplitude, num_points, sampling):
 
 class DatasetsManagerVanderCurves(DatasetsBaseManager):
     def __init__(self, path2data: Union[str, Path], N: int, kernel_size: Tuple[int, int], min_val: float,
-                 max_val: float, curve: Type[CurveVander], workers=np.Inf, recalculate=False,
+                 max_val: float, curve_type: Type[CurveVander], workers=np.Inf, recalculate=False,
                  velocity_range: Tuple[Tuple, Tuple] = ((1e-10, 0), (1.0, 0)), learning_objective=POINTS_OBJECTIVE,
                  curve_position_radius: Union[float, Tuple] = 1, value_up_random=True, num_points: int = 3,
                  points_sampler: str = POINTS_SAMPLER_EQUISPACE, points_interval_size: float = 1):
@@ -58,17 +59,17 @@ class DatasetsManagerVanderCurves(DatasetsBaseManager):
         self.learning_objective = learning_objective
 
         super().__init__(path2data=path2data, N=N, kernel_size=kernel_size, min_val=min_val, max_val=max_val,
-                         recalculate=recalculate, workers=workers, curve=curve,
+                         recalculate=recalculate, workers=workers, curve_type=curve_type,
                          velocity_range=velocity_range)
 
     def get_curve(self, curve_data):
-        return self.curve(x_points=self.x_points, y_points=np.array(curve_data[:-2]), value_up=curve_data[-2],
-                          value_down=curve_data[-1])
+        return self.curve_type(x_points=self.x_points, y_points=np.array(curve_data[:-2]), value_up=curve_data[-2],
+                               value_down=curve_data[-1])
 
     @property
     def base_name(self):
         return f"{super(DatasetsManagerVanderCurves, self).base_name}_{self.learning_objective}" + \
-               f"radius{self.curve_position_radius}{'' if self.value_up_random else '_value_up_fixed'}"
+            f"radius{self.curve_position_radius}{'' if self.value_up_random else '_value_up_fixed'}"
 
     @property
     def name4learning(self):
@@ -81,9 +82,9 @@ class DatasetsManagerVanderCurves(DatasetsBaseManager):
         if self.learning_objective == POINTS_OBJECTIVE:
             # gets from the polynomial coefficients the y values on the evaluation points
             return args
-            # return np.transpose([Polynomial(coeffs)(self.x_points) for coeffs in zip(*args)])
         else:
-            return self.curve(x_points=self.x_points, y_points=args, value_up=1, value_down=0).params
+            curve = self.curve_type(x_points=self.x_points, y_points=args, value_up=0, value_down=1)
+            return super(CurveVander, curve.__class__).params.fget(curve)
 
     def get_curve_data(self):
         value_up = np.random.randint(0, 2) if self.value_up_random else 0
@@ -93,17 +94,18 @@ class DatasetsManagerVanderCurves(DatasetsBaseManager):
             y_points = np.array([np.random.uniform(-ym, ym) for ym in self.curve_position_radius])
         else:
             # default the x points are in -0.5, 0, 0.5 -> the central cell
-            y_points = np.random.uniform(-self.curve_position_radius, self.curve_position_radius,
-                                         size=3)
+            y_points = np.random.uniform(-self.curve_position_radius, self.curve_position_radius, size=len(self.x_points))
         return *y_points, value_up, 1 - value_up
 
     # --------- predict/find curve ---------- #
-    def create_curve_from_params(self, curve_params, coords: CellCoords, independent_axis: int, value_up, value_down):
+    def create_curve_from_params(self, curve_params, coords: CellCoords, independent_axis: int, value_up, value_down,
+                                 stencil: Stencil):
+
         if self.learning_objective == POINTS_OBJECTIVE:
-            curve = self.curve(x_points=self.x_points + coords[independent_axis] + 0.5,
-                               y_points=curve_params + coords[1 - independent_axis] + 0.5,
-                               value_up=value_up, value_down=value_down)
+            curve = self.curve_type(x_points=self.x_points, y_points=curve_params, value_up=value_up, value_down=value_down)
         else:
-            raise Exception("Not implemented.")
+            curve = self.curve_type.__bases__[1](curve_params, value_down=value_down, value_up=value_up)
+        curve.set_x_shift(np.mean(stencil.coords[:, independent_axis]) + 0.5)
+        curve.set_y_shift(np.mean(stencil.coords[:, 1-independent_axis]) + 0.5)
 
         return curve

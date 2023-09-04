@@ -42,7 +42,7 @@ class CurveAveragePolynomial(CurveReparametrized, CurvePolynomial):
 
 if __name__ == "__main__":
     degree = 2
-    x_points = np.arange(3)+0.5
+    x_points = np.arange(3) + 0.5
     A = (np.vander(x_points + 0.5, N=degree + 2, increasing=True)[:, 1:] -
          np.vander(x_points - 0.5, N=degree + 2, increasing=True)[:, 1:]) / np.arange(1, degree + 2)[np.newaxis, :]
     print(A)
@@ -50,3 +50,10 @@ if __name__ == "__main__":
     #     A  * weights[:, np.newaxis],
     #     (y_points * weights).reshape((-1, 1)),
     #     rcond=None)[0].ravel()
+
+    cap = CurveAveragePolynomial(x_points=[0, 1, 2], y_points=[0, 1, 4], value_up=0, value_down=1, degree=2, ccew=0,
+                           center=None)
+    print(cap.x_points, cap.params, super(CurveAveragePolynomial, cap).params)
+    cap.set_x_shift(1)
+    cap.set_y_shift(10)
+    print(cap.x_points, cap.params, super(CurveAveragePolynomial, cap).params)

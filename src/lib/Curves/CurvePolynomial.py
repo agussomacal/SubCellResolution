@@ -39,6 +39,14 @@ class CurvePolynomial(Curve):
         self.polynomial = args if isinstance(args, Polynomial) else Polynomial(args)
         self.poly_integral = self.polynomial.integ()
 
+    def set_x_shift(self, shift):
+        self.x_shift += shift
+
+    def set_y_shift(self, shift):
+        params = np.array(self.params)
+        params[0] += shift
+        self.params = params
+
     def function(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return self.polynomial(x - self.x_shift)
 
@@ -62,6 +70,11 @@ class CurvePolynomialByParts(CurvePolynomial):
         self.direction = direction
         self.direction_op = LEFT_RIGHT_OPERATORS[direction]
         super().__init__(polynomial=polynomial, value_up=value_up, value_down=value_down, x_shift=x_shift)
+        self.x0_integral = super(CurvePolynomialByParts, self).function_integral(self.x0)
+
+    def set_x_shift(self, shift):
+        self.x_shift += shift
+        self.x0 += shift
         self.x0_integral = super(CurvePolynomialByParts, self).function_integral(self.x0)
 
     def function(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
@@ -169,6 +182,12 @@ class NoCurveRegion(Curve):
     @params.setter
     def params(self, *args):
         self.x0 = args[0]
+
+    def set_x_shift(self, shift):
+        self.x0 += shift
+
+    def set_y_shift(self, shift):
+        pass
 
     def function(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return x * np.nan

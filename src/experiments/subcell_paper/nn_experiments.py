@@ -9,10 +9,10 @@ from sklearn.preprocessing import FunctionTransformer
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
-from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
+from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version, ClassPartialInit
 from PerplexityLab.visualization import generic_plot
 from experiments.LearningMethods import flatter
-from experiments.subcell_paper.aero_experiments import fit_model
+from experiments.subcell_paper.aero_experiments import fit_model, elvira_grad_oriented
 from experiments.subcell_paper.function_families import calculate_averages_from_curve
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, CCExtraWeight
 from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
@@ -34,7 +34,7 @@ dataset_manager_3_8pi = DatasetsManagerLinearCurves(
 )
 
 dataset_manager_vander = DatasetsManagerVanderCurves(
-    curve=NamedPartial(CurveVandermondePolynomial, degree=2),
+    curve_type=ClassPartialInit(CurveVandermondePolynomial, degree=2),
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
     workers=workers, recalculate=False, learning_objective=POINTS_OBJECTIVE,
     curve_position_radius=(0.5, 0.5, 0.5), points_interval_size=1, value_up_random=False, num_points=3,
@@ -42,7 +42,7 @@ dataset_manager_vander = DatasetsManagerVanderCurves(
 )
 
 dataset_manager_vander1 = DatasetsManagerVanderCurves(
-    curve=NamedPartial(CurveVandermondePolynomial, degree=2),
+    curve_type=ClassPartialInit(CurveVandermondePolynomial, degree=2),
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
     workers=workers, recalculate=False, learning_objective=POINTS_OBJECTIVE,
     curve_position_radius=(1, 1, 1), points_interval_size=1, value_up_random=False, num_points=3,
@@ -50,7 +50,7 @@ dataset_manager_vander1 = DatasetsManagerVanderCurves(
 )
 
 dataset_manager_vander7 = DatasetsManagerVanderCurves(
-    curve=NamedPartial(CurveVandermondePolynomial, degree=2),
+    curve_type=ClassPartialInit(CurveVandermondePolynomial, degree=2),
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
     workers=workers, recalculate=False, learning_objective=POINTS_OBJECTIVE,
     curve_position_radius=(3.5, 1.5, 3.5), points_interval_size=3, value_up_random=False, num_points=3,
@@ -58,7 +58,7 @@ dataset_manager_vander7 = DatasetsManagerVanderCurves(
 )
 
 dataset_manager_vander7circle = DatasetsManagerVanderCurves(
-    curve=CurveVanderCircle,
+    curve_type=CurveVanderCircle,
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
     workers=workers, recalculate=False, learning_objective=POINTS_OBJECTIVE,
     curve_position_radius=(3.5, 1.5, 3.5), points_interval_size=3, value_up_random=False, num_points=3,
@@ -225,17 +225,17 @@ if __name__ == "__main__":
         # piecewise_constant,
         # elvira,
         # elvira_100,
-        # elvira_grad_oriented,
+        elvira_grad_oriented,
         # linear_obera,
         # linear_avg,
         # linear_avg_100,
         # nn_linear,
         # nn_linear4,
-        nn_quadratic,
-        nn_quadratic_1,
+        # nn_quadratic,
+        # nn_quadratic_1,
         nn_quadratic3x7,
-        nn_circle3x7,
-        recalculate=False
+        # nn_circle3x7,
+        recalculate=True
     )
     num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()
     lab.execute(

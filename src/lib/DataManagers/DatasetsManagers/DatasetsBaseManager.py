@@ -11,6 +11,7 @@ from PerplexityLab.miscellaneous import clean_str4saving, timeit, get_map_functi
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.CellCreators.CellCreatorBase import get_rectangles_and_coords_to_calculate_flux
 from lib.Curves.Curves import CurveBase
+from lib.StencilCreators import Stencil
 
 # from lib.Curves.CurveBase import CurveBase, calculate_integration_breakpoints_in_rectangle
 # from lib.SubCellSchemes.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
@@ -47,14 +48,14 @@ def save_joblib(path: Union[str, Path], variable):
 
 
 class DatasetsBaseManager:
-    def __init__(self, path2data: Union[str, Path], curve: Type[CurveBase], N: int, kernel_size: Tuple[int, int],
+    def __init__(self, path2data: Union[str, Path], curve_type: Type[CurveBase], N: int, kernel_size: Tuple[int, int],
                  min_val: float, max_val: float, velocity_range: Tuple[Tuple, Tuple], recalculate=False, workers=-1,
                  seed=42, reload_data=True):
         self.path2datafolder = Path(path2data)
         self.path2datafolder.mkdir(parents=True, exist_ok=True)
         self.workers = workers
 
-        self.curve = curve
+        self.curve_type = curve_type
         self.N = N
         self.kernel_size = kernel_size
 
@@ -93,7 +94,7 @@ class DatasetsBaseManager:
     @property
     def base_name(self):
         kernel_name = "_".join(map(str, self.kernel_size))
-        return f"{self.curve.__name__}_k{kernel_name}_n{self.N}_min{self.min_val}_max{self.max_val}_" \
+        return f"{self.curve_type.__name__}_k{kernel_name}_n{self.N}_min{self.min_val}_max{self.max_val}_" \
                f"v{clean_str4saving(str(self.velocity_range))}"
 
     @property
@@ -168,7 +169,7 @@ class DatasetsBaseManager:
         raise Exception("Not implemented.")
 
     def get_curve(self, curve_data):
-        return self.curve(*curve_data)
+        return self.curve_type(*curve_data)
 
     def generate_dataset(self):
         print(f"Generating data {self.base_name}...")
@@ -218,5 +219,5 @@ class DatasetsBaseManager:
 
     # --------- create curve ---------- #
     def create_curve_from_params(self, curve_params, coords: CellCoords, independent_axis: int, value_up,
-                                 value_down) -> CurveBase:
+                                 value_down, stencil: Stencil) -> CurveBase:
         raise Exception("Not implemented.")

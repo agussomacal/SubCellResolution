@@ -34,6 +34,12 @@ class CurveBase:
     def dim(self):
         return len(self.params)
 
+    def set_x_shift(self, shift):
+        raise Exception("Not implemented.")
+
+    def set_y_shift(self, shift):
+        raise Exception("Not implemented.")
+
     def __call__(self, x: Union[float, np.ndarray], y: Union[float, np.ndarray] = None):
         """
         Evaluate the Curve.
@@ -106,6 +112,14 @@ class CurvesCombined(CurveBase):
         for i in range(self.num_curves):
             self.curves[i].params = args[num_params_until_now:num_params_until_now + self.curves[i].dim]
             num_params_until_now = num_params_until_now + self.curves[i].dim
+
+    def set_x_shift(self, shift):
+        for curve in self.curves:
+            curve.set_x_shift(shift)
+
+    def set_y_shift(self, shift):
+        for curve in self.curves:
+            curve.set_y_shift(shift)
 
     def calculate_integrals(self, x_breakpoints, y_limits: Tuple[float, ...]) -> np.ndarray:
         return functools.reduce(self.operator_function,
@@ -182,14 +196,14 @@ class CurveReparametrized(Curve):
         :param value_down:
         :param x_shift:
         """
-        self.x_points = x_points
-        self.y_points = y_points
+        self.x_points = np.array(x_points)
+        self.y_points = np.array(y_points)
         self.center = len(self.x_points) // 2 if center is None else center
         self.ccew = ccew
-        self.weights = np.ones(len(x_points))
+        self.weights = np.ones(len(self.x_points))
         self.weights[center] += self.ccew
         self.weights = np.sqrt(self.weights)
-        super().__init__(self.new_params2natural_params(x_points, y_points), value_up, value_down)
+        super().__init__(self.new_params2natural_params(self.x_points, self.y_points), value_up, value_down)
 
     def new_params2natural_params(self, x_points, y_points):
         """
@@ -202,3 +216,11 @@ class CurveReparametrized(Curve):
 
     def get_natural_parametrization_curve(self):
         raise Exception("Not implemented.")
+
+    def set_x_shift(self, shift):
+        self.x_points += shift
+        super().set_x_shift(shift)
+
+    def set_y_shift(self, shift):
+        self.y_points += shift
+        super().set_y_shift(shift)

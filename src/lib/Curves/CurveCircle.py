@@ -34,6 +34,12 @@ class CurveSemiCircle(Curve):
     def params(self, args):
         self.x0, self.y0, self.r = args
 
+    def set_x_shift(self, shift):
+        self.x0 += shift
+
+    def set_y_shift(self, shift):
+        self.y0 += shift
+
     def function(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         dy = np.sqrt(self.r ** 2 - (x - self.x0) ** 2)
         if self.concave:
