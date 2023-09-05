@@ -1,6 +1,6 @@
 import itertools
 from collections import namedtuple
-from typing import Tuple, Union, List, Callable
+from typing import Tuple, Union, List
 
 import numpy as np
 
@@ -74,39 +74,6 @@ def get_stencil_same_type(coords: CellCoords, indexer: ArrayIndexerNd, num_nodes
         nodes2visit += list(new_node_candidates.difference(stencil + nodes2visit))
         if len(nodes2visit) == 0:
             break
-
-
-def get_neighbouring_singular_coords_under_condition(coords: CellCoords, indexer: ArrayIndexerNd, cell_mask: np.ndarray,
-                                                     condition: Callable, max_num_nodes=5):
-    cell_type = cell_mask[coords.tuple]
-    visited_nodes = [
-        CellCoords(indexer[new_coords.coords]) for new_coords in coords + NEIGHBOURHOOD_8_MANHATTAN
-        if cell_mask[indexer[new_coords.tuple]] == cell_type
-    ]
-
-    if len(visited_nodes) < 2:
-        return []
-    else:
-        stop = [False, False]
-        nodes2visit = [[visited_nodes.pop(-1)], [visited_nodes.pop(-1)]]
-        for ix in range(max_num_nodes):
-            for direction in [0, 1]:
-                if not stop[direction]:
-                    visiting_coords = nodes2visit[direction].pop(0)
-                    if condition(visiting_coords):
-                        yield visiting_coords
-                        stop[direction] = True
-                    else:
-                        visited_nodes.append(visiting_coords)
-                        new_node_candidates = {
-                            CellCoords(indexer[new_coords.coords]) for new_coords in
-                            visiting_coords + NEIGHBOURHOOD_8_MANHATTAN
-                            if cell_mask[indexer[new_coords.tuple]] == cell_type
-                        }
-                        nodes2visit[direction] += list(
-                            new_node_candidates.difference(visited_nodes + nodes2visit[0] + nodes2visit[1]))
-                        if len(nodes2visit) == 0:
-                            stop[direction] = True
 
 
 class StencilCreatorSameRegionAdaptive(StencilCreator):

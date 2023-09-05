@@ -117,11 +117,11 @@ class SubCellReconstruction:
                             if proposed_cell_reconstruction_error < reconstruction_error[coords.tuple]:
                                 reconstruction_error[coords.tuple] = proposed_cell_reconstruction_error
                                 self.cells[coords.tuple] = proposed_cell
-                                self.stencils[coords.tuple] = stencil.coords
+                                self.stencils[coords.tuple] = list(map(tuple, stencil.coords.tolist()))
                     else:
                         proposed_cell = proposed_cells.pop()
                         self.cells[coords.tuple] = proposed_cell
-                        self.stencils[coords.tuple] = stencil.coords
+                        self.stencils[coords.tuple] = list(map(tuple, stencil.coords.tolist()))
                     self.times[proposed_cell.CELL_TYPE][coords.tuple] += time.time() - t0
 
             if r < self.refinement - 1:

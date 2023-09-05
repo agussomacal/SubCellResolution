@@ -130,7 +130,6 @@ def quadratic_vertex(iterations):
             CellCreatorPipeline(
                 cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                                       condition=operator.eq),
-                # orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
                 orientator=OrientPredefined(predefined_axis=0),
                 stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=4),
                 cell_creator=LinearVertexCellCurveCellCreator(
@@ -139,7 +138,6 @@ def quadratic_vertex(iterations):
             CellCreatorPipeline(
                 cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                                       condition=operator.eq),
-                # orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
                 orientator=OrientPredefined(predefined_axis=1),
                 stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=4),
                 cell_creator=LinearVertexCellCurveCellCreator(
@@ -149,10 +147,10 @@ def quadratic_vertex(iterations):
             CellCreatorPipeline(
                 cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                                       condition=operator.eq),
-                orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
+                orientator=OrientPredefined(predefined_axis=0),
                 stencil_creator=StencilCreatorFixedShape(stencil_shape=(3, 3)),
                 cell_creator=VertexCellCreatorUsingNeighboursLines(
-                    regular_opposite_cell_searcher=get_opposite_regular_cells)
+                    regular_opposite_cell_searcher=partial(get_opposite_regular_cells, direction="grad"))
             ),
         ],
         obera_iterations=iterations

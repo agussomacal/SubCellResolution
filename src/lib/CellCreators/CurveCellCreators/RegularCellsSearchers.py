@@ -118,7 +118,7 @@ def get_opposite_regular_cells(coords: CellCoords, cells: Dict[Tuple[int], CellB
                                                     indexer=indexer),
             method="scharr",
             normalize=True
-        )
+        )/2
     elif direction == "vertical":
         direction = np.array([0, 1])
     else:

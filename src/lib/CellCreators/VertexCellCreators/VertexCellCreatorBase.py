@@ -1,13 +1,14 @@
-from typing import Tuple, Dict, Generator
+from typing import Tuple, Dict, Generator, List, Callable
 
 import numpy as np
 
+from lib.AuxiliaryStructures.Constants import NEIGHBOURHOOD_8_MANHATTAN
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords, ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import CellBase, CURVE_CELL_TYPE, VERTEX_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CurveCellCreatorBase, CellCurveBase
 from lib.Curves.CurveVertex import CurveVertexLinearAngle
 from lib.Curves.Curves import Curve
-from lib.StencilCreators import get_neighbouring_singular_coords_under_condition, Stencil
+from lib.StencilCreators import Stencil
 
 
 class VertexLinearExtended(CurveVertexLinearAngle):
@@ -52,6 +53,23 @@ def get_neighbouring_singular_cells_under_condition(coords: CellCoords,
         return None
 
 
+def get_neighbouring_singular_cells(coords: CellCoords, cell_mask: np.ndarray, indexer: ArrayIndexerNd,
+                                    cells: Dict[Tuple[int], CellBase], stencils: Dict[Tuple, List[Tuple[int, ...]]]):
+    # the condition is to search cells at least at 2 of distance (not the immediate ones.
+    singular_neighbours_stencil = [
+        cell_coords for cell_coords in
+        get_neighbouring_singular_coords_under_condition(
+            coords, indexer, max_num_nodes=10, cells=cells,
+            condition=lambda coordinates: coords.tuple not in stencils[coordinates] and
+                                          cells[coordinates].CELL_TYPE == CURVE_CELL_TYPE)
+        if cells[cell_coords.tuple].CELL_TYPE == CURVE_CELL_TYPE]
+    # if len(singular_neighbours_stencil) >= 5:
+    if len(singular_neighbours_stencil) == 2:
+        return tuple([cells[c.tuple] for c in singular_neighbours_stencil[-2:]])
+    else:
+        return None
+
+
 # def get_singular_neighbours2nd_cells(coords: CellCoords,
 #                                   cell_classifier: CellClassifierBase, indexer: ArrayIndexerNd,
 #                                   cells: Dict[Tuple[int], CellBase]):
@@ -83,9 +101,10 @@ class VertexCellCreatorUsingNeighbours(CurveCellCreatorBase):
         )
 
         # TODO: smoothness_index>0 look for other way.
-        singular_neighbours = get_neighbouring_singular_cells_under_condition(coords=coords,
-                                                                              cell_mask=smoothness_index > 0,
-                                                                              indexer=indexer, cells=cells)
+        singular_neighbours = get_neighbouring_singular_cells(coords=coords,
+                                                              cell_mask=smoothness_index > 0,
+                                                              indexer=indexer, cells=cells,
+                                                              stencils=stencils)
         if len(regular_opposite_cells) == 2 and singular_neighbours is not None:
             for curve in self.create_vertex(average_values=average_values, indexer=indexer, cells=cells, coords=coords,
                                             smoothness_index=smoothness_index, independent_axis=independent_axis,
@@ -129,7 +148,7 @@ def eval_neighbour_in_border(coords: CellCoords, singular_neighbour: CellCurveBa
 
     same_independent_axis = int(independent_axis == singular_neighbour.independent_axis)
     return np.array(point)[[1 - same_independent_axis, same_independent_axis]], \
-           np.array(versor)[[1 - same_independent_axis, same_independent_axis]]
+        np.array(versor)[[1 - same_independent_axis, same_independent_axis]]
 
 
 def vector2angle(vector):
@@ -190,3 +209,50 @@ if __name__ == "__main__":
     plt.close("all")
     plt.plot(fx(theta, alpha, beta, L), fy(theta, alpha, beta, L))
     plt.show()
+
+
+def get_neighbouring_singular_coords_under_condition(coords: CellCoords, indexer: ArrayIndexerNd,
+                                                     condition: Callable, cells, max_num_nodes=5):
+    """
+    Looks around the vertex searching for curve cells that go opposite directions from the vertex.
+    :param coords:
+    :param indexer:
+    :param cell_mask:
+    :param condition:
+    :param max_num_nodes:
+    :return:
+    """
+    visited_nodes = [
+        indexer[new_coords.coords] for new_coords in coords + NEIGHBOURHOOD_8_MANHATTAN
+        if cells[indexer[new_coords.tuple]].CELL_TYPE == CURVE_CELL_TYPE
+    ]
+
+    singular_cells = []
+    if len(visited_nodes) >= 2:
+        nodes2visit = [[visited_nodes.pop(0)]]
+        visited_nodes = sorted(visited_nodes, key=lambda c: np.sum(np.abs(np.array(c) - np.array(nodes2visit[0][0]))))
+        nodes2visit.append([visited_nodes.pop(-1)])
+        stop = [False, False]
+        for ix in range(max_num_nodes):
+            for direction in [0, 1]:
+                if not stop[direction]:
+                    visiting_coords = nodes2visit[direction].pop(0)
+                    visited_nodes.append(visiting_coords)
+                    if condition(visiting_coords):
+                        singular_cells.append(CellCoords(visiting_coords))
+                        stop[direction] = True
+                    else:
+                        new_node_candidates = {
+                            indexer[new_coords.tuple] for new_coords in
+                            CellCoords(visiting_coords) + NEIGHBOURHOOD_8_MANHATTAN
+                            if cells[indexer[new_coords.tuple]].CELL_TYPE == CURVE_CELL_TYPE
+                        }
+                        # only adds new coordinates that havent been seen before neither in the others surfer list.
+                        nodes2visit[direction] += list(
+                            new_node_candidates.difference(
+                                [coords.tuple] + visited_nodes + nodes2visit[0] + nodes2visit[1]))
+                        if len(nodes2visit[direction]) == 0:
+                            stop[direction] = True
+            if all(stop):
+                break
+    return singular_cells
