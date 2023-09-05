@@ -5,6 +5,7 @@ import seaborn as sns
 
 from lib.CellCreators.CellCreatorBase import SPECIAL_CELLS_COLOR_DICT, REGULAR_CELL_TYPE, CURVE_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CellCurveBase
+from lib.CellCreators.VertexCellCreators.VertexCellCreatorBase import vertex_in_cell
 from lib.Curves.CurveVertex import CurveVertexPolynomial
 
 # from lib.CellCreators.VertexCellCreators.VertexCellCreatorBase import VertexLinearExtended
@@ -214,13 +215,23 @@ def get_curve(curve_cell: CellCurveBase, coords2=None):
 
 
 def get_curve_vertex(curve_cell: CurveVertexPolynomial, coords2=None):
-    for point in map(np.array, [curve_cell.curve.point1, curve_cell.curve.point2]):
-        points = point + (np.array(curve_cell.curve.vertex) - point) * \
-                 np.linspace(0, 1, num=CURVE_PLOT_RESOLUTION).reshape((-1, 1))
-        points = points[:, [curve_cell.independent_axis, curve_cell.dependent_axis]]  # correct order x, y.
-        square = [curve_cell.coords.coords, coords2 if coords2 is not None else curve_cell.coords.coords + 1]
-        points_inside_cell = list(map(partial(is_in_square, square=square), points))
-        yield points[np.ravel(points_inside_cell), :]
+    if vertex_in_cell(curve_cell.coords, curve_cell.independent_axis, curve_cell.curve.vertex):
+        for point in map(np.array, [curve_cell.curve.point1, curve_cell.curve.point2]):
+            points = point + (np.array(curve_cell.curve.vertex) - point) * \
+                     np.linspace(0, 1, num=CURVE_PLOT_RESOLUTION).reshape((-1, 1))
+            points = points[:, [curve_cell.independent_axis, curve_cell.dependent_axis]]  # correct order x, y.
+            square = [curve_cell.coords.coords, coords2 if coords2 is not None else curve_cell.coords.coords + 1]
+            points_inside_cell = list(map(partial(is_in_square, square=square), points))
+            yield points[np.ravel(points_inside_cell), :]
+    else:
+        for point in map(np.array, [curve_cell.curve.point1, curve_cell.curve.point2]):
+            versor = (point - np.array(curve_cell.curve.vertex))
+            versor /= np.sqrt(np.sum(versor ** 2))
+            points = point + versor * np.linspace(0, 2, num=CURVE_PLOT_RESOLUTION * 2).reshape((-1, 1))
+            points = points[:, [curve_cell.independent_axis, curve_cell.dependent_axis]]  # correct order x, y.
+            square = [curve_cell.coords.coords, coords2 if coords2 is not None else curve_cell.coords.coords + 1]
+            points_inside_cell = list(map(partial(is_in_square, square=square), points))
+            yield points[np.ravel(points_inside_cell), :]
 
 
 def plot_curve_core(ax, curve_cells):

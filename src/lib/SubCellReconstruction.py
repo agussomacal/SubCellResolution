@@ -97,6 +97,8 @@ class SubCellReconstruction:
                     # only calculate error if more than one proposition is done otherwise just keep the only one
                     if len(self.cell_creators) > 1 or len(proposed_cells) > 1:
                         for proposed_cell in proposed_cells:
+                            if isinstance(proposed_cell, tuple):
+                                proposed_cell, coords = proposed_cell
                             # Doing OBERA
                             if proposed_cell.CELL_TYPE != REGULAR_CELL_TYPE and self.obera_iterations > 0:
                                 def optim_func(params):

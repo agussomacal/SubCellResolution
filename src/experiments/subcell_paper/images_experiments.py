@@ -96,7 +96,7 @@ def quadratic_vertex(iterations):
         smoothness_calculator=naive_piece_wise,
         reconstruction_error_measure=ReconstructionErrorMeasure(StencilCreatorFixedShape((3, 3)),
                                                                 metric=2,
-                                                                central_cell_extra_weight=CCExtraWeight),
+                                                                central_cell_extra_weight=100),
         refinement=1,
         cell_creators=
         [  # regular cell with piecewise_constant
@@ -110,18 +110,34 @@ def quadratic_vertex(iterations):
             ),
             # ------------ ELVIRA ------------ #
             CellCreatorPipeline(
-                cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
+                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                                       condition=operator.eq),
                 orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
                 stencil_creator=StencilCreatorFixedShape((3, 3)),
                 cell_creator=ELVIRACurveCellCreator(
                     regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
+            # ------------ TEM ------------ #
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
+                                      condition=operator.eq),
+                orientator=OrientPredefined(predefined_axis=0),
+                stencil_creator=StencilCreatorFixedShape(stencil_shape=(3, 3)),
+                cell_creator=VertexCellCreatorUsingNeighboursLines(
+                    regular_opposite_cell_searcher=partial(get_opposite_regular_cells, direction="grad"))
+            ),
             # ------------ AERO Quadratic ------------ #
             CellCreatorPipeline(
-                cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
+                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                                       condition=operator.eq),
-                orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
-                # orientator=OrientPredefined(predefined_axis=0),
+                orientator=OrientPredefined(predefined_axis=0),
+                stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3),
+                cell_creator=ValuesCurveCellCreator(
+                    vander_curve=CurveAverageQuadraticCC,
+                    regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
+                                      condition=operator.eq),
+                orientator=OrientPredefined(predefined_axis=1),
                 stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3),
                 cell_creator=ValuesCurveCellCreator(
                     vander_curve=CurveAverageQuadraticCC,
@@ -142,15 +158,6 @@ def quadratic_vertex(iterations):
                 stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=4),
                 cell_creator=LinearVertexCellCurveCellCreator(
                     regular_opposite_cell_searcher=get_opposite_regular_cells)
-            ),
-            # ------------ TEM ------------ #
-            CellCreatorPipeline(
-                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
-                                      condition=operator.eq),
-                orientator=OrientPredefined(predefined_axis=0),
-                stencil_creator=StencilCreatorFixedShape(stencil_shape=(3, 3)),
-                cell_creator=VertexCellCreatorUsingNeighboursLines(
-                    regular_opposite_cell_searcher=partial(get_opposite_regular_cells, direction="grad"))
             ),
         ],
         obera_iterations=iterations
@@ -212,21 +219,21 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "models",
         quadratic_vertex,
-        recalculate=True
+        recalculate=False
     )
     lab.execute(
         data_manager,
         num_cores=15,
-        forget=True,
-        save_on_iteration=1,
+        forget=False,
+        save_on_iteration=None,
         refinement=[1],
-        num_cells_per_dim=[20],  # , 42, 84 168 42
+        num_cells_per_dim=[20, 42, 84],  # 20, 42, 84 168
         noise=[0],
         image=[
-            # "R2D2.jpeg",
-            # "DarthVader.jpeg",
-            # "ShapesVertex_1680x1680.jpg",
-            # "HandVertex_1680x1680.jpg",
+            "yoda.jpg",
+            "DarthVader.jpeg",
+            "ShapesVertex_1680x1680.jpg",
+            "HandVertex_1680x1680.jpg",
             "Polygon_1680x1680.jpg",
         ],
         iterations=[0],  # 500
