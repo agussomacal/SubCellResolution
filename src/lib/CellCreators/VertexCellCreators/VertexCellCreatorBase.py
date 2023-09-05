@@ -107,11 +107,7 @@ def eval_neighbour_in_border(coords: CellCoords, singular_neighbour: CellCurveBa
     crossing = coords[crossing_axis] + 0.5 + np.sign(versor[crossing_axis]) / 2
     if singular_neighbour.independent_axis == crossing_axis:
         # TODO: evaluation is not a value, needs an array, what to do with nans, filter before?
-        try:
-            # evals = np.ravel(singular_neighbour.curve(np.array([crossing])))
-            evals = np.ravel(singular_neighbour.curve(crossing))
-        except:
-            evals = np.ravel(singular_neighbour.curve(crossing))
+        evals = np.ravel(singular_neighbour.curve(np.array([crossing])))
         point = (crossing, evals[~np.isnan(evals)][0])
     else:
         inverse = np.ravel(np.array(singular_neighbour.curve.function_inverse(crossing)))
@@ -119,11 +115,12 @@ def eval_neighbour_in_border(coords: CellCoords, singular_neighbour: CellCurveBa
             return None, None
         # inverse = inverse[(coords[1 - crossing_axis] + 0.5 >= inverse) & (inverse >= coords[1 - crossing_axis] - 0.5)]
         point = (inverse[~np.isnan(inverse)][0], crossing)
-    try:
-        # der_evals = np.ravel(singular_neighbour.curve.derivative(np.array([point[0]])))
-        der_evals = np.ravel(singular_neighbour.curve.derivative(point[0]))
-    except:
-        der_evals = np.ravel(singular_neighbour.curve.derivative(point[0]))
+    # try:
+    #     # der_evals = np.ravel(singular_neighbour.curve.derivative(np.array([point[0]])))
+    #     der_evals = np.ravel(singular_neighbour.curve.derivative(point[0]))
+    # except:
+    #     der_evals = np.ravel(singular_neighbour.curve.derivative(point[0]))
+    der_evals = np.ravel(singular_neighbour.curve.derivative(point[0]))
     der_evals = der_evals[~np.isnan(der_evals)]
     if len(der_evals) >= 1:
         versor = (1, der_evals[0])

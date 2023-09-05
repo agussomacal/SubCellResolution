@@ -6,6 +6,7 @@ import numpy as np
 from lib.Curves.CurvePolynomial import CurvePolynomial, CurveLinearAngle
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import DatasetsBaseManager
+from lib.StencilCreators import Stencil
 
 SLOPE_OBJECTIVE = "slope_objective"
 ANGLE_OBJECTIVE = "angle_objective"
@@ -56,7 +57,8 @@ class DatasetsManagerLinearCurves(DatasetsBaseManager):
         return angle, r, value_up, 1 - value_up
 
     # --------- predict/find curve ---------- #
-    def create_curve_from_params(self, curve_params, coords: CellCoords, independent_axis: int, value_up, value_down):
+    def create_curve_from_params(self, curve_params, coords: CellCoords, independent_axis: int, value_up, value_down,
+                                 stencil: Stencil):
         if self.learning_objective == SLOPE_OBJECTIVE:
             slope, y_origin = curve_params
         elif self.learning_objective == COS_SIN_OBJECTIVE:
@@ -67,7 +69,4 @@ class DatasetsManagerLinearCurves(DatasetsBaseManager):
             slope = np.tan(angle)
         else:
             raise Exception(f"Learning objective {self.learning_objective} not implemented.")
-
-        new_y_origin = y_origin + coords.coords[1 - independent_axis] + 0.5 - slope * (
-                coords.coords[independent_axis] + 0.5)
-        return CurvePolynomial(polynomial=[new_y_origin, slope], value_up=value_up, value_down=value_down)
+        return CurvePolynomial(polynomial=[y_origin, slope], value_up=value_up, value_down=value_down)

@@ -45,5 +45,4 @@ class DatasetsManagerVertex(DatasetsBaseManager):
     # --------- predict/find curve ---------- #
     def create_curve_from_params(self, curve_params, coords: CellCoords, independent_axis: int, value_up, value_down):
         angle1, angle2, x0, y0 = curve_params
-        return CurveVertexLinearAngle(angle1, angle2, x0 + coords[independent_axis] + 0.5,
-                                      y0 + coords[1 - independent_axis] + 0.5, value_up=value_up, value_down=value_down)
+        return CurveVertexLinearAngle(angle1, angle2, x0, y0, value_up=value_up, value_down=value_down)

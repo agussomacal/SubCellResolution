@@ -43,9 +43,9 @@ class CurvePolynomial(Curve):
         self.x_shift += shift
 
     def set_y_shift(self, shift):
-        params = np.array(self.params)
+        params = np.array(CurvePolynomial.params.fget(self))
         params[0] += shift
-        self.params = params
+        CurvePolynomial.params.fset(self, params)
 
     def function(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return self.polynomial(x - self.x_shift)

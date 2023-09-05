@@ -12,7 +12,7 @@ from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version, ClassPartialInit
 from PerplexityLab.visualization import generic_plot
 from experiments.LearningMethods import flatter
-from experiments.subcell_paper.aero_experiments import fit_model, elvira_grad_oriented
+from experiments.subcell_paper.aero_experiments import fit_model, elvira_grad_oriented, elvira
 from experiments.subcell_paper.function_families import calculate_averages_from_curve
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, CCExtraWeight
 from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
@@ -21,7 +21,7 @@ from lib.Curves.VanderCurves import CurveVandermondePolynomial, CurveVanderCircl
 from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import CURVE_PROBLEM
 from lib.DataManagers.DatasetsManagers.DatasetsManagerLinearCurves import DatasetsManagerLinearCurves, ANGLE_OBJECTIVE
 from lib.DataManagers.DatasetsManagers.DatasetsManagerVanderCurves import DatasetsManagerVanderCurves, POINTS_OBJECTIVE, \
-    POINTS_SAMPLER_EQUISPACE
+    POINTS_SAMPLER_EQUISPACE, PARAMS_OBJECTIVE
 from lib.DataManagers.LearningMethodManager import LearningMethodManager
 from lib.StencilCreators import StencilCreatorFixedShape
 
@@ -33,8 +33,9 @@ dataset_manager_3_8pi = DatasetsManagerLinearCurves(
     value_up_random=False
 )
 
+VanderQuadratic = ClassPartialInit(CurveVandermondePolynomial, class_name="VanderQuadratic", degree=2)
 dataset_manager_vander = DatasetsManagerVanderCurves(
-    curve_type=ClassPartialInit(CurveVandermondePolynomial, degree=2),
+    curve_type=VanderQuadratic,
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
     workers=workers, recalculate=False, learning_objective=POINTS_OBJECTIVE,
     curve_position_radius=(0.5, 0.5, 0.5), points_interval_size=1, value_up_random=False, num_points=3,
@@ -42,7 +43,7 @@ dataset_manager_vander = DatasetsManagerVanderCurves(
 )
 
 dataset_manager_vander1 = DatasetsManagerVanderCurves(
-    curve_type=ClassPartialInit(CurveVandermondePolynomial, degree=2),
+    curve_type=VanderQuadratic,
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
     workers=workers, recalculate=False, learning_objective=POINTS_OBJECTIVE,
     curve_position_radius=(1, 1, 1), points_interval_size=1, value_up_random=False, num_points=3,
@@ -50,9 +51,17 @@ dataset_manager_vander1 = DatasetsManagerVanderCurves(
 )
 
 dataset_manager_vander7 = DatasetsManagerVanderCurves(
-    curve_type=ClassPartialInit(CurveVandermondePolynomial, degree=2),
+    curve_type=VanderQuadratic,
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
     workers=workers, recalculate=False, learning_objective=POINTS_OBJECTIVE,
+    curve_position_radius=(3.5, 1.5, 3.5), points_interval_size=3, value_up_random=False, num_points=3,
+    points_sampler=POINTS_SAMPLER_EQUISPACE,
+)
+
+dataset_manager_vander7params = DatasetsManagerVanderCurves(
+    curve_type=VanderQuadratic,
+    velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
+    workers=workers, recalculate=False, learning_objective=PARAMS_OBJECTIVE,
     curve_position_radius=(3.5, 1.5, 3.5), points_interval_size=3, value_up_random=False, num_points=3,
     points_sampler=POINTS_SAMPLER_EQUISPACE,
 )
@@ -132,6 +141,19 @@ nnlmq7 = LearningMethodManager(
     training_noise=1e-5, train_percentage=0.9
 )
 
+nnlmq7p = LearningMethodManager(
+    dataset_manager=dataset_manager_vander7params,
+    type_of_problem=CURVE_PROBLEM,
+    trainable_model=Pipeline(
+        [
+            ("Flatter", FunctionTransformer(flatter)),
+            ("NN", MLPRegressor(hidden_layer_sizes=(20, 20,), activation='relu', learning_rate_init=0.1,
+                                learning_rate="adaptive", solver="lbfgs"))
+        ]
+    ), refit=False, n2use=-1,
+    training_noise=1e-5, train_percentage=0.9
+)
+
 nnlmc7 = LearningMethodManager(
     dataset_manager=dataset_manager_vander7circle,
     type_of_problem=CURVE_PROBLEM,
@@ -176,6 +198,13 @@ def nn_quadratic3x7(metric):
     return get_sub_cell_model(
         partial(LearningCurveCellCreator, learning_manager=nnlmq7), 1, "NN_quadratic3x7", 0, CCExtraWeight, metric,
         stencil_creator=StencilCreatorFixedShape(nnlmq7.dataset_manager.kernel_size))
+
+
+@fit_model
+def nn_quadratic3x7params(metric):
+    return get_sub_cell_model(
+        partial(LearningCurveCellCreator, learning_manager=nnlmq7p), 1, "NN_quadratic3x7params", 0, CCExtraWeight, metric,
+        stencil_creator=StencilCreatorFixedShape(nnlmq7p.dataset_manager.kernel_size))
 
 
 @fit_model
@@ -225,22 +254,23 @@ if __name__ == "__main__":
         # piecewise_constant,
         # elvira,
         # elvira_100,
-        elvira_grad_oriented,
+        # elvira_grad_oriented,
         # linear_obera,
         # linear_avg,
         # linear_avg_100,
-        # nn_linear,
+        nn_linear,
         # nn_linear4,
-        # nn_quadratic,
-        # nn_quadratic_1,
-        nn_quadratic3x7,
+        nn_quadratic,
+        nn_quadratic_1,
+        # nn_quadratic3x7,
+        nn_quadratic3x7params,
         # nn_circle3x7,
-        recalculate=True
+        recalculate=False
     )
     num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()
     lab.execute(
         data_manager,
-        num_cores=10,
+        num_cores=15,
         forget=False,
         save_on_iteration=None,
         num_cells_per_dim=num_cells_per_dim,

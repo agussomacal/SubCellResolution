@@ -35,6 +35,7 @@ class LearningCurveCellCreator(CurveCellCreatorBase):
             value_down=value_down,
             stencil=stencil
         )
-
+        curve.set_x_shift(np.mean(stencil.coords[:, independent_axis]) + 0.5)
+        curve.set_y_shift(np.mean(stencil.coords[:, 1 - independent_axis]) + 0.5)
         yield curve
 

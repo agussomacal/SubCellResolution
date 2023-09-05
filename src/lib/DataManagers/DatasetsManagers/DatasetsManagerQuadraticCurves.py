@@ -112,11 +112,8 @@ class DatasetsManagerQuadraticCurves(DatasetsBaseManager):
     def create_curve_from_params(self, curve_params, coords: CellCoords, independent_axis: int, value_up, value_down):
         if self.learning_objective == ANGLE_OBJECTIVE:
             angle, y0, a = curve_params
-            return CurveQuadraticAngle(angle, y0 + coords[1 - independent_axis] + 0.5, a, value_up=value_up,
-                                       value_down=value_down, x_shift=coords[independent_axis] + 0.5)
+            return CurveQuadraticAngle(angle, y0, a, value_up=value_up, value_down=value_down)
         else:
             if self.learning_objective == POINTS_OBJECTIVE:
                 curve_params = lstsq(self.vander_mat_extended, curve_params, rcond=None)[0]
-
-            curve_params[0] += coords[1 - independent_axis] + 0.5
-            return CurveQuadratic(*curve_params, value_up, value_down, x_shift=coords[independent_axis] + 0.5)
+            return CurveQuadratic(*curve_params, value_up, value_down)

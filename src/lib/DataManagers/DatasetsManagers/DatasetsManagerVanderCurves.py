@@ -4,8 +4,9 @@ from typing import Union, Tuple, Type
 import numpy as np
 from numpy.linalg import lstsq
 from numpy.polynomial import Polynomial
+from tqdm import tqdm
 
-from PerplexityLab.miscellaneous import NamedPartial
+from PerplexityLab.miscellaneous import NamedPartial, clean_str4saving, get_map_function
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.Curves.CurvePolynomial import CurveQuadraticAngle, CurveQuadratic
 
@@ -15,6 +16,7 @@ from lib.StencilCreators import Stencil
 
 ANGLE_OBJECTIVE = "angle_objective"
 POINTS_OBJECTIVE = "points_objective"
+PARAMS_OBJECTIVE = "params_objective"
 QUADRATIC_PARAMS_OBJECTIVE = "quadratic_params_objective"
 
 # the vander points are in -1.5, 0, 1.5
@@ -68,23 +70,30 @@ class DatasetsManagerVanderCurves(DatasetsBaseManager):
 
     @property
     def base_name(self):
-        return f"{super(DatasetsManagerVanderCurves, self).base_name}_{self.learning_objective}" + \
-            f"radius{self.curve_position_radius}{'' if self.value_up_random else '_value_up_fixed'}"
+        return f"{super(DatasetsManagerVanderCurves, self).base_name}" + \
+            f"_radius{clean_str4saving(str(self.curve_position_radius))}{'' if self.value_up_random else '_value_up_fixed'}"
 
     @property
     def name4learning(self):
         """In case special data aboit the transformations has to be added."""
-        if self.learning_objective == POINTS_OBJECTIVE:
-            return f"_{self.points_sampler}_{self.num_points}_{self.points_interval_size}"
-        return ""
+        return f"_{self.learning_objective}_{self.points_sampler}_{self.num_points}_{self.points_interval_size}"
 
     def transform_curve_data(self, *args):
         if self.learning_objective == POINTS_OBJECTIVE:
             # gets from the polynomial coefficients the y values on the evaluation points
             return args
+        elif self.learning_objective == PARAMS_OBJECTIVE:
+
+            def par_func(y_points):
+                curve = self.curve_type(x_points=self.x_points, y_points=y_points, value_up=0, value_down=1)
+                return super(CurveVander, curve.__class__).params.fget(curve)
+
+            map_func = get_map_function(self.workers)
+            transformed_params = [line for line in tqdm(map_func(par_func, zip(*args)),
+                                                        desc=f"Converting data to {self.learning_objective}")]
+            return np.transpose(transformed_params)
         else:
-            curve = self.curve_type(x_points=self.x_points, y_points=args, value_up=0, value_down=1)
-            return super(CurveVander, curve.__class__).params.fget(curve)
+            raise Exception(f"Not implemented learning_objective {self.learning_objective}")
 
     def get_curve_data(self):
         value_up = np.random.randint(0, 2) if self.value_up_random else 0
@@ -94,7 +103,8 @@ class DatasetsManagerVanderCurves(DatasetsBaseManager):
             y_points = np.array([np.random.uniform(-ym, ym) for ym in self.curve_position_radius])
         else:
             # default the x points are in -0.5, 0, 0.5 -> the central cell
-            y_points = np.random.uniform(-self.curve_position_radius, self.curve_position_radius, size=len(self.x_points))
+            y_points = np.random.uniform(-self.curve_position_radius, self.curve_position_radius,
+                                         size=len(self.x_points))
         return *y_points, value_up, 1 - value_up
 
     # --------- predict/find curve ---------- #
@@ -102,10 +112,11 @@ class DatasetsManagerVanderCurves(DatasetsBaseManager):
                                  stencil: Stencil):
 
         if self.learning_objective == POINTS_OBJECTIVE:
-            curve = self.curve_type(x_points=self.x_points, y_points=curve_params, value_up=value_up, value_down=value_down)
+            curve = self.curve_type(x_points=self.x_points, y_points=curve_params, value_up=value_up,
+                                    value_down=value_down)
+        elif self.learning_objective == PARAMS_OBJECTIVE:
+            # TODO: instead of assigning 2 choose automatically the dependency that is not CurveReparametrization
+            curve = self.curve_type.__bases__[2](curve_params, value_down=value_down, value_up=value_up)
         else:
-            curve = self.curve_type.__bases__[1](curve_params, value_down=value_down, value_up=value_up)
-        curve.set_x_shift(np.mean(stencil.coords[:, independent_axis]) + 0.5)
-        curve.set_y_shift(np.mean(stencil.coords[:, 1-independent_axis]) + 0.5)
-
+            raise Exception(f"Not implemented learning_objective {self.learning_objective}")
         return curve

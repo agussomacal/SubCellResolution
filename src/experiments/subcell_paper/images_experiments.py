@@ -7,6 +7,7 @@ import numpy as np
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
+from PerplexityLab.miscellaneous import ClassPartialInit
 from PerplexityLab.visualization import perplex_plot, one_line_iterator
 from experiments.VizReconstructionUtils import plot_cells, plot_cells_identity, plot_cells_vh_classification_core, \
     plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders
@@ -84,6 +85,10 @@ def fit_model(sub_cell_model):
     return decorated_func
 
 
+CurveAverageQuadraticCC = ClassPartialInit(CurveAveragePolynomial, class_name="CurveAverageQuadraticCC",
+                                           degree=2, ccew=CCExtraWeight)
+
+
 @fit_model
 def quadratic_vertex(iterations):
     return SubCellReconstruction(
@@ -103,6 +108,15 @@ def quadratic_vertex(iterations):
                 cell_creator=PiecewiseConstantRegularCellCreator(
                     apriori_up_value=1, apriori_down_value=0, dimensionality=2)
             ),
+            # ------------ ELVIRA ------------ #
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
+                                      condition=operator.eq),
+                orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
+                stencil_creator=StencilCreatorFixedShape((3, 3)),
+                cell_creator=ELVIRACurveCellCreator(
+                    regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
+            # ------------ AERO Quadratic ------------ #
             CellCreatorPipeline(
                 cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
                                       condition=operator.eq),
@@ -110,8 +124,9 @@ def quadratic_vertex(iterations):
                 # orientator=OrientPredefined(predefined_axis=0),
                 stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3),
                 cell_creator=ValuesCurveCellCreator(
-                    vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=CCExtraWeight),
+                    vander_curve=CurveAverageQuadraticCC,
                     regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
+            # ------------ AVRO ------------ #
             CellCreatorPipeline(
                 cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                                       condition=operator.eq),
@@ -130,14 +145,15 @@ def quadratic_vertex(iterations):
                 cell_creator=LinearVertexCellCurveCellCreator(
                     regular_opposite_cell_searcher=get_opposite_regular_cells)
             ),
-            # CellCreatorPipeline(
-            #     cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
-            #                           condition=operator.eq),
-            #     orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
-            #     stencil_creator=StencilCreatorFixedShape(stencil_shape=(3, 3)),
-            #     cell_creator=VertexCellCreatorUsingNeighboursLines(
-            #         regular_opposite_cell_searcher=get_opposite_regular_cells)
-            # ),
+            # ------------ TEM ------------ #
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
+                                      condition=operator.eq),
+                orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
+                stencil_creator=StencilCreatorFixedShape(stencil_shape=(3, 3)),
+                cell_creator=VertexCellCreatorUsingNeighboursLines(
+                    regular_opposite_cell_searcher=get_opposite_regular_cells)
+            ),
         ],
         obera_iterations=iterations
     )
@@ -202,18 +218,18 @@ if __name__ == "__main__":
     )
     lab.execute(
         data_manager,
-        num_cores=1,
+        num_cores=15,
         forget=True,
         save_on_iteration=1,
         refinement=[1],
-        num_cells_per_dim=[20, 42],  # , 42, 84 168
+        num_cells_per_dim=[20],  # , 42, 84 168 42
         noise=[0],
         image=[
-            # "StarWars.jpeg",
-            # "StarWarsVader.jpeg"
-            # "ShapesVertex_1680x1680.jpg"
-            # "HandVertex_1680x1680.jpg"
-            "Polygon_1680x1680.jpg"
+            # "R2D2.jpeg",
+            # "DarthVader.jpeg",
+            # "ShapesVertex_1680x1680.jpg",
+            # "HandVertex_1680x1680.jpg",
+            "Polygon_1680x1680.jpg",
         ],
         iterations=[0],  # 500
         reconstruction_factor=[5],
@@ -232,7 +248,7 @@ if __name__ == "__main__":
         axes_xy_proportions=(15, 15),
         difference=False,
         plot_curve=True,
-        plot_curve_winner=True,
+        plot_curve_winner=False,
         plot_vh_classification=False,
         plot_singular_cells=False,
         plot_original_image=True,
