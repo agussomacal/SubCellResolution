@@ -3,7 +3,7 @@ import time
 from collections import namedtuple, defaultdict
 from contextlib import contextmanager
 from logging import warning
-from typing import Tuple, Union, List
+from typing import Tuple, Union, List, Dict
 
 import numpy as np
 from scipy.optimize import minimize
@@ -137,18 +137,7 @@ class SubCellReconstruction:
         :param resolution_factor:
         :return:
         """
-        resolution_factor = np.array([resolution_factor] * len(self.resolution), dtype=int) \
-            if isinstance(resolution_factor, int) else np.array(resolution_factor)
-        average_values = np.zeros(resolution_factor * np.array(self.resolution, dtype=int))
-        for ix in mesh_iterator(self.resolution, out_type=np.array):
-            for sub_ix in mesh_iterator(resolution_factor, out_type=np.array):
-                rectangle_upper_left_vertex = ix + sub_ix / resolution_factor
-                rectangle_down_right_vertex = rectangle_upper_left_vertex + 1.0 / resolution_factor
-                avg = self.cells[tuple(ix)].integrate_rectangle(
-                    np.array([rectangle_upper_left_vertex, rectangle_down_right_vertex]))
-                average_values[tuple(ix * resolution_factor + sub_ix)] = avg
-
-        return average_values * np.prod(resolution_factor)
+        return reconstruct_by_factor(cells=self.cells, resolution=self.resolution, resolution_factor=resolution_factor)
 
     def reconstruct_arbitrary_size(self, size: Union[Tuple, np.ndarray]):
         """
@@ -156,9 +145,38 @@ class SubCellReconstruction:
         :param size:
         :return:
         """
-        size = np.array(size)
-        values = np.zeros(size)
-        for ix in itertools.product(*list(map(range, size))):
-            values[ix] = self.cells[tuple(map(int, np.array(ix) / size * self.resolution))].evaluate(
-                (np.array(ix) / size * self.resolution)[np.newaxis, :])
-        return values
+        return reconstruct_arbitrary_size(cells=self.cells, resolution=self.resolution, size=size)
+
+
+def reconstruct_arbitrary_size(cells: Dict[Tuple[int, ...], CellBase], resolution, size: Union[Tuple, np.ndarray]):
+    """
+    Uses evaluation to reconstruct.
+    :param size:
+    :return:
+    """
+    size = np.array(size)
+    values = np.zeros(size)
+    for ix in itertools.product(*list(map(range, size))):
+        values[ix] = cells[tuple(map(int, np.array(ix) / size * resolution))].evaluate(
+            (np.array(ix) / size * resolution)[np.newaxis, :])
+    return values
+
+
+def reconstruct_by_factor(cells: Dict[Tuple[int, ...], CellBase], resolution,
+                          resolution_factor: Union[int, Tuple, np.ndarray] = 1):
+    """
+    Uses averages to reconstruct.
+    :param resolution_factor:
+    :return:
+    """
+    resolution_factor = np.array([resolution_factor] * len(resolution), dtype=int) \
+        if isinstance(resolution_factor, int) else np.array(resolution_factor)
+    average_values = np.zeros(resolution_factor * np.array(resolution, dtype=int))
+    for ix in mesh_iterator(resolution, out_type=np.array):
+        for sub_ix in mesh_iterator(resolution_factor, out_type=np.array):
+            rectangle_upper_left_vertex = ix + sub_ix / resolution_factor
+            rectangle_down_right_vertex = rectangle_upper_left_vertex + 1.0 / resolution_factor
+            avg = cells[tuple(ix)].integrate_rectangle(
+                np.array([rectangle_upper_left_vertex, rectangle_down_right_vertex]))
+            average_values[tuple(ix * resolution_factor + sub_ix)] = avg
+    return average_values * np.prod(resolution_factor)
