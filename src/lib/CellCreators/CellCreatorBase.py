@@ -71,7 +71,11 @@ def velocity_8nei_direction(velocity):
 
 
 def get_relative_next_coords_to_calculate_flux(velocity):
-    return NEIGHBOURHOOD_8[(neighbourhood_8_ix(velocity_8nei_direction(velocity)) + np.array([-1, 0, 1])) % 8]
+    velocity_sign = velocity_8nei_direction(velocity)
+    if np.any(velocity_sign == 0):
+        return np.array([velocity_sign], dtype=int)
+    else:
+        return NEIGHBOURHOOD_8[(neighbourhood_8_ix(velocity_sign) + np.array([-1, 0, 1])) % 8]
 
 
 def get_relative_rectangle_to_calculate_flux(velocity, coords):

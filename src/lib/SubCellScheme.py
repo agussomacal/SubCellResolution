@@ -12,9 +12,11 @@ from lib.SubCellReconstruction import SubCellReconstruction
 
 
 class SubCellScheme:
-    def __init__(self, name, subcell_reconstructor: SubCellReconstruction):
+    def __init__(self, name, subcell_reconstructor: SubCellReconstruction, min_value=None, max_value=None):
         self.name = name
         self.subcell_reconstructor = subcell_reconstructor
+        self.min_value = min_value
+        self.max_value = max_value
 
     def __str__(self):
         return self.name
@@ -37,8 +39,13 @@ class SubCellScheme:
             # ----- update values with calculated fluxes ----- #
             for coords_i, cell in self.subcell_reconstructor.cells.items():
                 for coords_j, flux in cell.flux(velocity, indexer).items():
-                    average_values[coords_i] -= flux
-                    average_values[coords_j] += flux
+                    if flux != 0:
+                        # if self.min_value is not None and average_values[coords_i] - self.min_value < flux:
+                        #     flux = average_values[coords_i] - self.min_value
+                        # if self.max_value is not None and self.max_value - average_values[coords_j] < flux:
+                        #     flux = self.max_value - average_values[coords_j]
+                        average_values[coords_i] -= flux
+                        average_values[coords_j] += flux
             solution.append(average_values)
 
         return solution, all_cells

@@ -9,7 +9,8 @@ import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import ClassPartialInit, NamedPartial
-from PerplexityLab.visualization import generic_plot
+from PerplexityLab.visualization import generic_plot, one_line_iterator, perplex_plot
+from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders
 from experiments.subcell_paper.function_families import load_image, calculate_averages_from_image
 from experiments.subcell_paper.global_params import CCExtraWeight
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
@@ -19,7 +20,7 @@ from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposit
     get_opposite_regular_cells_by_stencil
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator
 from lib.CellCreators.CurveCellCreators.VertexCellCreator import LinearVertexCellCurveCellCreator
-from lib.CellCreators.RegularCellCreator import PiecewiseConstantRegularCellCreator
+from lib.CellCreators.RegularCellCreator import PiecewiseConstantRegularCellCreator, MirrorCellCreator
 from lib.CellCreators.VertexCellCreators.VertexCellCreatorBase import VertexCellCreatorUsingNeighboursLines
 from lib.CellIterators import iterate_by_condition_on_smoothness, iterate_by_reconstruction_error_and_smoothness, \
     iterate_all
@@ -34,7 +35,7 @@ from lib.SubCellScheme import SubCellScheme
 EVALUATIONS = True
 
 
-def true_solution(image, num_cells_per_dim, velocity, ntimes):
+def calculate_true_solution(image, num_cells_per_dim, velocity, ntimes):
     image = load_image(image)
     pixels_per_cell = np.array(np.shape(image)) / num_cells_per_dim
     velocity_in_pixels = np.array(pixels_per_cell * np.array(velocity), dtype=int)
@@ -42,7 +43,7 @@ def true_solution(image, num_cells_per_dim, velocity, ntimes):
 
     true_solution = []
     for i in range(ntimes + 1):
-        np.roll(image, velocity_in_pixels * i)
+        image = np.roll(image, velocity_in_pixels)
         true_solution.append(calculate_averages_from_image(image, num_cells_per_dim))
 
     return {"true_solution": true_solution}
@@ -55,7 +56,8 @@ def fit_model(subcell_reconstruction):
         np.random.seed(42)
         avg_values = avg_values + np.random.uniform(-noise, noise, size=avg_values.shape)
 
-        model = SubCellScheme(name=subcell_reconstruction.__name__, subcell_reconstructor=subcell_reconstruction())
+        model = SubCellScheme(name=subcell_reconstruction.__name__, subcell_reconstructor=subcell_reconstruction(),
+                              min_value=0, max_value=1)
 
         t0 = time.time()
         solution, all_cells = model.evolve(init_average_values=avg_values, indexer=ArrayIndexerNd(avg_values, "cyclic"),
@@ -63,22 +65,22 @@ def fit_model(subcell_reconstruction):
         t_fit = time.time() - t0
 
         t0 = time.time()
-        reconstruction = []
-        for cells in all_cells:
-            if EVALUATIONS:
-                reconstruction.append(reconstruct_arbitrary_size(cells, model.resolution,
-                                                                 np.array(np.shape(image)) // reconstruction_factor))
-            else:
-                reconstruction.append(reconstruct_by_factor(cells, model.resolution,
-                                                            resolution_factor=np.array(
-                                                                np.array(np.shape(image)) / np.array(model.resolution),
-                                                                dtype=int)))
+        # reconstruction = []
+        # for cells in all_cells:
+        #     if EVALUATIONS:
+        #         reconstruction.append(reconstruct_arbitrary_size(cells, model.resolution,
+        #                                                          np.array(np.shape(image)) // reconstruction_factor))
+        #     else:
+        #         reconstruction.append(reconstruct_by_factor(cells, model.resolution,
+        #                                                     resolution_factor=np.array(
+        #                                                         np.array(np.shape(image)) / np.array(model.resolution),
+        #                                                         dtype=int)))
         t_reconstruct = time.time() - t0
 
         return {
             "model": model,
             "time_to_fit": t_fit,
-            "reconstruction": reconstruction,
+            # "reconstruction": reconstruction,
             "solution": solution,
             "time_to_reconstruct": t_reconstruct
         }
@@ -108,8 +110,7 @@ def upwind():
                 cell_iterator=iterate_all,  # only regular cells
                 orientator=BaseOrientator(dimensionality=2),
                 stencil_creator=StencilCreatorFixedShape(stencil_shape=(1, 1)),
-                cell_creator=PiecewiseConstantRegularCellCreator(
-                    apriori_up_value=1, apriori_down_value=0, dimensionality=2)
+                cell_creator=MirrorCellCreator(dimensionality=2)
             ),
         ],
         obera_iterations=0
@@ -152,7 +153,7 @@ def elvira():
 def quadratic():
     return SubCellReconstruction(
         name="All",
-        smoothness_calculator=naive_piece_wise,
+        smoothness_calculator=partial(naive_piece_wise, eps=1e-2, min_val=0, max_val=1),
         reconstruction_error_measure=ReconstructionErrorMeasure(StencilCreatorFixedShape((3, 3)),
                                                                 metric=2,
                                                                 central_cell_extra_weight=100),
@@ -167,6 +168,14 @@ def quadratic():
                 cell_creator=PiecewiseConstantRegularCellCreator(
                     apriori_up_value=1, apriori_down_value=0, dimensionality=2)
             ),
+            # # ------------ ELVIRA ------------ #
+            # CellCreatorPipeline(
+            #     cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
+            #                           condition=operator.eq),
+            #     orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
+            #     stencil_creator=StencilCreatorFixedShape((3, 3)),
+            #     cell_creator=ELVIRACurveCellCreator(
+            #         regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
             # ------------ AERO Quadratic ------------ #
             CellCreatorPipeline(
                 cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
@@ -256,6 +265,26 @@ def full():
     )
 
 
+@perplex_plot()
+@one_line_iterator
+def plot_time_i(fig, ax, true_solution, solution, num_cells_per_dim, model, i=0, alpha=0.5, cmap="Greys_r",
+                trim=((0, 0), (0, 0)),
+                numbers_on=True, error=False):
+    model_resolution = np.array(model.resolution)
+    colors = (solution[i] - true_solution[i]) if error else solution[i]
+    plot_cells(ax, colors=colors, mesh_shape=model_resolution, alpha=alpha, cmap=cmap,
+               vmin=np.min(true_solution), vmax=np.max(true_solution))
+
+    draw_cell_borders(
+        ax, mesh_shape=num_cells_per_dim,
+        refinement=model_resolution // num_cells_per_dim,
+        numbers_on=numbers_on,
+        prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
+    )
+    ax.set_xlim((-0.5 + trim[0][0], model_resolution[0] - trim[0][1] - 0.5))
+    ax.set_ylim((model_resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
+
+
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
@@ -269,27 +298,27 @@ if __name__ == "__main__":
 
     lab.define_new_block_of_functions(
         "ground_truth",
-        true_solution,
+        calculate_true_solution,
         recalculate=False
     )
 
     lab.define_new_block_of_functions(
         "models",
-        upwind,
+        # upwind,
         quadratic,
-        elvira,
-        recalculate=False
+        # elvira,
+        recalculate=True
     )
 
     lab.execute(
         data_manager,
-        num_cores=15,
+        num_cores=3,
         forget=False,
         save_on_iteration=None,
         refinement=[1],
         ntimes=[10],
-        velocity=[(0, 1 / 7)],
-        num_cells_per_dim=[20],  # 20, 42, 84 168
+        velocity=[(0, 1 / 4)],
+        num_cells_per_dim=[20, 60],  # 20, 42, 84 168
         noise=[0],
         image=[
             "Elipsoid_1680x1680.jpg"
@@ -309,8 +338,14 @@ if __name__ == "__main__":
 
     generic_plot(data_manager,
                  name="ErrorInTime",
-                 x="times", y="scheme_error", label="models",
+                 x="times", y="scheme_error", label="models", plot_by=["num_cells_per_dim"],
+                 # models=["elvira", "quadratic"],
                  times=times, scheme_error=scheme_error,
                  plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
                  log="y",
                  )
+
+    for i in range(10):
+        plot_time_i(data_manager, name=f"Time{i}", i=i, alpha=0.8, cmap="viridis",
+                    trim=((0, 0), (0, 0)), axes_by=["models"], plot_by=["num_cells_per_dim"],
+                    numbers_on=True, error=True)
