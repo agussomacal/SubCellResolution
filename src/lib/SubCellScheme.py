@@ -1,4 +1,6 @@
+import copy
 import itertools
+from functools import partial
 from typing import Union, Tuple, Dict
 
 import numpy as np
@@ -8,6 +10,7 @@ from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.CellCreators.CellCreatorBase import get_rectangles_and_coords_to_calculate_flux
 from lib.CellCreators.RegularCellCreator import CellRegularBase
+from lib.SmoothnessCalculators import oracle
 from lib.SubCellReconstruction import SubCellReconstruction
 
 
@@ -25,14 +28,17 @@ class SubCellScheme:
     def resolution(self):
         return self.subcell_reconstructor.resolution
 
-    def evolve(self, init_average_values: np.ndarray, indexer: ArrayIndexerNd, velocity: np.ndarray, ntimes: int):
+    def evolve(self, init_average_values: np.ndarray, indexer: ArrayIndexerNd, velocity: np.ndarray, ntimes: int,
+               interface_oracle: np.ndarray = None):
         """
         Assumes dt = 1 and velocity is relative to the size of a cell so 1 means that in 1 time step will do one cell.
         """
         solution = [init_average_values]
         all_cells = []
-        for _ in tqdm(range(ntimes), "Evolving {}...".format(self)):
+        for i in tqdm(range(ntimes), "Evolving {}...".format(self)):
             average_values = np.copy(solution[-1])
+            if interface_oracle is not None:
+                self.subcell_reconstructor.smoothness_calculator = partial(oracle, mask=interface_oracle[i])
             self.subcell_reconstructor.fit(average_values, indexer)
             all_cells.append(self.subcell_reconstructor.cells.copy())
 
@@ -46,6 +52,10 @@ class SubCellScheme:
                         #     flux = self.max_value - average_values[coords_j]
                         average_values[coords_i] -= flux
                         average_values[coords_j] += flux
+            if self.min_value is not None:
+                average_values[average_values < self.min_value] = self.min_value
+            if self.max_value is not None:
+                average_values[average_values > self.max_value] = self.max_value
             solution.append(average_values)
 
         return solution, all_cells

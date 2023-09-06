@@ -6,6 +6,10 @@ from lib.StencilCreators import get_fixed_stencil_values
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 
 
+def oracle(average_values: np.ndarray, indexer: ArrayIndexerNd, mask):
+    return mask
+
+
 def indifferent(average_values: np.ndarray, indexer: ArrayIndexerNd) -> np.ndarray:
     return np.zeros(np.shape(average_values))
 
@@ -26,5 +30,5 @@ def by_gradient(average_values: np.ndarray, indexer: ArrayIndexerNd):
             method="scharr",
             normalize=False
         )
-        si[coords] = np.sqrt(np.sum(gradient**2))
+        si[coords] = np.sqrt(np.sum(gradient ** 2))
     return si
