@@ -13,7 +13,7 @@ from PerplexityLab.visualization import generic_plot, one_line_iterator, perplex
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, plot_cells_identity, \
     plot_cells_vh_classification_core, plot_cells_not_regular_classification_core, plot_curve_core
 from experiments.subcell_paper.function_families import load_image, calculate_averages_from_image
-from experiments.subcell_paper.global_params import CCExtraWeight
+from experiments.subcell_paper.global_params import CCExtraWeight, CurveAverageQuadraticCC
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import REGULAR_CELL_TYPE
@@ -59,8 +59,8 @@ def calculate_true_solution(image, num_cells_per_dim, velocity, ntimes):
 
 def fit_model(subcell_reconstruction):
     def decorated_func(image, noise, num_cells_per_dim, reconstruction_factor, velocity, ntimes, true_solution):
-        image = load_image(image)
-        avg_values = calculate_averages_from_image(image, num_cells_per_dim)
+        image_array = load_image(image)
+        avg_values = calculate_averages_from_image(image_array, num_cells_per_dim)
         np.random.seed(42)
         avg_values = avg_values + np.random.uniform(-noise, noise, size=avg_values.shape)
 
@@ -81,11 +81,11 @@ def fit_model(subcell_reconstruction):
         for cells in all_cells:
             if EVALUATIONS:
                 reconstruction.append(reconstruct_arbitrary_size(cells, model.resolution,
-                                                                 np.array(np.shape(image)) // reconstruction_factor))
+                                                                 np.array(np.shape(image_array)) // reconstruction_factor))
             else:
                 reconstruction.append(reconstruct_by_factor(cells, model.resolution,
                                                             resolution_factor=np.array(
-                                                                np.array(np.shape(image)) / np.array(model.resolution),
+                                                                np.array(np.shape(image_array)) / np.array(model.resolution),
                                                                 dtype=int)))
         t_reconstruct = time.time() - t0
 
@@ -102,10 +102,6 @@ def fit_model(subcell_reconstruction):
     # the other option is to pass to the block the name we wish to associate to the function.
     decorated_func.__name__ = subcell_reconstruction.__name__
     return decorated_func
-
-
-CurveAverageQuadraticCC = ClassPartialInit(CurveAveragePolynomial, class_name="CurveAverageQuadraticCC",
-                                           degree=2, ccew=CCExtraWeight)
 
 
 @fit_model
@@ -503,7 +499,7 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "ground_truth",
         calculate_true_solution,
-        recalculate=False
+        recalculate=True
     )
 
     lab.define_new_block_of_functions(
@@ -519,9 +515,9 @@ if __name__ == "__main__":
 
     lab.execute(
         data_manager,
-        num_cores=3,
+        num_cores=1,
         forget=False,
-        save_on_iteration=None,
+        save_on_iteration=5,
         refinement=[1],
         ntimes=[10],
         velocity=[(0, 1 / 4)],
@@ -531,9 +527,9 @@ if __name__ == "__main__":
             "Ellipsoid_1680x1680.jpg",
             # "yoda.jpg",
             # "DarthVader.jpeg",
-            "ShapesVertex_1680x1680.jpg",
-            "HandVertex_1680x1680.jpg",
-            "Polygon_1680x1680.jpg",
+            # "ShapesVertex_1680x1680.jpg",
+            # "HandVertex_1680x1680.jpg",
+            # "Polygon_1680x1680.jpg",
         ],
         iterations=[0],  # 500
         reconstruction_factor=[5],

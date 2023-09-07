@@ -77,7 +77,7 @@ def get_stencil_same_type(coords: CellCoords, indexer: ArrayIndexerNd, num_nodes
 
 
 class StencilCreatorSameRegionAdaptive(StencilCreator):
-    def __init__(self, num_nodes_per_dim: int, dimensionality: int):
+    def __init__(self, num_nodes_per_dim: int, dimensionality: int = 2):
         self.num_nodes = num_nodes_per_dim ** dimensionality
 
     def get_stencil(self, average_values: np.ndarray, smoothness_index: np.ndarray, coords: CellCoords,
@@ -288,6 +288,7 @@ class StencilCreatorAdaptive(StencilCreator):
             np.max(ropcells[left_border:left_border + self.independent_dim_stencil_size], axis=(0, 1))]
 
         return np.transpose(stencil_boundaries)
+        # return np.array([(coords - np.array((1, 1))).tuple, (coords + np.array((1, 1))).tuple])
 
     def get_stencil(self, average_values: np.ndarray, smoothness_index: np.ndarray, coords: CellCoords,
                     independent_axis: int, indexer: ArrayIndexerNd) -> Stencil:

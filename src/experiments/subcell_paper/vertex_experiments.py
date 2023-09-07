@@ -12,7 +12,7 @@ from PerplexityLab.visualization import perplex_plot, one_line_iterator
 from experiments.VizReconstructionUtils import plot_cells, plot_cells_identity, plot_cells_vh_classification_core, \
     plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders
 from experiments.subcell_paper.function_families import load_image, calculate_averages_from_image
-from experiments.subcell_paper.global_params import CCExtraWeight
+from experiments.subcell_paper.global_params import CCExtraWeight, CurveAverageQuadraticCC
 from experiments.subcell_paper.obera_experiments import get_sub_cell_model
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL, VERTEX_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
@@ -83,10 +83,6 @@ def fit_model(sub_cell_model):
     # the other option is to pass to the block the name we wish to associate to the function.
     decorated_func.__name__ = sub_cell_model.__name__
     return decorated_func
-
-
-CurveAverageQuadraticCC = ClassPartialInit(CurveAveragePolynomial, class_name="CurveAverageQuadraticCC",
-                                           degree=2, ccew=CCExtraWeight)
 
 
 @fit_model
