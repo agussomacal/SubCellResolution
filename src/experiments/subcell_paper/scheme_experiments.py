@@ -20,6 +20,7 @@ from lib.CellCreators.CellCreatorBase import REGULAR_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells, \
     get_opposite_regular_cells_by_stencil
+from lib.CellCreators.CurveCellCreators.TaylorCurveCellCreator import TaylorCircleCurveCellCreator
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator
 from lib.CellCreators.CurveCellCreators.VertexCellCreator import LinearVertexCellCurveCellCreator
 from lib.CellCreators.RegularCellCreator import PiecewiseConstantRegularCellCreator, MirrorCellCreator
@@ -70,7 +71,8 @@ def fit_model(subcell_reconstruction):
         solution, all_cells = model.evolve(
             init_average_values=avg_values, indexer=ArrayIndexerNd(avg_values, "cyclic"),
             velocity=np.array(velocity), ntimes=ntimes,
-            interface_oracle=None  # (np.array(true_solution) > 0) * (np.array(true_solution) < 1)
+            # interface_oracle=None
+            interface_oracle=(np.array(true_solution) > 0) * (np.array(true_solution) < 1)
         )
         t_fit = time.time() - t0
 
@@ -172,7 +174,7 @@ def quadratic():
         smoothness_calculator=partial(naive_piece_wise, eps=1e-2, min_val=0, max_val=1),
         reconstruction_error_measure=ReconstructionErrorMeasure(StencilCreatorFixedShape((3, 3)),
                                                                 metric=2,
-                                                                central_cell_extra_weight=1),
+                                                                central_cell_extra_weight=10),
         refinement=1,
         cell_creators=
         [  # regular cell with piecewise_constant
@@ -203,10 +205,143 @@ def quadratic():
             CellCreatorPipeline(
                 cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                                       condition=operator.eq),
-                orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
-                stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3),
+                orientator=OrientPredefined(predefined_axis=0, dimensionality=2),
+                # orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
+                stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
+                                                       independent_dim_stencil_size=3),
                 cell_creator=ValuesCurveCellCreator(
                     vander_curve=CurveAverageQuadraticCC,
+                    regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
+                                      condition=operator.eq),
+                orientator=OrientPredefined(predefined_axis=1, dimensionality=2),
+                stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
+                                                       independent_dim_stencil_size=3),
+                cell_creator=ValuesCurveCellCreator(
+                    vander_curve=CurveAverageQuadraticCC,
+                    regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
+        ],
+        obera_iterations=0
+    )
+
+
+@fit_model
+def qelvira():
+    return SubCellReconstruction(
+        name="All",
+        smoothness_calculator=naive_piece_wise,
+        reconstruction_error_measure=ReconstructionErrorMeasure(StencilCreatorFixedShape((3, 3)),
+                                                                metric=2,
+                                                                central_cell_extra_weight=1),
+        refinement=1,
+        cell_creators=
+        [  # regular cell with piecewise_constant
+            CellCreatorPipeline(
+                cell_iterator=iterate_all,  # only regular cells
+                orientator=BaseOrientator(dimensionality=2),
+                stencil_creator=StencilCreatorFixedShape(stencil_shape=(1, 1)),
+                cell_creator=PiecewiseConstantRegularCellCreator(
+                    apriori_up_value=1, apriori_down_value=0, dimensionality=2)
+            ),
+            # CellCreatorPipeline(
+            #     cell_iterator=iterate_all,  # only regular cells
+            #     orientator=BaseOrientator(dimensionality=2),
+            #     stencil_creator=StencilCreatorFixedShape(stencil_shape=(1, 1)),
+            #     cell_creator=MirrorCellCreator(dimensionality=2)
+            # ),
+            # ------------ ELVIRA ------------ #
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
+                                      condition=operator.eq),
+                orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
+                stencil_creator=StencilCreatorFixedShape((3, 3)),
+                cell_creator=ELVIRACurveCellCreator(
+                    regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
+            # ------------ AERO Quadratic ------------ #
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
+                                      condition=operator.eq),
+                orientator=OrientPredefined(predefined_axis=0, dimensionality=2),
+                # orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
+                stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
+                                                       independent_dim_stencil_size=3),
+                cell_creator=ValuesCurveCellCreator(
+                    vander_curve=CurveAverageQuadraticCC,
+                    regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
+                                      condition=operator.eq),
+                orientator=OrientPredefined(predefined_axis=1, dimensionality=2),
+                stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
+                                                       independent_dim_stencil_size=3),
+                cell_creator=ValuesCurveCellCreator(
+                    vander_curve=CurveAverageQuadraticCC,
+                    regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
+        ],
+        obera_iterations=0
+    )
+
+
+@fit_model
+def elviracircle():
+    return SubCellReconstruction(
+        name="All",
+        smoothness_calculator=partial(naive_piece_wise, eps=1e-2, min_val=0, max_val=1),
+        reconstruction_error_measure=ReconstructionErrorMeasure(StencilCreatorFixedShape((3, 3)),
+                                                                metric=2,
+                                                                central_cell_extra_weight=10),
+        refinement=1,
+        cell_creators=
+        [  # regular cell with piecewise_constant
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=REGULAR_CELL,
+                                      condition=operator.eq),  # only regular cells
+                orientator=BaseOrientator(dimensionality=2),
+                stencil_creator=StencilCreatorFixedShape(stencil_shape=(1, 1)),
+                cell_creator=PiecewiseConstantRegularCellCreator(
+                    apriori_up_value=1, apriori_down_value=0, dimensionality=2)
+            ),
+            # ------------ ELVIRA ------------ #
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
+                                      condition=operator.eq),
+                orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
+                stencil_creator=StencilCreatorFixedShape((3, 3)),
+                cell_creator=ELVIRACurveCellCreator(
+                    regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
+            # CellCreatorPipeline(
+            #     cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
+            #                           condition=operator.eq),  # only regular cells
+            #     orientator=BaseOrientator(dimensionality=2),
+            #     stencil_creator=StencilCreatorFixedShape(stencil_shape=(1, 1)),
+            #     cell_creator=MirrorCellCreator(dimensionality=2)
+            # ),
+            # ------------ ELVIRA ------------ #
+            # CellCreatorPipeline(
+            #     cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
+            #                           condition=operator.eq),
+            #     orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
+            #     stencil_creator=StencilCreatorFixedShape((3, 3)),
+            #     cell_creator=ELVIRACurveCellCreator(
+            #         regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
+            # ------------ AERO Circle ------------ #
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
+                                      condition=operator.eq),
+                # orientator=OrientPredefined(predefined_axis=0, dimensionality=2),
+                orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
+                stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
+                                                       independent_dim_stencil_size=3, center_weight=2.1),
+                cell_creator=TaylorCircleCurveCellCreator(
+                    regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
+                                      condition=operator.eq),
+                orientator=OrientPredefined(predefined_axis=1, dimensionality=2),
+                stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
+                                                       independent_dim_stencil_size=3, center_weight=2.1),
+                cell_creator=TaylorCircleCurveCellCreator(
                     regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
         ],
         obera_iterations=0
@@ -225,7 +360,7 @@ def full():
         cell_creators=
         [  # regular cell with piecewise_constant
             CellCreatorPipeline(
-                cell_iterator=partial(iterate_by_condition_on_smoothness, value=REGULAR_CELL,
+                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=REGULAR_CELL,
                                       condition=operator.eq),  # only regular cells
                 orientator=BaseOrientator(dimensionality=2),
                 stencil_creator=StencilCreatorFixedShape(stencil_shape=(1, 1)),
@@ -253,16 +388,19 @@ def full():
             CellCreatorPipeline(
                 cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                                       condition=operator.eq),
-                orientator=OrientPredefined(predefined_axis=0),
-                stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3),
+                orientator=OrientPredefined(predefined_axis=0, dimensionality=2),
+                # orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
+                stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
+                                                       independent_dim_stencil_size=3),
                 cell_creator=ValuesCurveCellCreator(
                     vander_curve=CurveAverageQuadraticCC,
                     regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
             CellCreatorPipeline(
                 cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                                       condition=operator.eq),
-                orientator=OrientPredefined(predefined_axis=1),
-                stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3),
+                orientator=OrientPredefined(predefined_axis=1, dimensionality=2),
+                stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
+                                                       independent_dim_stencil_size=3),
                 cell_creator=ValuesCurveCellCreator(
                     vander_curve=CurveAverageQuadraticCC,
                     regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
@@ -373,7 +511,10 @@ if __name__ == "__main__":
         upwind,
         quadratic,
         elvira,
-        recalculate=True
+        # elviracircle,
+        qelvira,
+        full,
+        recalculate=False
     )
 
     lab.execute(
@@ -384,27 +525,27 @@ if __name__ == "__main__":
         refinement=[1],
         ntimes=[10],
         velocity=[(0, 1 / 4)],
-        num_cells_per_dim=[60],  # 60
+        num_cells_per_dim=[20],  # 60
         noise=[0],
         image=[
-            "Ellipsoid_1680x1680.jpg"
+            "Ellipsoid_1680x1680.jpg",
             # "yoda.jpg",
             # "DarthVader.jpeg",
-            # "ShapesVertex_1680x1680.jpg",
-            # "HandVertex_1680x1680.jpg",
-            # "Polygon_1680x1680.jpg",
+            "ShapesVertex_1680x1680.jpg",
+            "HandVertex_1680x1680.jpg",
+            "Polygon_1680x1680.jpg",
         ],
         iterations=[0],  # 500
         reconstruction_factor=[5],
     )
 
-    scheme_error = lambda true_solution, solution: np.mean(
+    scheme_error = lambda image, true_solution, solution: np.mean(
         np.abs((np.array(solution[1:]) - np.array(true_solution[1:]))), axis=(1, 2))
     times = lambda ntimes: np.arange(1, ntimes + 1)
 
     generic_plot(data_manager,
                  name="ErrorInTime",
-                 x="times", y="scheme_error", label="models", plot_by=["num_cells_per_dim"],
+                 x="times", y="scheme_error", label="models", plot_by=["num_cells_per_dim", "image"],
                  # models=["elvira", "quadratic"],
                  times=times, scheme_error=scheme_error,
                  plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
@@ -413,7 +554,9 @@ if __name__ == "__main__":
 
     for i in range(10):
         plot_time_i(data_manager, folder="Solution", name=f"Time{i}", i=i, alpha=0.8, cmap="viridis",
-                    trim=((0, 0), (0, 0)), axes_by=["models"], plot_by=["num_cells_per_dim"],
+                    trim=((0, 0), (0, 0)), folder_by=['image', 'num_cells_per_dim'],
+                    plot_by=[],
+                    axes_by=["models"],
                     numbers_on=True, error=True)
 
         plot_reconstruction_time_i(
@@ -421,7 +564,8 @@ if __name__ == "__main__":
             i=i,
             name=f"Reconstruction{i}",
             folder='Reconstruction',
-            plot_by=['image', 'num_cells_per_dim'],
+            folder_by=['image', 'num_cells_per_dim'],
+            plot_by=[],
             axes_by=["models"],
             axes_xy_proportions=(15, 15),
             difference=False,

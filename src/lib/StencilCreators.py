@@ -149,6 +149,17 @@ class StencilCreatorSmoothnessDistTradeOff(StencilCreatorFixedShape):
 
 # -------------------------------------------------- #
 # ----------------- Adaptive shape ----------------- #
+def get_near_singular_cell_coords(coords: CellCoords, dependent_axis: int, regularity_mask: np.ndarray,
+                                  indexer: ArrayIndexerNd) -> (Tuple[Tuple[int, int], Tuple[int, int]], np.ndarray):
+    assert all([mode == CYCLIC for mode in indexer.modes]), "Only for periodic condition problems."
+    for direction in [1, -1]:
+        for i in np.arange(np.shape(regularity_mask)[dependent_axis]):
+            coords_i = 1 * coords.coords
+            coords_i[dependent_axis] += direction * i
+            if regularity_mask[indexer[coords_i]] != REGULAR_CELL:
+                return CellCoords(coords_i)
+
+
 def get_regular_opposite_cell_coords(coords: CellCoords, dependent_axis: int, regularity_mask: np.ndarray,
                                      indexer: ArrayIndexerNd) -> (Tuple[Tuple[int, int], Tuple[int, int]], np.ndarray):
     assert all([mode == CYCLIC for mode in indexer.modes]), "Only for periodic condition problems."
@@ -164,7 +175,7 @@ def get_regular_opposite_cell_coords(coords: CellCoords, dependent_axis: int, re
             else:
                 singular_cells.append(tuple(coords_i))
 
-    return regular_opposite_cells, singular_cells
+    return regular_opposite_cells, list(set(singular_cells))
 
 
 def surf_step(coords: CellCoords, surfers_coords: np.ndarray, surfers_nearness: float, regularity_mask: np.ndarray,
@@ -188,37 +199,95 @@ def surf_step(coords: CellCoords, surfers_coords: np.ndarray, surfers_nearness: 
 SURFERS_DIRECTIONS = np.array([-1, 1])
 
 
+# class StencilCreatorAdaptive(StencilCreator):
+#     def __init__(self, independent_dim_stencil_size: int, smoothness_threshold: float = 0,
+#                  weight_of_growing_on_dependent_direction=0.45):
+#         self.smoothness_threshold = smoothness_threshold
+#         self.independent_dim_stencil_size = independent_dim_stencil_size
+#         self.weight_of_growing_on_dependent_direction = weight_of_growing_on_dependent_direction
+#
+#     def get_stencil_boundaries(self, regularity_mask: np.ndarray,
+#                                # region_mask: np.ndarray,
+#                                coords: CellCoords, indexer: ArrayIndexerNd, independent_axis: int = 0):
+#         dependent_axis = 1 - independent_axis
+#         regular_opposite_cells, _ = get_regular_opposite_cell_coords(coords, dependent_axis, regularity_mask, indexer)
+#
+#         regular_cells_set = np.array(regular_opposite_cells)
+#         regular_cells_nearness = [0, 0]
+#         surfers = np.array([regular_opposite_cells, regular_opposite_cells])
+#         surfers[0, :, independent_axis] += SURFERS_DIRECTIONS[0]
+#         surfers[1, :, independent_axis] += SURFERS_DIRECTIONS[1]
+#         surfers_nearness = [1, 1]
+#         for _ in range((self.independent_dim_stencil_size - 1) * 2):
+#             for i, surfer_direction in enumerate(SURFERS_DIRECTIONS):
+#                 surfers[i], surfers_nearness[i], regular_cells_set, regular_cells_nearness = \
+#                     surf_step(coords, surfers[i], surfers_nearness[i], regularity_mask,
+#                               # region_mask,
+#                               regular_cells_set,
+#                               regular_cells_nearness, dependent_axis, surfer_direction, indexer,
+#                               self.weight_of_growing_on_dependent_direction)
+#         regular_cells_set = regular_cells_set[np.argsort(regular_cells_nearness)][
+#                             :self.independent_dim_stencil_size * 2]
+#         stencil_boundaries = np.transpose([np.min(regular_cells_set, axis=0), np.max(regular_cells_set, axis=0)])
+#         return stencil_boundaries
+#
+#     def get_stencil(self, average_values: np.ndarray, smoothness_index: np.ndarray, coords: CellCoords,
+#                     independent_axis: int, indexer: ArrayIndexerNd) -> Stencil:
+#         stencil_boundaries = self.get_stencil_boundaries(smoothness_index > self.smoothness_threshold, coords, indexer,
+#                                                          independent_axis)
+#         # No cyclic transformation of indexes is applied because the coordinates need to be contiguous
+#         # to have a correct fit
+#         stencil_coords = np.array(
+#             [c for c in itertools.product(*[np.arange(mn, mx + 1) for i, (mn, mx) in enumerate(stencil_boundaries)])])
+#         stencil_values = np.array([average_values[indexer[c]] for c in stencil_coords])
+#         # values = average_values[np.ix_(*[indexer.transform_single_dimension(np.arange(mn, mx + 1), i)
+#         #                                  for i, (mn, mx) in enumerate(stencil_boundaries)])]
+#         return Stencil(coords=stencil_coords, values=stencil_values)
+
+
 class StencilCreatorAdaptive(StencilCreator):
-    def __init__(self, independent_dim_stencil_size: int, smoothness_threshold: float = 0,
-                 weight_of_growing_on_dependent_direction=0.45):
+    def __init__(self, independent_dim_stencil_size: int, smoothness_threshold: float = 0, center_weight=2.1):
         self.smoothness_threshold = smoothness_threshold
         self.independent_dim_stencil_size = independent_dim_stencil_size
-        self.weight_of_growing_on_dependent_direction = weight_of_growing_on_dependent_direction
+        self.center_weight = center_weight
 
     def get_stencil_boundaries(self, regularity_mask: np.ndarray,
                                # region_mask: np.ndarray,
                                coords: CellCoords, indexer: ArrayIndexerNd, independent_axis: int = 0):
         dependent_axis = 1 - independent_axis
-        regular_opposite_cells, _ = get_regular_opposite_cell_coords(coords, dependent_axis, regularity_mask, indexer)
+        regular_opposite_cells_center, singular_cells_center = \
+            get_regular_opposite_cell_coords(coords, dependent_axis, regularity_mask, indexer)
+        regular_opposite_cells_sides = {1: [], -1: []}
+        singular_cells_sides = {1: [], -1: []}
+        for dx in [1, -1]:
+            starting_singular_cell_coords = coords
+            for i in range(1, self.independent_dim_stencil_size):
+                starting_singular_cell_coords = get_near_singular_cell_coords(
+                    starting_singular_cell_coords + np.array((dx, 0))[[independent_axis, dependent_axis]],
+                    dependent_axis, regularity_mask, indexer)
+                if starting_singular_cell_coords is None:
+                    break
+                rc, sc = get_regular_opposite_cell_coords(starting_singular_cell_coords, dependent_axis,
+                                                          regularity_mask,
+                                                          indexer)
+                singular_cells_sides[dx].append(sc)
+                regular_opposite_cells_sides[dx].append(rc)
 
-        regular_cells_set = np.array(regular_opposite_cells)
-        regular_cells_nearness = [0, 0]
-        surfers = np.array([regular_opposite_cells, regular_opposite_cells])
-        surfers[0, :, independent_axis] += SURFERS_DIRECTIONS[0]
-        surfers[1, :, independent_axis] += SURFERS_DIRECTIONS[1]
-        surfers_nearness = [1, 1]
-        for _ in range((self.independent_dim_stencil_size - 1) * 2):
-            for i, surfer_direction in enumerate(SURFERS_DIRECTIONS):
-                surfers[i], surfers_nearness[i], regular_cells_set, regular_cells_nearness = \
-                    surf_step(coords, surfers[i], surfers_nearness[i], regularity_mask,
-                              # region_mask,
-                              regular_cells_set,
-                              regular_cells_nearness, dependent_axis, surfer_direction, indexer,
-                              self.weight_of_growing_on_dependent_direction)
-        regular_cells_set = regular_cells_set[np.argsort(regular_cells_nearness)][
-                            :self.independent_dim_stencil_size * 2]
-        stencil_boundaries = np.transpose([np.min(regular_cells_set, axis=0), np.max(regular_cells_set, axis=0)])
-        return stencil_boundaries
+        smoothness = list(map(len, singular_cells_sides[-1] + [singular_cells_center] + singular_cells_sides[1]))
+        ropcells = np.array(
+            regular_opposite_cells_sides[-1] + [regular_opposite_cells_center] + regular_opposite_cells_sides[1])
+        heights = [np.max(ropcells[i:i + self.independent_dim_stencil_size, :, dependent_axis]) - np.min(
+            ropcells[i:i + self.independent_dim_stencil_size, :, dependent_axis]) +
+                   self.center_weight * abs(i - self.independent_dim_stencil_size // 2) +
+                   1e-2 * np.sum(smoothness[i:i + self.independent_dim_stencil_size])
+                   # center stencils are preferable
+                   for i in range(self.independent_dim_stencil_size)]
+        left_border = np.argmin(heights)
+        stencil_boundaries = [
+            np.min(ropcells[left_border:left_border + self.independent_dim_stencil_size], axis=(0, 1)),
+            np.max(ropcells[left_border:left_border + self.independent_dim_stencil_size], axis=(0, 1))]
+
+        return np.transpose(stencil_boundaries)
 
     def get_stencil(self, average_values: np.ndarray, smoothness_index: np.ndarray, coords: CellCoords,
                     independent_axis: int, indexer: ArrayIndexerNd) -> Stencil:
