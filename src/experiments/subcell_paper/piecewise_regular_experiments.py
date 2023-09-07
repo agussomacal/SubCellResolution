@@ -89,7 +89,7 @@ def fit_model(sub_cell_model):
 
 reconstruction_error_measure = ReconstructionErrorMeasure(StencilCreatorFixedShape((3, 3)),
                                                           metric=2,
-                                                          central_cell_extra_weight=5)
+                                                          central_cell_extra_weight=100)
 regular_deg2_same_region = CellCreatorPipeline(
     cell_iterator=iterate_all,
     # cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=REGULAR_CELL,
@@ -260,11 +260,8 @@ if __name__ == "__main__":
         num_cores=3,
         recalculate=False,
         forget=False,
-        # amplitude=[0, 1e-3, 1e-2, 2e-2, 5e-2, 1e-1, 2e-1, 5e-1, 1],
-        # amplitude=[1e-3, 1e-2, 5e-2, 1e-1, 5e-1],
-        # num_cells_per_dim=[20, 42, 84],  # 42 * 2
         amplitude=[1e-3, 1e-2, 5e-2, 1e-1, 2e-1, 5e-1],
-        num_cells_per_dim=[20],  # 42 * 2
+        num_cells_per_dim=[20, 40],
         noise=[0],
         image=[
             "Ellipsoid_1680x1680.jpg",
@@ -277,8 +274,7 @@ if __name__ == "__main__":
                  plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
                  log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                  error=get_reconstruction_error,
-                 axes_by=["N"],
-                 plot_by=["reconstruction_factor"])
+                 plot_by=["reconstruction_factor", "N"])
 
     generic_plot(data_manager,
                  name="InterfaceError",
@@ -286,9 +282,7 @@ if __name__ == "__main__":
                  plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
                  log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                  interface_error=get_reconstruction_error_in_interface,
-                 axes_by=["N"],
-                 plot_by=["reconstruction_factor"])
-
+                 plot_by=["reconstruction_factor", "N"])
 
     plot_reconstruction(
         data_manager,
@@ -298,6 +292,7 @@ if __name__ == "__main__":
         plot_by=['models', ],
         folder_by=['image', "num_cells_per_dim", "reconstruction_factor"],
         axes_xy_proportions=(15, 15),
+        # num_cells_per_dim=[20, 40],  # 42 * 2
         difference=False,
         plot_curve=True,
         plot_curve_winner=False,

@@ -8,11 +8,11 @@ import seaborn as sns
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
-from PerplexityLab.miscellaneous import ClassPartialInit, NamedPartial
+from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import generic_plot, one_line_iterator, perplex_plot
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, plot_cells_identity, \
     plot_cells_vh_classification_core, plot_cells_not_regular_classification_core, plot_curve_core
-from experiments.subcell_paper.global_params import CCExtraWeight, CurveAverageQuadraticCC
+from experiments.subcell_paper.global_params import CurveAverageQuadraticCC
 from experiments.subcell_paper.tools import get_reconstruction_error, calculate_averages_from_image, load_image, \
     reconstruct
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
@@ -26,18 +26,24 @@ from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurv
 from lib.CellCreators.CurveCellCreators.VertexCellCreator import LinearVertexCellCurveCellCreator
 from lib.CellCreators.RegularCellCreator import PiecewiseConstantRegularCellCreator, MirrorCellCreator
 from lib.CellCreators.VertexCellCreators.VertexCellCreatorBase import VertexCellCreatorUsingNeighboursLines
-from lib.CellIterators import iterate_by_condition_on_smoothness, iterate_by_reconstruction_error_and_smoothness, \
+from lib.CellIterators import iterate_by_reconstruction_error_and_smoothness, \
     iterate_all
 from lib.CellOrientators import BaseOrientator, OrientByGradient, OrientPredefined
-from lib.Curves.AverageCurves import CurveAveragePolynomial
 from lib.SmoothnessCalculators import naive_piece_wise
 from lib.StencilCreators import StencilCreatorAdaptive, StencilCreatorFixedShape
-from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasure, CellCreatorPipeline, \
-    reconstruct_arbitrary_size, reconstruct_by_factor
+from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasure, CellCreatorPipeline
 from lib.SubCellScheme import SubCellScheme
 
 EVALUATIONS = True
 
+
+# N = int(1e6)
+# workers = 10
+# dataset_manager_3_8pi = DatasetsManagerLinearCurves(
+#     velocity_range=((0, 0), (0, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
+#     workers=workers, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
+#     value_up_random=False
+# )
 
 def calculate_true_solution(image, num_cells_per_dim, velocity, ntimes):
     image = load_image(image)
@@ -80,7 +86,7 @@ def fit_model(subcell_reconstruction):
         t0 = time.time()
         reconstruction = []
         for cells in all_cells:
-            reconstruction.append(reconstruct(image, cells, model.resolution, reconstruction_factor,
+            reconstruction.append(reconstruct(image_array, cells, model.resolution, reconstruction_factor,
                                               do_evaluations=EVALUATIONS))
         t_reconstruct = time.time() - t0
 
@@ -97,6 +103,10 @@ def fit_model(subcell_reconstruction):
     # the other option is to pass to the block the name we wish to associate to the function.
     decorated_func.__name__ = subcell_reconstruction.__name__
     return decorated_func
+
+
+reconstruction_error_measure = ReconstructionErrorMeasure(StencilCreatorFixedShape((3, 3)),
+                                                          metric=2, central_cell_extra_weight=1)
 
 
 @fit_model
@@ -126,9 +136,7 @@ def elvira():
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=naive_piece_wise,
-        reconstruction_error_measure=ReconstructionErrorMeasure(StencilCreatorFixedShape((3, 3)),
-                                                                metric=2,
-                                                                central_cell_extra_weight=1),
+        reconstruction_error_measure=reconstruction_error_measure,
         refinement=1,
         cell_creators=
         [  # regular cell with piecewise_constant
@@ -163,15 +171,12 @@ def quadratic():
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=partial(naive_piece_wise, eps=1e-2, min_val=0, max_val=1),
-        reconstruction_error_measure=ReconstructionErrorMeasure(StencilCreatorFixedShape((3, 3)),
-                                                                metric=2,
-                                                                central_cell_extra_weight=10),
+        reconstruction_error_measure=reconstruction_error_measure,
         refinement=1,
         cell_creators=
         [  # regular cell with piecewise_constant
             CellCreatorPipeline(
-                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=REGULAR_CELL,
-                                      condition=operator.eq),  # only regular cells
+                cell_iterator=iterate_all,  # only regular cells
                 orientator=BaseOrientator(dimensionality=2),
                 stencil_creator=StencilCreatorFixedShape(stencil_shape=(1, 1)),
                 cell_creator=PiecewiseConstantRegularCellCreator(
@@ -222,9 +227,7 @@ def qelvira():
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=naive_piece_wise,
-        reconstruction_error_measure=ReconstructionErrorMeasure(StencilCreatorFixedShape((3, 3)),
-                                                                metric=2,
-                                                                central_cell_extra_weight=1),
+        reconstruction_error_measure=reconstruction_error_measure,
         refinement=1,
         cell_creators=
         [  # regular cell with piecewise_constant
@@ -279,15 +282,12 @@ def elviracircle():
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=partial(naive_piece_wise, eps=1e-2, min_val=0, max_val=1),
-        reconstruction_error_measure=ReconstructionErrorMeasure(StencilCreatorFixedShape((3, 3)),
-                                                                metric=2,
-                                                                central_cell_extra_weight=10),
+        reconstruction_error_measure=reconstruction_error_measure,
         refinement=1,
         cell_creators=
         [  # regular cell with piecewise_constant
             CellCreatorPipeline(
-                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=REGULAR_CELL,
-                                      condition=operator.eq),  # only regular cells
+                cell_iterator=iterate_all,  # only regular cells
                 orientator=BaseOrientator(dimensionality=2),
                 stencil_creator=StencilCreatorFixedShape(stencil_shape=(1, 1)),
                 cell_creator=PiecewiseConstantRegularCellCreator(
@@ -344,15 +344,12 @@ def full():
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=naive_piece_wise,
-        reconstruction_error_measure=ReconstructionErrorMeasure(StencilCreatorFixedShape((3, 3)),
-                                                                metric=2,
-                                                                central_cell_extra_weight=100),
+        reconstruction_error_measure=reconstruction_error_measure,
         refinement=1,
         cell_creators=
         [  # regular cell with piecewise_constant
             CellCreatorPipeline(
-                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=REGULAR_CELL,
-                                      condition=operator.eq),  # only regular cells
+                cell_iterator=iterate_all,  # only regular cells
                 orientator=BaseOrientator(dimensionality=2),
                 stencil_creator=StencilCreatorFixedShape(stencil_shape=(1, 1)),
                 cell_creator=PiecewiseConstantRegularCellCreator(
@@ -499,12 +496,12 @@ if __name__ == "__main__":
 
     lab.define_new_block_of_functions(
         "models",
-        upwind,
+        # upwind,
         quadratic,
-        elvira,
-        qelvira,
+        # elvira,
+        # qelvira,
         full,
-        recalculate=False
+        recalculate=True
     )
 
     lab.execute(

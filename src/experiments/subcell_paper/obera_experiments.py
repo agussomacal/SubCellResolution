@@ -348,6 +348,23 @@ def get_shape(shape_name):
         raise Exception("Not implemented.")
 
 
+def get_reconstructed_subcells_coords(coord, sub_discretization2bound_error, reconstruction):
+    return reconstruction[list(
+        map(lambda i: np.arange(i * sub_discretization2bound_error, (i + 1) * sub_discretization2bound_error),
+            coord))]
+
+
+def singular_error(reconstruction, image4error, model, sub_discretization2bound_error, num_cells_per_dim):
+    return np.array(list(map(np.mean,
+                             map(partial(get_reconstructed_subcells_coords,
+                                         reconstruction=np.abs(np.array(reconstruction) - image4error),
+                                         sub_discretization2bound_error=sub_discretization2bound_error),
+                                 model.obera_fevals[CURVE_CELL_TYPE].keys()
+                                 )
+                             )
+                         )) / num_cells_per_dim ** 2
+
+
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
@@ -399,7 +416,7 @@ if __name__ == "__main__":
         recalculate=False
     )
     metrics = [2]
-    num_cores= 15
+    num_cores = 15
     lab.execute(
         data_manager,
         num_cores=num_cores,
@@ -465,24 +482,6 @@ if __name__ == "__main__":
         num_cores=1,
         trim=trim
     )
-
-
-    def get_reconstructed_subcells_coords(coord, sub_discretization2bound_error, reconstruction):
-        return reconstruction[list(
-            map(lambda i: np.arange(i * sub_discretization2bound_error, (i + 1) * sub_discretization2bound_error),
-                coord))]
-
-
-    def singular_error(reconstruction, image4error, model, sub_discretization2bound_error, num_cells_per_dim):
-        return np.array(list(map(np.mean,
-                                 map(partial(get_reconstructed_subcells_coords,
-                                             reconstruction=np.abs(np.array(reconstruction) - image4error),
-                                             sub_discretization2bound_error=sub_discretization2bound_error),
-                                     model.obera_fevals[CURVE_CELL_TYPE].keys()
-                                     )
-                                 )
-                             )) / num_cells_per_dim ** 2
-
 
     # ---------- Effect of re-parametrization and warm start --------- #
     order = [
@@ -580,7 +579,6 @@ if __name__ == "__main__":
                  axes_by=[],
                  plot_by=["central_cell_extra_weight"])
 
-
     plot_reconstruction(
         data_manager,
         name="CompareModels",
@@ -625,7 +623,6 @@ if __name__ == "__main__":
         num_cores=1,
         trim=trim
     )
-
 
     # plot_original_image(
     #     data_manager,

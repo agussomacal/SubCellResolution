@@ -89,7 +89,6 @@ class ValuesCircleCellCreator(CurveCellCreatorBase):
             y_points=stencil_values,
             value_up=value_up,
             value_down=value_down,
-            concave=concavity > 0
         )
         if self.natural_params:
             yield curve.get_natural_parametrization_curve()
@@ -156,5 +155,4 @@ class ValuesDefaultCircleCellCreator(DefaultCircleCurveCellCreator):
             y_points=circle.function(x_points),
             value_up=circle.value_up,
             value_down=circle.value_down,
-            concave=circle.concave
         )

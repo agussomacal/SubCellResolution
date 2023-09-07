@@ -103,16 +103,16 @@ class SubCellReconstruction:
                             # Doing OBERA
                             if proposed_cell.CELL_TYPE != REGULAR_CELL_TYPE and self.obera_iterations > 0:
                                 def optim_func(params):
-                                    proposed_cell.curve_type.params = params
+                                    proposed_cell.curve.params = params
                                     loss = self.reconstruction_error_measure.calculate_error(
                                         proposed_cell, average_values, indexer, smoothness_index, independent_axis)
                                     return loss
 
                                 # number of function evaluation without gradient is twice the number of parameters
-                                x0 = np.ravel(proposed_cell.curve_type.params)
+                                x0 = np.ravel(proposed_cell.curve.params)
                                 res = minimize(optim_func, x0=x0, method="L-BFGS-B",
                                                options={'maxiter': self.obera_iterations * 2 * (1 + len(x0))})
-                                proposed_cell.curve_type.params = res.x
+                                proposed_cell.curve.params = res.x
                                 self.obera_fevals[proposed_cell.CELL_TYPE][coords.tuple] += res.nfev
 
                             proposed_cell_reconstruction_error = self.reconstruction_error_measure.calculate_error(
