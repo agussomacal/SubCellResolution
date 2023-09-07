@@ -32,19 +32,29 @@ def map2unidimensional(value_up, value_down, independent_axis: int, stencil: Ste
     return x_points, stencil_values
 
 
-def prepare_stencil4one_dimensionalization(coords, independent_axis, regular_opposite_cells, stencil):
-    value_up = regular_opposite_cells[1].evaluate(coords.coords)
-    value_down = regular_opposite_cells[0].evaluate(coords.coords)
-    # x_points, stencil_values = map2unidimensional(value_up, value_down, independent_axis, stencil)
+def get_values_up_down(coords, regular_opposite_cells):
+    value_up = regular_opposite_cells[1].evaluate(coords.coords + 0.5)
+    value_down = regular_opposite_cells[0].evaluate(coords.coords + 0.5)
+    return value_up, value_down
+
+
+def prepare_stencil4one_dimensionalization(independent_axis, value_up, value_down, stencil):
     # if the values are not 0 or 1
     stencil_values = stencil.values - np.min((value_up, value_down))
     stencil_values /= np.max((value_up, value_down))
 
+    # thresholding in case of piecewise-regular
+    stencil_values[stencil_values < 0] = 0
+    stencil_values[stencil_values > 1] = 1
+
+    # reshape stencil in rectangular form
     ks = np.max(stencil.coords, axis=0) - np.min(stencil.coords, axis=0) + 1
     stencil_values = stencil.values.reshape(ks)
     stencil_values = np.transpose(stencil_values, [independent_axis, 1 - independent_axis])
+
+    # one-dimensional versioin with 1 "down" and 0 "up"
     stencil_values = (1 - stencil_values) if value_up > value_down else stencil_values
-    return stencil_values, value_up, value_down
+    return stencil_values
 
 
 # ====================================================== #

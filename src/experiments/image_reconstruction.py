@@ -5,7 +5,8 @@ import pandas as pd
 import config
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, \
     plot_cells_not_regular_classification_core, plot_cells_vh_classification_core, plot_curve_core, plot_cells_identity
-from experiments.models import calculate_averages_from_image, load_image, image_reconstruction, polynomial2, elvira_go
+from experiments.models import calculate_averages_from_image, image_reconstruction, polynomial2, elvira_go
+from experiments.subcell_paper.tools import load_image
 from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline

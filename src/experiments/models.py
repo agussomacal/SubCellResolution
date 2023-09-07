@@ -5,7 +5,7 @@ from typing import Union, Tuple
 
 import numpy as np
 
-from experiments.subcell_paper.function_families import load_image
+from experiments.subcell_paper.tools import load_image
 
 import config
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL

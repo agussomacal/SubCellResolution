@@ -9,7 +9,7 @@ from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.visualization import generic_plot
 from experiments.image_reconstruction import plot_reconstruction
-from experiments.subcell_paper.function_families import load_image, calculate_averages_from_image
+from experiments.subcell_paper.tools import calculate_averages_from_image, load_image
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
 from lib.CellCreators.RegularCellCreator import MirrorCellCreator, \

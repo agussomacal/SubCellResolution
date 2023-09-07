@@ -12,8 +12,9 @@ from PerplexityLab.miscellaneous import ClassPartialInit, NamedPartial
 from PerplexityLab.visualization import generic_plot, one_line_iterator, perplex_plot
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, plot_cells_identity, \
     plot_cells_vh_classification_core, plot_cells_not_regular_classification_core, plot_curve_core
-from experiments.subcell_paper.function_families import load_image, calculate_averages_from_image
 from experiments.subcell_paper.global_params import CCExtraWeight, CurveAverageQuadraticCC
+from experiments.subcell_paper.tools import get_reconstruction_error, calculate_averages_from_image, load_image, \
+    reconstruct
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import REGULAR_CELL_TYPE
@@ -79,14 +80,8 @@ def fit_model(subcell_reconstruction):
         t0 = time.time()
         reconstruction = []
         for cells in all_cells:
-            if EVALUATIONS:
-                reconstruction.append(reconstruct_arbitrary_size(cells, model.resolution,
-                                                                 np.array(np.shape(image_array)) // reconstruction_factor))
-            else:
-                reconstruction.append(reconstruct_by_factor(cells, model.resolution,
-                                                            resolution_factor=np.array(
-                                                                np.array(np.shape(image_array)) / np.array(model.resolution),
-                                                                dtype=int)))
+            reconstruction.append(reconstruct(image, cells, model.resolution, reconstruction_factor,
+                                              do_evaluations=EVALUATIONS))
         t_reconstruct = time.time() - t0
 
         return {
@@ -499,7 +494,7 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "ground_truth",
         calculate_true_solution,
-        recalculate=True
+        recalculate=False
     )
 
     lab.define_new_block_of_functions(
@@ -507,7 +502,6 @@ if __name__ == "__main__":
         upwind,
         quadratic,
         elvira,
-        # elviracircle,
         qelvira,
         full,
         recalculate=False
@@ -527,9 +521,9 @@ if __name__ == "__main__":
             "Ellipsoid_1680x1680.jpg",
             # "yoda.jpg",
             # "DarthVader.jpeg",
-            # "ShapesVertex_1680x1680.jpg",
-            # "HandVertex_1680x1680.jpg",
-            # "Polygon_1680x1680.jpg",
+            "ShapesVertex_1680x1680.jpg",
+            "HandVertex_1680x1680.jpg",
+            "Polygon_1680x1680.jpg",
         ],
         iterations=[0],  # 500
         reconstruction_factor=[5],
@@ -537,13 +531,25 @@ if __name__ == "__main__":
 
     scheme_error = lambda image, true_solution, solution: np.mean(
         np.abs((np.array(solution[1:]) - np.array(true_solution[1:]))), axis=(1, 2))
-    times = lambda ntimes: np.arange(1, ntimes + 1)
+
+    scheme_reconstruction_error = lambda true_reconstruction, reconstruction, reconstruction_factor: np.array([
+        get_reconstruction_error(tr_i, reconstruction=r_i, reconstruction_factor=reconstruction_factor)
+        for tr_i, r_i in zip(true_reconstruction[:-1], reconstruction)])
 
     generic_plot(data_manager,
                  name="ErrorInTime",
                  x="times", y="scheme_error", label="models", plot_by=["num_cells_per_dim", "image"],
                  # models=["elvira", "quadratic"],
-                 times=times, scheme_error=scheme_error,
+                 times=lambda ntimes: np.arange(1, ntimes + 1), scheme_error=scheme_error,
+                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                 log="y",
+                 )
+
+    generic_plot(data_manager,
+                 name="ReconstructionErrorInTime",
+                 x="times", y="scheme_error", label="models", plot_by=["num_cells_per_dim", "image"],
+                 # models=["elvira", "quadratic"],
+                 times=lambda ntimes: np.arange(ntimes), scheme_error=scheme_reconstruction_error,
                  plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
                  log="y",
                  )

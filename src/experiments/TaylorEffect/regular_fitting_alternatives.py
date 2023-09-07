@@ -11,7 +11,8 @@ from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.visualization import generic_plot, test_plot
 from experiments.TaylorEffect.taylor_effect import enhance_image
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders
-from experiments.models import load_image, calculate_averages_from_image
+from experiments.models import calculate_averages_from_image
+from experiments.subcell_paper.tools import load_image
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells_by_smoothness
 from lib.CellIterators import iterate_all

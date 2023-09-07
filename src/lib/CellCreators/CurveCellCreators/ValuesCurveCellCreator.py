@@ -7,7 +7,7 @@ from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.CellCreators.CellCreatorBase import CellBase
 from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CurveCellCreatorBase, map2unidimensional, \
-    get_x_points
+    get_x_points, get_values_up_down, prepare_stencil4one_dimensionalization
 from lib.CellCreators.CurveCellCreators.ParametersCurveCellCreators import DefaultCircleCurveCellCreator
 from lib.Curves.AverageCurves import CurveAveragePolynomial
 from lib.Curves.Curves import Curve, CurveReparametrized
@@ -30,10 +30,10 @@ class ValuesCurveCellCreator(CurveCellCreatorBase):
     def create_curves(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
                       stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
-        value_up = regular_opposite_cells[1].evaluate(coords.coords)
-        value_down = regular_opposite_cells[0].evaluate(coords.coords)
-        x_points, stencil_values = map2unidimensional(value_up, value_down, independent_axis, stencil)
-
+        value_up, value_down = get_values_up_down(coords, regular_opposite_cells)
+        stencil_values = prepare_stencil4one_dimensionalization(independent_axis, value_up, value_down, stencil)
+        stencil_values = stencil_values.sum(axis=1)
+        x_points = get_x_points(stencil, independent_axis)
         curve = self.vander_curve(
             x_points=x_points,
             y_points=stencil_values,
@@ -41,6 +41,7 @@ class ValuesCurveCellCreator(CurveCellCreatorBase):
             value_down=value_down,
             center=np.argmin(np.abs(x_points-coords[independent_axis]-0.5))
         )
+        curve.set_y_shift(np.min(stencil.coords[:, 1 - independent_axis]))
         if self.natural_params:
             yield curve.get_natural_parametrization_curve()
         else:

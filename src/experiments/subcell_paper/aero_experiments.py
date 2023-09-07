@@ -9,7 +9,7 @@ from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
 from PerplexityLab.visualization import generic_plot
-from experiments.subcell_paper.function_families import calculate_averages_from_curve, calculate_averages_from_image
+from experiments.subcell_paper.tools import calculate_averages_from_image, calculate_averages_from_curve
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, OBERA_ITERS, \
     CCExtraWeight
 from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction

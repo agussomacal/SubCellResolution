@@ -6,8 +6,8 @@ import numpy as np
 from PerplexityLab.miscellaneous import timeit
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords, ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import CellBase
-from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CurveCellCreatorBase, CellCurveBase, \
-    prepare_stencil4one_dimensionalization
+from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CurveCellCreatorBase, \
+    prepare_stencil4one_dimensionalization, get_values_up_down
 from lib.Curves.CurveVertex import CurveVertexPolynomial
 from lib.Curves.Curves import Curve
 from lib.StencilCreators import Stencil
@@ -98,14 +98,12 @@ class LinearVertexCellCurveCellCreator(CurveCellCreatorBase):
     def create_curves(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
                       stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
-
-        # map2unidimensional(value_up, value_down, independent_axis: int, stencil: Stencil)
-        stencil_values, value_up, value_down = \
-            prepare_stencil4one_dimensionalization(coords, independent_axis, regular_opposite_cells, stencil)
+        value_up, value_down = get_values_up_down(coords, regular_opposite_cells)
+        stencil_values = prepare_stencil4one_dimensionalization(independent_axis, value_up, value_down, stencil)
         stencil_values = stencil_values.sum(axis=1)
 
         x_shift = np.min(stencil.coords[:, independent_axis])
-        y_shift = np.min(stencil.coords[:, 1-independent_axis])
+        y_shift = np.min(stencil.coords[:, 1 - independent_axis])
         if len(stencil_values) == 4:
             try:
                 polynomials, vertices = main_equations(*stencil_values)

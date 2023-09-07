@@ -1,49 +1,12 @@
-import itertools
 from operator import le, gt
-from typing import Union, Tuple
 
 import numpy as np
 from matplotlib import pylab as plt
-from tqdm import tqdm
 
-import config
 from config import subcell_paper_path
 from PerplexityLab.LaTexReports import Code2LatexConnector
 from PerplexityLab.visualization import save_fig
-from lib.Curves.Curves import Curve
-
-
-def calculate_averages_from_image(image, num_cells_per_dim: Union[int, Tuple[int, int]]):
-    # Example of how to calculate the averages in a single pass:
-    # np.arange(6 * 10).reshape((6, 10)).reshape((2, 3, 5, 2)).mean(-1).mean(-2)
-    img_x, img_y = np.shape(image)
-    ncx, ncy = (num_cells_per_dim, num_cells_per_dim) if isinstance(num_cells_per_dim, int) else num_cells_per_dim
-    return image.reshape((ncx, img_x // ncx, ncy, img_y // ncy)).mean(-1).mean(-2)
-
-
-def calculate_averages_from_curve(curve: Curve, resolution: Tuple[int, int], deplacement: Tuple = None,
-                                  origin=(0, 0)):
-    "TODO generalize"
-    if deplacement is None:
-        deplacement = 1 / np.array(resolution)
-    assert deplacement[0] >= 0 and deplacement[1] >= 0, "only movements in positive implemented."
-
-    num_squares = np.product(resolution)
-    averages = np.zeros(resolution)
-    for i, j in tqdm(itertools.product(*list(map(np.arange, resolution))), desc="Over {}".format(num_squares)):
-        averages[i, j] = curve.calculate_rectangle_average(
-            x_limits=origin[0] + np.array(((i + 1) / resolution[0] - deplacement[0], (i + 1) / resolution[0])),
-            y_limits=origin[1] + np.array(((j + 1) / resolution[1] - deplacement[1], (j + 1) / resolution[1]))
-        )
-    return averages * num_squares
-
-
-def load_image(image_name):
-    image = plt.imread(f"{config.images_path}/{image_name}", format=image_name.split(".")[-1])
-    image = np.mean(image, axis=tuple(np.arange(2, len(np.shape(image)), dtype=int)))
-    image -= np.min(image)
-    image /= np.max(image)
-    return image
+from experiments.subcell_paper.tools import load_image
 
 
 def radial_wave(image, amplitude, threshold=0.5, condition=le):

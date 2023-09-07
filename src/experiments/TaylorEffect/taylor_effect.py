@@ -2,7 +2,7 @@ import time
 
 import numpy as np
 import pandas as pd
-from experiments.subcell_paper.function_families import load_image
+from experiments.subcell_paper.tools import load_image
 
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB

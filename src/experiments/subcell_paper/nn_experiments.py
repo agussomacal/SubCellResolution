@@ -13,7 +13,7 @@ from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version, 
 from PerplexityLab.visualization import generic_plot
 from experiments.LearningMethods import flatter
 from experiments.subcell_paper.aero_experiments import fit_model, elvira_grad_oriented, elvira
-from experiments.subcell_paper.function_families import calculate_averages_from_curve
+from experiments.subcell_paper.tools import calculate_averages_from_curve
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, CCExtraWeight
 from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
 from lib.CellCreators.CurveCellCreators.LearningCurveCellCreator import LearningCurveCellCreator
