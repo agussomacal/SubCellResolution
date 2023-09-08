@@ -90,6 +90,16 @@ def fit_model(sub_cell_model):
 reconstruction_error_measure = ReconstructionErrorMeasure(StencilCreatorFixedShape((3, 3)),
                                                           metric=2,
                                                           central_cell_extra_weight=100)
+regular_deg2half_same_region = CellCreatorPipeline(
+    cell_iterator=iterate_all,
+    # cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=REGULAR_CELL,
+    #                       condition=operator.eq),  # only regular cells
+    orientator=BaseOrientator(dimensionality=2),
+    stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=3),
+    cell_creator=PolynomialRegularCellCreator(
+        degree=2, noisy=False, weight_function=None,
+        dimensionality=2, full_rank=False)
+)
 regular_deg2_same_region = CellCreatorPipeline(
     cell_iterator=iterate_all,
     # cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=REGULAR_CELL,
@@ -126,6 +136,28 @@ elvira_ccreator = CellCreatorPipeline(
     stencil_creator=StencilCreatorFixedShape((3, 3)),
     cell_creator=ELVIRACurveCellCreator(
         regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil))
+
+deg2cell_creator = [
+    CellCreatorPipeline(
+        cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
+                              condition=operator.eq),
+        orientator=OrientPredefined(predefined_axis=0, dimensionality=2),
+        # orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
+                                               independent_dim_stencil_size=3),
+        cell_creator=ValuesCurveCellCreator(
+            vander_curve=CurveAverageQuadraticCC,
+            regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
+    CellCreatorPipeline(
+        cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
+                              condition=operator.eq),
+        orientator=OrientPredefined(predefined_axis=1, dimensionality=2),
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
+                                               independent_dim_stencil_size=3),
+        cell_creator=ValuesCurveCellCreator(
+            vander_curve=CurveAverageQuadraticCC,
+            regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil))
+]
 
 
 @fit_model
@@ -194,7 +226,24 @@ def poly02_elvira(smoothness_calculator):
 
 
 @fit_model
-def poly02_qelvira(smoothness_calculator):
+def poly2h_elvira(smoothness_calculator):
+    return SubCellReconstruction(
+        name="All",
+        smoothness_calculator=smoothness_calculator,
+        reconstruction_error_measure=reconstruction_error_measure,
+        refinement=1,
+        cell_creators=
+        [  # regular cell with piecewise_constant
+            regular_deg2half_same_region,
+            elvira_ccreator,
+
+        ],
+        obera_iterations=0
+    )
+
+
+@fit_model
+def poly02h_elvira(smoothness_calculator):
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=smoothness_calculator,
@@ -204,104 +253,122 @@ def poly02_qelvira(smoothness_calculator):
         [  # regular cell with piecewise_constant
             regular_constant_same_region,
             elvira_ccreator,
-            CellCreatorPipeline(
-                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
-                                      condition=operator.eq),
-                orientator=OrientPredefined(predefined_axis=0, dimensionality=2),
-                # orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2),
-                stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
-                                                       independent_dim_stencil_size=3),
-                cell_creator=ValuesCurveCellCreator(
-                    vander_curve=CurveAverageQuadraticCC,
-                    regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
-            CellCreatorPipeline(
-                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
-                                      condition=operator.eq),
-                orientator=OrientPredefined(predefined_axis=1, dimensionality=2),
-                stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
-                                                       independent_dim_stencil_size=3),
-                cell_creator=ValuesCurveCellCreator(
-                    vander_curve=CurveAverageQuadraticCC,
-                    regular_opposite_cell_searcher=get_opposite_regular_cells_by_stencil)),
-            regular_deg2_same_region,
+            regular_deg2half_same_region,
+
         ],
         obera_iterations=0
     )
 
 
-if __name__ == "__main__":
-    data_manager = DataManager(
-        path=config.results_path,
-        name='PieceWiseRegular',
-        format=JOBLIB,
-        trackCO2=True,
-        country_alpha_code="FR"
-    )
-
-    lab = LabPipeline()
-
-    lab.define_new_block_of_functions(
-        "perturbation",
-        enhance_image
-    )
-
-    lab.define_new_block_of_functions(
-        "models",
-        poly0_elvira,
-        poly1_elvira,
-        poly2_elvira,
-        poly02_elvira,
-        poly02_qelvira,
-        recalculate=False
-    )
-
-    lab.execute(
-        data_manager,
-        num_cores=3,
-        recalculate=False,
-        forget=False,
-        amplitude=[1e-3, 1e-2, 5e-2, 1e-1, 2e-1, 5e-1],
-        num_cells_per_dim=[20, 40],
-        noise=[0],
-        image=[
-            "Ellipsoid_1680x1680.jpg",
+@fit_model
+def poly02_qelvira(smoothness_calculator):
+    return SubCellReconstruction(
+        name="All",
+        smoothness_calculator=smoothness_calculator,
+        reconstruction_error_measure=reconstruction_error_measure,
+        refinement=1,
+        cell_creators=
+        [  # regular cell with piecewise_constant
+            [regular_constant_same_region, elvira_ccreator] +
+            deg2cell_creator +
+            [regular_deg2_same_region],
         ],
-        reconstruction_factor=[6],
-        # reconstruction_factor=[6],
+        obera_iterations=0
     )
 
-    generic_plot(data_manager, x="amplitude", y="error", label="models",
-                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                 log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 error=get_reconstruction_error,
-                 plot_by=["reconstruction_factor", "N"])
+    @fit_model
+    def poly02h_qelvira(smoothness_calculator):
+        return SubCellReconstruction(
+            name="All",
+            smoothness_calculator=smoothness_calculator,
+            reconstruction_error_measure=reconstruction_error_measure,
+            refinement=1,
+            cell_creators=
+            [  # regular cell with piecewise_constant
+                [regular_constant_same_region, elvira_ccreator] +
+                deg2cell_creator +
+                [regular_deg2half_same_region],
+            ],
+            obera_iterations=0
+        )
 
-    generic_plot(data_manager,
-                 name="InterfaceError",
-                 x="amplitude", y="interface_error", label="models",
-                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                 log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 interface_error=get_reconstruction_error_in_interface,
-                 plot_by=["reconstruction_factor", "N"])
+    if __name__ == "__main__":
+        data_manager = DataManager(
+            path=config.results_path,
+            name='PieceWiseRegular',
+            format=JOBLIB,
+            trackCO2=True,
+            country_alpha_code="FR"
+        )
 
-    plot_reconstruction(
-        data_manager,
-        name="Reconstruction",
-        folder='reconstruction',
-        axes_by=["amplitude", ],
-        plot_by=['models', ],
-        folder_by=['image', "num_cells_per_dim", "reconstruction_factor"],
-        axes_xy_proportions=(15, 15),
-        # num_cells_per_dim=[20, 40],  # 42 * 2
-        difference=False,
-        plot_curve=True,
-        plot_curve_winner=False,
-        plot_vh_classification=False,
-        plot_singular_cells=False,
-        plot_original_image=True,
-        numbers_on=True,
-        plot_again=True,
-        num_cores=1,
-    )
+        lab = LabPipeline()
 
-    print("CO2 consumption: ", data_manager.CO2kg)
+        lab.define_new_block_of_functions(
+            "perturbation",
+            enhance_image
+        )
+
+        lab.define_new_block_of_functions(
+            "models",
+            poly0_elvira,
+            poly1_elvira,
+            poly2_elvira,
+            poly02_elvira,
+            poly02_qelvira,
+            poly2h_elvira,
+            poly02h_elvira,
+            poly02h_qelvira,
+            recalculate=False
+        )
+
+        lab.execute(
+            data_manager,
+            num_cores=15,
+            recalculate=False,
+            save_on_iteration=15,
+            forget=False,
+            amplitude=[1e-3, 1e-2, 5e-2, 1e-1, 2e-1, 5e-1],
+            num_cells_per_dim=[20, 40],
+            noise=[0],
+            image=[
+                "Ellipsoid_1680x1680.jpg",
+            ],
+            reconstruction_factor=[6],
+            # reconstruction_factor=[6],
+        )
+
+        generic_plot(data_manager, x="amplitude", y="error", label="models",
+                     plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                     log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                     error=get_reconstruction_error,
+                     plot_by=["reconstruction_factor", "N"])
+
+        generic_plot(data_manager,
+                     name="InterfaceError",
+                     x="amplitude", y="interface_error", label="models",
+                     plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                     log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                     interface_error=get_reconstruction_error_in_interface,
+                     plot_by=["reconstruction_factor", "N"])
+
+        plot_reconstruction(
+            data_manager,
+            name="Reconstruction",
+            folder='reconstruction',
+            axes_by=["amplitude", ],
+            plot_by=['models', ],
+            folder_by=['image', "num_cells_per_dim", "reconstruction_factor"],
+            axes_xy_proportions=(15, 15),
+            # num_cells_per_dim=[20, 40],  # 42 * 2
+            difference=False,
+            plot_curve=True,
+            plot_curve_winner=False,
+            plot_vh_classification=False,
+            plot_singular_cells=False,
+            plot_original_image=True,
+            numbers_on=True,
+            plot_again=True,
+            num_cores=1,
+        )
+
+        print("CO2 consumption: ", data_manager.CO2kg)

@@ -196,8 +196,8 @@ if __name__ == "__main__":
         shape_name=[
             "Circle"
         ],
-        iterations=[0, 1, 2, 5, 10, 20],  # 500, 50, 100
-        central_cell_extra_weight=[0, 100],
+        iterations=[0, 1, 2, 5, 10, 20],
+        central_cell_extra_weight=[10, 1, 0],
         sub_discretization2bound_error=[SUB_CELL_DISCRETIZATION2BOUND_ERROR],
         metric=metrics
     )
