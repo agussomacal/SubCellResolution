@@ -45,9 +45,30 @@ def weight_cells(is_central_cell, smoothness_index_i, central_cell_extra_weight=
     return (1 + central_cell_extra_weight * is_central_cell) / (1 + smoothness_index_i)
 
 
+def weight_cells_by_distance(central_cell_coords: int, average_values: np.ndarray, cells_smoothness: np.ndarray,
+                             num_coefs: int, stencil, indexer, central_cell_importance: float = 0, distance_weight=0,
+                             *args,
+                             **kwargs):
+    """
+
+    :param central_cell_coords:
+    :param average_values:
+    :param cells_smoothness:
+    :param num_coefs:
+    :param central_cell_importance:
+        - 0 means it weight equally to others, no extra is added.
+        - 1, 2 means it weights the double, triple if all weight equal.
+    :return:
+    """
+    weight = distance_weight * np.sqrt([np.sum(c - central_cell_coords) ** 2 for c in stencil.coords])
+    weight[central_cell_coords] += central_cell_importance
+    return weight
+
+
 def weight_cells_by_smoothness(central_cell_coords: int, average_values: np.ndarray, cells_smoothness: np.ndarray,
                                num_coefs: int,
-                               central_cell_importance: float = 0, epsilon: float = 1e-5, delta: float = 0):
+                               central_cell_importance: float = 0, epsilon: float = 1e-5, delta: float = 0, *args,
+                               **kwargs):
     """
 
     :param central_cell_coords:
@@ -107,7 +128,10 @@ class PolynomialRegularCellCreator(CellCreatorBase):
                 average_values=np.array([average_values[indexer[c]] for c in stencil.coords]),
                 cells_smoothness=np.array([smoothness_index[indexer[c]] for c in stencil.coords]),
                 num_coefs=(1 + degree) ** self.dimensionality if self.full_rank else comb(
-                    degree + self.dimensionality, degree))
+                    degree + self.dimensionality, degree),
+                stencil=stencil,
+                indexer=indexer,
+            )
         polynomial_coefs = fit_polynomial_from_integrals(
             rectangles=[np.array([c, c + 1]) for c in stencil.coords],
             values=stencil.values,

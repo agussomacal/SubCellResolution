@@ -5,7 +5,7 @@ from experiments.image_reconstruction import plot_reconstruction
 from experiments.subcell_paper.tools import get_reconstruction_error, calculate_averages_from_image, load_image, \
     get_reconstruction_error_in_interface, reconstruct
 from lib.CellCreators.RegularCellCreator import MirrorCellCreator, \
-    PolynomialRegularCellCreator
+    PolynomialRegularCellCreator, weight_cells_by_smoothness, weight_cells_by_distance
 from lib.CellIterators import iterate_all
 from lib.SmoothnessCalculators import oracle
 from lib.StencilCreators import StencilCreatorSameRegionAdaptive
@@ -20,7 +20,7 @@ import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial
-from experiments.subcell_paper.global_params import CurveAverageQuadraticCC
+from experiments.subcell_paper.global_params import CurveAverageQuadraticCC, CCExtraWeight
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
@@ -96,8 +96,12 @@ regular_deg2half_same_region = CellCreatorPipeline(
     #                       condition=operator.eq),  # only regular cells
     orientator=BaseOrientator(dimensionality=2),
     stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=3),
+    # stencil_creator=StencilCreatorFixedShape(stencil_shape=(5, 5)),
     cell_creator=PolynomialRegularCellCreator(
-        degree=2, noisy=False, weight_function=None,
+        degree=2, noisy=False,
+        weight_function=partial(weight_cells_by_distance, central_cell_importance=CCExtraWeight, distance_weight=0.5),
+        # weight_function=partial(weight_cells_by_smoothness, central_cell_importance=CCExtraWeight, epsilon=1e-5,
+        #                         delta=0.05),
         dimensionality=2, full_rank=False)
 )
 regular_deg2_same_region = CellCreatorPipeline(
@@ -106,8 +110,13 @@ regular_deg2_same_region = CellCreatorPipeline(
     #                       condition=operator.eq),  # only regular cells
     orientator=BaseOrientator(dimensionality=2),
     stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=3),
+    # cell_creator=PolynomialRegularCellCreator(
+    #     degree=2, noisy=False, weight_function=None,
+    #     dimensionality=2, full_rank=True)
+    # stencil_creator=StencilCreatorFixedShape(stencil_shape=(5, 5)),
     cell_creator=PolynomialRegularCellCreator(
-        degree=2, noisy=False, weight_function=None,
+        degree=2, noisy=False,
+        weight_function=partial(weight_cells_by_distance, central_cell_importance=CCExtraWeight, distance_weight=0.5),
         dimensionality=2, full_rank=True)
 )
 regular_deg1_same_region = CellCreatorPipeline(
@@ -236,7 +245,6 @@ def poly2h_elvira(smoothness_calculator):
         [  # regular cell with piecewise_constant
             regular_deg2half_same_region,
             elvira_ccreator,
-
         ],
         obera_iterations=0
     )
@@ -268,11 +276,10 @@ def poly02_qelvira(smoothness_calculator):
         reconstruction_error_measure=reconstruction_error_measure,
         refinement=1,
         cell_creators=
-        [  # regular cell with piecewise_constant
-            [regular_constant_same_region, elvira_ccreator] +
-            deg2cell_creator +
-            [regular_deg2_same_region],
-        ],
+        # regular cell with piecewise_constant
+        [regular_constant_same_region, elvira_ccreator] +
+        deg2cell_creator +
+        [regular_deg2_same_region],
         obera_iterations=0
     )
 
@@ -285,11 +292,10 @@ def poly02h_qelvira(smoothness_calculator):
         reconstruction_error_measure=reconstruction_error_measure,
         refinement=1,
         cell_creators=
-        [  # regular cell with piecewise_constant
-            [regular_constant_same_region, elvira_ccreator] +
-            deg2cell_creator +
-            [regular_deg2half_same_region],
-        ],
+        # regular cell with piecewise_constant
+        [regular_constant_same_region, elvira_ccreator] +
+        deg2cell_creator +
+        [regular_deg2half_same_region],
         obera_iterations=0
     )
 
@@ -297,7 +303,8 @@ def poly02h_qelvira(smoothness_calculator):
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
-        name='PieceWiseRegular2',
+        # name='PieceWiseRegularELVIRA',
+        name='PieceWiseRegularQELVIRA',
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
@@ -313,13 +320,13 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "models",
         poly0_elvira,
-        poly1_elvira,
-        poly2_elvira,
+        # poly1_elvira,
+        # poly2_elvira,
         poly02_elvira,
         poly02_qelvira,
-        poly2h_elvira,
-        poly02h_elvira,
-        poly02h_qelvira,
+        # poly2h_elvira,
+        # poly02h_elvira,
+        # poly02h_qelvira,
         recalculate=False
     )
 
@@ -329,9 +336,9 @@ if __name__ == "__main__":
         recalculate=False,
         save_on_iteration=15,
         forget=False,
-        frequency=[0.5],
-        # amplitude=[1e-3, 1e-2, 5e-2, 1e-1, 2e-1, 5e-1],
-        amplitude=[1e-3, 1e-2, 1e-1],
+        frequency=[0.5, 2],
+        amplitude=[1e-5, 1e-4, 1e-3, 1e-2, 5e-2, 1e-1, 2e-1, 5e-1],
+        # amplitude=[1e-3, 1e-2, 1e-1],
         # num_cells_per_dim=[20, 40],
         num_cells_per_dim=[20],
         noise=[0],
@@ -346,9 +353,9 @@ if __name__ == "__main__":
                  plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
                  log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                  error=get_reconstruction_error,
-                 ylim=(1e-3, 1e0),
-                 axes_by=["frequency"],
-                 plot_by=["reconstruction_factor", "N"])
+                 # ylim=(1e-3, 1e0),
+                 # axes_by=["frequency"],
+                 plot_by=["reconstruction_factor", "N", "frequency"])
 
     generic_plot(data_manager,
                  name="InterfaceError",
@@ -356,9 +363,9 @@ if __name__ == "__main__":
                  plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
                  log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                  interface_error=get_reconstruction_error_in_interface,
-                 ylim=(1e-3, 1e0),
-                 axes_by=["frequency"],
-                 plot_by=["reconstruction_factor", "N"])
+                 # ylim=(1e-3, 1e0),
+                 axes_by=[],
+                 plot_by=["reconstruction_factor", "N", "frequency"])
 
     plot_reconstruction(
         data_manager,
@@ -366,7 +373,7 @@ if __name__ == "__main__":
         folder='reconstruction',
         axes_by=["amplitude", ],
         plot_by=['models', ],
-        folder_by=['image', "num_cells_per_dim", "reconstruction_factor"],
+        folder_by=['image', "num_cells_per_dim", "reconstruction_factor", "frequency"],
         axes_xy_proportions=(15, 15),
         # num_cells_per_dim=[20, 40],  # 42 * 2
         difference=False,

@@ -56,10 +56,6 @@ def get_values_up_down(coords, regular_opposite_cells):
 def prepare_stencil4one_dimensionalization(independent_axis: int, value_up: Union[int, float],
                                            value_down: Union[int, float], stencil: Stencil,
                                            smoothness_index: np.ndarray, indexer: ArrayIndexerNd):
-    # if the values are not 0 or 1
-    stencil_values = stencil.values - np.min((value_up, value_down))
-    stencil_values /= np.max((value_up, value_down))
-
     # # thresholding in case of piecewise-regular
     # stencil_values[stencil_values < 0] = 0
     # stencil_values[stencil_values > 1] = 1
@@ -77,8 +73,14 @@ def prepare_stencil4one_dimensionalization(independent_axis: int, value_up: Unio
         ks), "Only works if smoothness has 1 for curve cells and 0 otherwise."
     below_ix = stencil_smoothness.cumsum(axis=1) == 0
     above_ix = (stencil_smoothness.cumsum(axis=1) * (1 - stencil_smoothness)) > 0
-    stencil_values[below_ix] = 0
-    stencil_values[above_ix] = 1
+    stencil_values[below_ix] = value_down
+    stencil_values[above_ix] = value_up
+
+    # if the values are not 0 or 1
+    stencil_values = stencil_values - np.min(stencil_values)
+    stencil_values /= np.max(stencil_values)
+    # stencil_values = stencil_values - np.min((value_up, value_down))
+    # stencil_values /= np.max((value_up, value_down))
 
     # one-dimensional versioin with 1 "down" and 0 "up"
     stencil_values = (1 - stencil_values) if value_up > value_down else stencil_values
