@@ -18,7 +18,8 @@ class ELVIRACurveCellCreator(CurveCellCreatorBase):
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
                       stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
         value_up, value_down = get_values_up_down(coords, regular_opposite_cells)
-        stencil_values = prepare_stencil4one_dimensionalization(independent_axis, value_up, value_down, stencil)
+        stencil_values = prepare_stencil4one_dimensionalization(independent_axis, value_up, value_down, stencil,
+                                                                smoothness_index, indexer)
         stencil_values = stencil_values.sum(axis=1)
 
         for slope in [stencil_values[1] - stencil_values[0], stencil_values[2] - stencil_values[1],

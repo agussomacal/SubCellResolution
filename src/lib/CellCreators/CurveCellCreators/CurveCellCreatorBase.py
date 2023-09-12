@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import Tuple, Dict, Generator, Callable
+from typing import Tuple, Dict, Generator, Callable, Union
 
 import numpy as np
 
@@ -38,19 +38,47 @@ def get_values_up_down(coords, regular_opposite_cells):
     return value_up, value_down
 
 
-def prepare_stencil4one_dimensionalization(independent_axis, value_up, value_down, stencil):
+# def get_coords_up_down(coords, regular_opposite_cells: Tuple[CellBase, CellBase], stencil, smoothness_index):
+#     """Regular opposite cell may not be in stencil. """
+#     cells_on_each_side = []
+#     for cells2visit in [[regular_opposite_cells[0].coords], [regular_opposite_cells[1].coords]]:
+#         cells_on_each_side.append([])
+#         while len(cells2visit) > 0:
+#             next_cell = cells2visit.pop()
+#             cells_on_each_side.append(next_cell.tuple)
+#
+#
+#     value_up = regular_opposite_cells[1].evaluate(coords.coords + 0.5)
+#     value_down = regular_opposite_cells[0].evaluate(coords.coords + 0.5)
+#     return value_up, value_down
+
+
+def prepare_stencil4one_dimensionalization(independent_axis: int, value_up: Union[int, float],
+                                           value_down: Union[int, float], stencil: Stencil,
+                                           smoothness_index: np.ndarray, indexer: ArrayIndexerNd):
     # if the values are not 0 or 1
     stencil_values = stencil.values - np.min((value_up, value_down))
     stencil_values /= np.max((value_up, value_down))
 
-    # thresholding in case of piecewise-regular
-    stencil_values[stencil_values < 0] = 0
-    stencil_values[stencil_values > 1] = 1
+    # # thresholding in case of piecewise-regular
+    # stencil_values[stencil_values < 0] = 0
+    # stencil_values[stencil_values > 1] = 1
 
     # reshape stencil in rectangular form
     ks = np.max(stencil.coords, axis=0) - np.min(stencil.coords, axis=0) + 1
     stencil_values = stencil.values.reshape(ks)
     stencil_values = np.transpose(stencil_values, [independent_axis, 1 - independent_axis])
+
+    # thresholding in case of piecewise-regular
+    # assumes that smoothness comes with 1 for
+    stencil_smoothness = np.reshape([smoothness_index[indexer[coord]] for coord in stencil.coords], ks)
+    stencil_smoothness = np.transpose(stencil_smoothness, [independent_axis, 1 - independent_axis])
+    assert (np.sum(stencil_smoothness == 0) + np.sum(stencil_smoothness == 1)) == np.prod(
+        ks), "Only works if smoothness has 1 for curve cells and 0 otherwise."
+    below_ix = stencil_smoothness.cumsum(axis=1) == 0
+    above_ix = (stencil_smoothness.cumsum(axis=1) * (1 - stencil_smoothness)) > 0
+    stencil_values[below_ix] = 0
+    stencil_values[above_ix] = 1
 
     # one-dimensional versioin with 1 "down" and 0 "up"
     stencil_values = (1 - stencil_values) if value_up > value_down else stencil_values

@@ -38,15 +38,15 @@ from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionError
 EVALUATIONS = True
 
 
-def enhance_image(image, amplitude):
+def enhance_image(image, amplitude, frequency):
     image = load_image(image)
     h, w = np.shape(image)
     y, x = np.meshgrid(*list(map(range, np.shape(image))))
     d = np.sqrt((x - h / 2) ** 2 + (y - w / 2) ** 2)
     # v=128+(64+32*sin((x-w/2+y-h/2)*5*6/w))*(v >0)-(v==0)*(64+32*cos(d*5*6/w))
     image += amplitude * (
-            (image >= 0.5) * np.cos(2 * np.pi * x * 5 / w) +
-            (image <= 0.5) * np.sin(2 * np.pi * d * 3 / w)
+            (image >= 0.5) * np.cos(2 * np.pi * x * frequency / w) +
+            (image <= 0.5) * np.sin(2 * np.pi * d * frequency / w)
     )
 
     return {
@@ -276,99 +276,108 @@ def poly02_qelvira(smoothness_calculator):
         obera_iterations=0
     )
 
-    @fit_model
-    def poly02h_qelvira(smoothness_calculator):
-        return SubCellReconstruction(
-            name="All",
-            smoothness_calculator=smoothness_calculator,
-            reconstruction_error_measure=reconstruction_error_measure,
-            refinement=1,
-            cell_creators=
-            [  # regular cell with piecewise_constant
-                [regular_constant_same_region, elvira_ccreator] +
-                deg2cell_creator +
-                [regular_deg2half_same_region],
-            ],
-            obera_iterations=0
-        )
 
-    if __name__ == "__main__":
-        data_manager = DataManager(
-            path=config.results_path,
-            name='PieceWiseRegular',
-            format=JOBLIB,
-            trackCO2=True,
-            country_alpha_code="FR"
-        )
+@fit_model
+def poly02h_qelvira(smoothness_calculator):
+    return SubCellReconstruction(
+        name="All",
+        smoothness_calculator=smoothness_calculator,
+        reconstruction_error_measure=reconstruction_error_measure,
+        refinement=1,
+        cell_creators=
+        [  # regular cell with piecewise_constant
+            [regular_constant_same_region, elvira_ccreator] +
+            deg2cell_creator +
+            [regular_deg2half_same_region],
+        ],
+        obera_iterations=0
+    )
 
-        lab = LabPipeline()
 
-        lab.define_new_block_of_functions(
-            "perturbation",
-            enhance_image
-        )
+if __name__ == "__main__":
+    data_manager = DataManager(
+        path=config.results_path,
+        name='PieceWiseRegular2',
+        format=JOBLIB,
+        trackCO2=True,
+        country_alpha_code="FR"
+    )
 
-        lab.define_new_block_of_functions(
-            "models",
-            poly0_elvira,
-            poly1_elvira,
-            poly2_elvira,
-            poly02_elvira,
-            poly02_qelvira,
-            poly2h_elvira,
-            poly02h_elvira,
-            poly02h_qelvira,
-            recalculate=False
-        )
+    lab = LabPipeline()
 
-        lab.execute(
-            data_manager,
-            num_cores=15,
-            recalculate=False,
-            save_on_iteration=15,
-            forget=False,
-            amplitude=[1e-3, 1e-2, 5e-2, 1e-1, 2e-1, 5e-1],
-            num_cells_per_dim=[20, 40],
-            noise=[0],
-            image=[
-                "Ellipsoid_1680x1680.jpg",
-            ],
-            reconstruction_factor=[6],
-            # reconstruction_factor=[6],
-        )
+    lab.define_new_block_of_functions(
+        "perturbation",
+        enhance_image
+    )
 
-        generic_plot(data_manager, x="amplitude", y="error", label="models",
-                     plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                     log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                     error=get_reconstruction_error,
-                     plot_by=["reconstruction_factor", "N"])
+    lab.define_new_block_of_functions(
+        "models",
+        poly0_elvira,
+        poly1_elvira,
+        poly2_elvira,
+        poly02_elvira,
+        poly02_qelvira,
+        poly2h_elvira,
+        poly02h_elvira,
+        poly02h_qelvira,
+        recalculate=False
+    )
 
-        generic_plot(data_manager,
-                     name="InterfaceError",
-                     x="amplitude", y="interface_error", label="models",
-                     plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                     log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                     interface_error=get_reconstruction_error_in_interface,
-                     plot_by=["reconstruction_factor", "N"])
+    lab.execute(
+        data_manager,
+        num_cores=3,
+        recalculate=False,
+        save_on_iteration=15,
+        forget=False,
+        frequency=[0.5],
+        # amplitude=[1e-3, 1e-2, 5e-2, 1e-1, 2e-1, 5e-1],
+        amplitude=[1e-3, 1e-2, 1e-1],
+        # num_cells_per_dim=[20, 40],
+        num_cells_per_dim=[20],
+        noise=[0],
+        image=[
+            "Ellipsoid_1680x1680.jpg",
+        ],
+        reconstruction_factor=[6],
+        # reconstruction_factor=[6],
+    )
 
-        plot_reconstruction(
-            data_manager,
-            name="Reconstruction",
-            folder='reconstruction',
-            axes_by=["amplitude", ],
-            plot_by=['models', ],
-            folder_by=['image', "num_cells_per_dim", "reconstruction_factor"],
-            axes_xy_proportions=(15, 15),
-            # num_cells_per_dim=[20, 40],  # 42 * 2
-            difference=False,
-            plot_curve=True,
-            plot_curve_winner=False,
-            plot_vh_classification=False,
-            plot_singular_cells=False,
-            plot_original_image=True,
-            numbers_on=True,
-            plot_again=True,
-            num_cores=1,
-        )
+    generic_plot(data_manager, x="amplitude", y="error", label="models",
+                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                 log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                 error=get_reconstruction_error,
+                 ylim=(1e-3, 1e0),
+                 axes_by=["frequency"],
+                 plot_by=["reconstruction_factor", "N"])
 
-        print("CO2 consumption: ", data_manager.CO2kg)
+    generic_plot(data_manager,
+                 name="InterfaceError",
+                 x="amplitude", y="interface_error", label="models",
+                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                 log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                 interface_error=get_reconstruction_error_in_interface,
+                 ylim=(1e-3, 1e0),
+                 axes_by=["frequency"],
+                 plot_by=["reconstruction_factor", "N"])
+
+    plot_reconstruction(
+        data_manager,
+        name="Reconstruction",
+        folder='reconstruction',
+        axes_by=["amplitude", ],
+        plot_by=['models', ],
+        folder_by=['image', "num_cells_per_dim", "reconstruction_factor"],
+        axes_xy_proportions=(15, 15),
+        # num_cells_per_dim=[20, 40],  # 42 * 2
+        difference=False,
+        plot_curve=True,
+        plot_curve_winner=False,
+        plot_vh_classification=False,
+        plot_singular_cells=False,
+        plot_original_image=True,
+        numbers_on=True,
+        plot_again=True,
+        num_cores=1,
+    )
+
+    print("CO2 consumption: ", data_manager.CO2kg)
