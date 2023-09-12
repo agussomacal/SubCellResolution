@@ -13,8 +13,10 @@ from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUN
 from experiments.subcell_paper.obera_experiments import get_shape, get_sub_cell_model
 from experiments.subcell_paper.tools import calculate_averages_from_curve
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
+from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.ParametersCurveCellCreators import DefaultPolynomialCurveCellCreator, \
     DefaultCircleCurveCellCreator
+from lib.CellCreators.CurveCellCreators.TaylorCurveCellCreator import TaylorCircleCurveCellCreator
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesDefaultCircleCellCreator, \
     ValuesDefaultCurveCellCreator, ValuesDefaultLinearCellCreator, ValuesCircleCellCreator, ValuesCurveCellCreator, \
     ValuesLinearCellCreator
@@ -49,6 +51,13 @@ def fit_model(sub_cell_model):
     # the other option is to pass to the block the name we wish to associate to the function.
     decorated_func.__name__ = sub_cell_model.__name__
     return decorated_func
+
+
+@fit_model
+def circle_aero(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+    return get_sub_cell_model(partial(TaylorCircleCurveCellCreator, ccew=central_cell_extra_weight), refinement,
+                              "Circle",
+                              iterations, central_cell_extra_weight, metric)
 
 
 @fit_model
@@ -135,7 +144,7 @@ def circle(refinement: int, iterations: int, central_cell_extra_weight: float, m
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
-        name='OBERAiterations',
+        name='OBERAiterationsCircle',
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
@@ -169,26 +178,27 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "models",
         linear,
-        quadratic,
-        circle,
         linear_p,
-        quadratic_p,
-        circle_p,
         linear_pi,
-        quadratic_pi,
-        circle_pi,
         linear_i,
+        quadratic,
+        quadratic_p,
+        quadratic_pi,
         quadratic_i,
+        circle,
+        circle_p,
+        circle_pi,
         circle_i,
+        circle_aero,
         recalculate=False
     )
-    metrics = [1]
+    metrics = [1, 2]
     num_cores = 15
     lab.execute(
         data_manager,
         num_cores=num_cores,
         forget=False,
-        save_on_iteration=num_cores,
+        save_on_iteration=None,
         refinement=[1],
         # num_cells_per_dim=[10, 14] + np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()[:1],
         num_cells_per_dim=[20],
@@ -196,8 +206,8 @@ if __name__ == "__main__":
         shape_name=[
             "Circle"
         ],
-        iterations=[0, 1, 2, 5, 10, 20],
-        central_cell_extra_weight=[10, 1, 0],
+        iterations=[0, 1, 2, 3, 4, 5, 10],
+        central_cell_extra_weight=[100, 10, 1, 0],
         sub_discretization2bound_error=[SUB_CELL_DISCRETIZATION2BOUND_ERROR],
         metric=metrics
     )
@@ -216,24 +226,65 @@ if __name__ == "__main__":
         'circle_p',
         'circle_i',
         'circle_pi',
+        'circle_aero',
     ]
 
 
     def variant(models):
         if "_" in models:
-            new_name = models.split("_")[1].replace("i", " and warm start")
-            if "p" in new_name:
-                new_name = new_name.replace("p", "re-parameterized")
+            if "aero" in models:
+                new_name = "AERO initialization"
             else:
-                new_name = "normal params" + new_name
+                new_name = models.split("_")[1].replace("i", " and warm start")
+                if "p" in new_name:
+                    new_name = new_name.replace("p", "re-parameterized")
+                else:
+                    new_name = "normal params" + new_name
         else:
             new_name = "normal params"
-        print(new_name)
         return new_name
 
 
     generic_plot(data_manager,
-                 name="ReParamWarmStartEffect",
+                 name="FevalsReParamWarmStartEffect",
+                 x="fevals", y="error", label="variant",
+                 plot_func=NamedPartial(sns.lineplot,
+                                        marker="o", linestyle="--",
+                                        # hue_order=["normal params", "re-parameterized",
+                                        #            "normal params and warm start",
+                                        #            "re-parameterized and warm start"]
+                                        ),
+                 log="y",
+                 time=lambda model: np.mean(np.array(list(model.times[CURVE_CELL_TYPE].values()))),
+                 fevals=lambda model: np.array(list(model.obera_fevals[CURVE_CELL_TYPE].values())),
+                 curve=lambda models: models.split("_")[0],
+                 variant=variant,
+                 sort_by=["models"],
+                 plot_by=["metric", "curve"],
+                 axes_by=["central_cell_extra_weight", ],
+                 )
+
+    generic_plot(data_manager,
+                 name="TimeReParamWarmStartEffect",
+                 x="time", y="error", label="variant",
+                 plot_func=NamedPartial(sns.lineplot,
+                                        marker="o", linestyle="--",
+                                        # hue_order=["normal params", "re-parameterized",
+                                        #            "normal params and warm start",
+                                        #            "re-parameterized and warm start"]
+                                        ),
+                 log="y",
+                 time=lambda model: np.mean(np.array(list(model.times[CURVE_CELL_TYPE].values()))),
+                 fevals=lambda model: np.array(list(model.obera_fevals[CURVE_CELL_TYPE].values())),
+                 curve=lambda models: models.split("_")[0],
+                 variant=variant,
+                 sort_by=["models"],
+                 plot_by=["metric", "curve"],
+                 axes_by=["central_cell_extra_weight", ],
+                 )
+
+    generic_plot(data_manager,
+                 name="ItersReParamWarmStartEffect",
                  x="iterations", y="error", label="variant",
                  plot_func=NamedPartial(sns.lineplot,
                                         marker="o", linestyle="--",
@@ -245,6 +296,6 @@ if __name__ == "__main__":
                  curve=lambda models: models.split("_")[0],
                  variant=variant,
                  sort_by=["models"],
-                 plot_by=["curve"],
+                 plot_by=["metric", "curve"],
                  axes_by=["central_cell_extra_weight", ],
                  )

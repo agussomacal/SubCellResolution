@@ -38,7 +38,7 @@ from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionError
 EVALUATIONS = True
 
 
-def enhance_image(image, amplitude, frequency):
+def trigonometric(image, amplitude, frequency):
     image = load_image(image)
     h, w = np.shape(image)
     y, x = np.meshgrid(*list(map(range, np.shape(image))))
@@ -47,6 +47,22 @@ def enhance_image(image, amplitude, frequency):
     image += amplitude * (
             (image >= 0.5) * np.cos(2 * np.pi * x * frequency / w) +
             (image <= 0.5) * np.sin(2 * np.pi * d * frequency / w)
+    )
+
+    return {
+        "enhanced_image": image
+    }
+
+
+def parabolas(image, amplitude, frequency):
+    image = load_image(image)
+    h, w = np.shape(image)
+    y, x = np.meshgrid(*list(map(range, np.shape(image))))
+    d = np.sqrt((x - h / 2) ** 2 + (y - w / 2) ** 2)
+    # v=128+(64+32*sin((x-w/2+y-h/2)*5*6/w))*(v >0)-(v==0)*(64+32*cos(d*5*6/w))
+    image += amplitude * (
+            (image >= 0.5) * (1 - 0.5 * (2 * np.pi * x * frequency / w) ** 2) +
+            (image <= 0.5) * (2 * np.pi * d * frequency / w) ** 2
     )
 
     return {
@@ -267,6 +283,19 @@ def poly02h_elvira(smoothness_calculator):
         obera_iterations=0
     )
 
+@fit_model
+def poly1_elvira(smoothness_calculator):
+    return SubCellReconstruction(
+        name="All",
+        smoothness_calculator=smoothness_calculator,
+        reconstruction_error_measure=reconstruction_error_measure,
+        refinement=1,
+        cell_creators=
+        [regular_deg1_same_region, elvira_ccreator] +
+        deg2cell_creator +
+        [regular_deg2_same_region],
+        obera_iterations=0
+    )
 
 @fit_model
 def poly02_qelvira(smoothness_calculator):
@@ -301,10 +330,27 @@ def poly02h_qelvira(smoothness_calculator):
 
 
 if __name__ == "__main__":
+    name = 'PieceWiseRegularQELVIRA'  # 'PieceWiseRegularQELVIRA'
+
+    if name == 'PieceWiseRegularQELVIRA':
+        models = [
+            poly0_elvira,
+            poly02_elvira,
+            poly02_qelvira
+        ]
+    else:
+        models = [
+            poly0_elvira,
+            poly1_elvira,
+            poly2_elvira,
+            poly02_elvira,
+            poly2h_elvira,
+            poly02h_elvira,
+        ]
+
     data_manager = DataManager(
         path=config.results_path,
-        # name='PieceWiseRegularELVIRA',
-        name='PieceWiseRegularQELVIRA',
+        name=name,
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
@@ -314,25 +360,19 @@ if __name__ == "__main__":
 
     lab.define_new_block_of_functions(
         "perturbation",
-        enhance_image
+        trigonometric,
+        parabolas
     )
 
     lab.define_new_block_of_functions(
         "models",
-        poly0_elvira,
-        # poly1_elvira,
-        # poly2_elvira,
-        poly02_elvira,
-        poly02_qelvira,
-        # poly2h_elvira,
-        # poly02h_elvira,
-        # poly02h_qelvira,
+        *models,
         recalculate=False
     )
 
     lab.execute(
         data_manager,
-        num_cores=3,
+        num_cores=10,
         recalculate=False,
         save_on_iteration=15,
         forget=False,
@@ -355,7 +395,7 @@ if __name__ == "__main__":
                  error=get_reconstruction_error,
                  # ylim=(1e-3, 1e0),
                  # axes_by=["frequency"],
-                 plot_by=["reconstruction_factor", "N", "frequency"])
+                 plot_by=["reconstruction_factor", "N", "frequency", "perturbation"])
 
     generic_plot(data_manager,
                  name="InterfaceError",
@@ -365,7 +405,7 @@ if __name__ == "__main__":
                  interface_error=get_reconstruction_error_in_interface,
                  # ylim=(1e-3, 1e0),
                  axes_by=[],
-                 plot_by=["reconstruction_factor", "N", "frequency"])
+                 plot_by=["reconstruction_factor", "N", "frequency", "perturbation"])
 
     plot_reconstruction(
         data_manager,
@@ -373,7 +413,7 @@ if __name__ == "__main__":
         folder='reconstruction',
         axes_by=["amplitude", ],
         plot_by=['models', ],
-        folder_by=['image', "num_cells_per_dim", "reconstruction_factor", "frequency"],
+        folder_by=['image', "num_cells_per_dim", "reconstruction_factor", "frequency", "perturbation"],
         axes_xy_proportions=(15, 15),
         # num_cells_per_dim=[20, 40],  # 42 * 2
         difference=False,

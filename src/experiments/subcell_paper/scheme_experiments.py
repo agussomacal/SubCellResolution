@@ -496,17 +496,17 @@ if __name__ == "__main__":
 
     lab.define_new_block_of_functions(
         "models",
-        # upwind,
+        upwind,
         quadratic,
-        # elvira,
-        # qelvira,
+        elvira,
+        qelvira,
         full,
-        recalculate=True
+        recalculate=False
     )
 
     lab.execute(
         data_manager,
-        num_cores=1,
+        num_cores=15,
         forget=False,
         save_on_iteration=5,
         refinement=[1],
