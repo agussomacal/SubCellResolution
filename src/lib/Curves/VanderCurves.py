@@ -21,9 +21,10 @@ class CurveVander(CurveReparametrized):
 # vandermonde inverse matrix of np.linalg.inv(np.vander(np.linspace(-0.5, 0.5, num=3))[:, ::-1]), first c,
 # second b third a of ax**2+bx+c
 class CurveVandermondePolynomial(CurveVander, CurvePolynomial):
-    def __init__(self, x_points, y_points, value_up=0, value_down=1, degree=1, ccew=0, center=None):
+    def __init__(self, x_points, y_points, value_up=0, value_down=1, degree=1, ccew=0, center=None, weights=None):
         self.degree = degree
-        super().__init__(x_points, y_points, value_down=value_down, value_up=value_up, ccew=ccew, center=center)
+        super().__init__(x_points, y_points, value_down=value_down, value_up=value_up, ccew=ccew, center=center,
+                         weights=weights)
 
     def new_params2natural_params(self, x_points, y_points):
         return np.linalg.lstsq(
@@ -53,9 +54,9 @@ def points2circle(a, b, c):
 
 
 class CurveVanderCircle(CurveVander, CurveSemiCircle):
-    def __init__(self, x_points, y_points, value_up=0, value_down=1, ccew=0, center=None):
+    def __init__(self, x_points, y_points, value_up=0, value_down=1, ccew=0, center=None, weights=None):
         super().__init__(x_points=x_points, y_points=y_points, value_up=value_up, value_down=value_down, ccew=ccew,
-                         center=center)
+                         center=center, weights=weights)
         self.concave = get_concavity(x_points, y_points) > 0  # concave
 
     def new_params2natural_params(self, x_points, y_points):

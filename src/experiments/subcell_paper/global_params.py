@@ -3,6 +3,10 @@ from PerplexityLab.miscellaneous import ClassPartialInit
 from config import subcell_paper_folder_path
 from lib.Curves.AverageCurves import CurveAveragePolynomial
 
+from seaborn import color_palette
+
+cblue, corange, cgreen, cred, cpurple, cbrown, cpink, cgray, cyellow, ccyan = color_palette("tab10")
+
 SUB_CELL_DISCRETIZATION2BOUND_ERROR = 10
 OBERA_ITERS = 500
 CCExtraWeight = 100  # central cell extra weight 100

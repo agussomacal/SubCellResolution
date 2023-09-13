@@ -3,24 +3,19 @@ from functools import partial
 
 import numpy as np
 import seaborn as sns
-from sklearn.neural_network import MLPRegressor
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import FunctionTransformer
 
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
 from PerplexityLab.visualization import generic_plot
-from experiments.LearningMethods import flatter
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, OBERA_ITERS, \
-    CCExtraWeight, runsinfo
+    CCExtraWeight, runsinfo, cblue, corange, cgreen, cred, cpurple, cbrown, cpink, cgray, cyellow, ccyan
 from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
 from experiments.subcell_paper.tools import calculate_averages_from_image, calculate_averages_from_curve
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
-from lib.CellCreators.CurveCellCreators.LearningCurveCellCreator import LearningCurveCellCreator
 from lib.CellCreators.CurveCellCreators.TaylorCurveCellCreator import TaylorCircleCurveCellCreator
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator, \
     ValuesLineConsistentCurveCellCreator
@@ -28,9 +23,7 @@ from lib.CellCreators.RegularCellCreator import MirrorCellCreator
 from lib.CellIterators import iterate_all
 from lib.CellOrientators import BaseOrientator, OrientPredefined
 from lib.Curves.AverageCurves import CurveAveragePolynomial
-from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import CURVE_PROBLEM
-from lib.DataManagers.DatasetsManagers.DatasetsManagerLinearCurves import DatasetsManagerLinearCurves, ANGLE_OBJECTIVE
-from lib.DataManagers.LearningMethodManager import LearningMethodManager
+from lib.Curves.VanderCurves import CurveVandermondePolynomial
 from lib.SmoothnessCalculators import indifferent
 from lib.StencilCreators import StencilCreatorFixedShape, StencilCreatorAdaptive
 from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasureBase, CellCreatorPipeline
@@ -137,7 +130,15 @@ def elvira_go100_ref2():
 @fit_model
 def linear_obera():
     return get_sub_cell_model(
-        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=CCExtraWeight),
+        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=0),
+                natural_params=True), 1,
+        "LinearOpt", OBERA_ITERS, 0, 2)
+
+
+@fit_model
+def linear_obera_w():
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=1, ccew=-1),
                 natural_params=True), 1,
         "LinearOpt", OBERA_ITERS, CCExtraWeight, 2)
 
@@ -153,8 +154,8 @@ def linear_aero_w():
 
 @fit_model
 def linear_aero_consistent():
-    return get_sub_cell_model(ValuesLineConsistentCurveCellCreator, 1,
-                              "LinearAvgConsistent", 0, CCExtraWeight, 2,
+    return get_sub_cell_model(partial(ValuesLineConsistentCurveCellCreator, ccew=CCExtraWeight), 1,
+                              "LinearAvgConsistent", 0, CCExtraWeight, 1,
                               StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3,
                                                      center_weight=2.1))
 
@@ -210,10 +211,10 @@ def quadratic_aero_ref2():
 
 
 @fit_model
-def circle_avg():
+def obera_circle():
     return get_sub_cell_model(
         partial(TaylorCircleCurveCellCreator, ccew=CCExtraWeight), 1,
-        "CircleAvg", 0, CCExtraWeight, 2,
+        "CircleAvg", OBERA_ITERS, CCExtraWeight, 2,
         StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
 
 
@@ -322,29 +323,30 @@ if __name__ == "__main__":
 
     lab.define_new_block_of_functions(
         "models",
-        # piecewise_constant,
-        # elvira,
-        # elvira_w,
-        # elvira_w_oriented,
-        # linear_obera,
-        # linear_aero,
-        # linear_aero_w,
+        piecewise_constant,
+        elvira,
+        elvira_w_oriented,
+        linear_obera,
+        linear_obera_w,
+        linear_aero,
+        linear_aero_w,
         linear_aero_consistent,
         # nn_linear,
 
-        # quadratic_obera_non_adaptive,
-        # quadratic_obera,
-        # quadratic_aero,
+        quadratic_obera_non_adaptive,
+        quadratic_obera,
+        quadratic_aero,
 
         # elvira_go100_ref2,
         # quadratic_aero_ref2,
 
-        # circle_avg,
+        obera_circle,
         # circle_vander_avg,
-        recalculate=True
+        recalculate=False
     )
+    # num_cells_per_dim = np.logspace(np.log10(10), np.log10(100), num=20, dtype=int).tolist()[:5]
     num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()[:5]
-    num_cores = 3
+    num_cores = 1
     lab.execute(
         data_manager,
         num_cores=num_cores,
@@ -358,23 +360,6 @@ if __name__ == "__main__":
         sub_discretization2bound_error=[SUB_CELL_DISCRETIZATION2BOUND_ERROR],
     )
 
-    # color_dict = {
-    #     "piecewise_constant": "gray",
-    #     "elvira": ,
-    #     "elvira_w",
-    #     "elvira_w_oriented",
-    #     "linear_obera",
-    #     "linear_aero",
-    #     "linear_aero_w",
-    #     "quadratic_obera_non_adaptive",
-    #     "quadratic_obera",
-    #     "quadratic_aero",
-    #     "elvira_go100_ref2",
-    #     "quadratic_aero_ref2",
-    #     "circle_avg",
-    #     "circle_vander_avg",
-    # }
-    #
     names_dict = {
         "piecewise_constant": "Piecewise Constant",
         "nn_linear": "NN Linear",
@@ -382,280 +367,148 @@ if __name__ == "__main__":
         "elvira_w": "ELVIRA-W",
         "elvira_w_oriented": "ELVIRA-W Oriented",
         "linear_obera": "OBERA Linear",
+        "linear_obera_w": "OBERA-W Linear",
         "linear_aero": "AERO Linear",
         "linear_aero_w": "AERO-W Linear",
         "linear_aero_consistent": "AERO Linear Column Consistent",
         "quadratic_obera_non_adaptive": "OBERA Quadratic 3x3",
         "quadratic_obera": "OBERA Quadratic",
         "quadratic_aero": "AERO Quadratic",
+        "obera_circle": "OBERA Circle"
         # "elvira_go100_ref2",
         # "quadratic_aero_ref2",
         # "circle_avg",
         # "circle_vander_avg",
+    }
+    model_color = {
+        "piecewise_constant": cgray,
+        "nn_linear": cgreen,
+        "elvira": cyellow,
+        "elvira_w": None,
+        "elvira_w_oriented": corange,
+        "linear_obera": cbrown,
+        "linear_obera_w": cpurple,
+        "linear_aero": ccyan,
+        "linear_aero_w": cblue,
+        "linear_aero_consistent": cpink,
+
+        "quadratic_obera_non_adaptive": cpurple,
+        "quadratic_obera": cred,
+        "quadratic_aero": cgreen,
+        "obera_circle": cyellow,
     }
 
     runsinfo.append_info(
         **{k.replace("_", "-"): v for k, v in names_dict.items()}
     )
 
-    mse = lambda reconstruction, image4error: np.mean(((np.array(reconstruction) - image4error) ** 2).ravel())
+    error = lambda reconstruction, image4error: np.sqrt(np.mean(np.abs(reconstruction - image4error).ravel() ** 2))
 
     # -------------------- linear models -------------------- #
-    linear_models = [
-        "nn_linear",
-        "elvira",
-        "elvira_w",
-        "elvira_w_oriented",
-        "linear_obera",
-        "linear_aero",
-        "linear_aero_w",
-        "linear_aero_consistent"
-    ]
+    accepted_models = {
+        "LinearModels": [
+            "nn_linear",
+            "elvira",
+            "elvira_w",
+            "elvira_w_oriented",
+            "linear_obera",
+            "linear_obera_w",
+            "linear_aero",
+            "linear_aero_w",
+            "linear_aero_consistent"
+        ],
+        "HighOrderModels": [
+            "piecewise_constant",
+            "linear_aero_w",
+            "quadratic_obera_non_adaptive",
+            "quadratic_obera",
+            "quadratic_aero",
+            "obera_circle"
+        ]
+    }
+    rateonly = ["piecewise_constant", "quadratic_aero", "linear_aero_w", "elvira", "elvira_w_oriented", "linear_obera"]
 
-    generic_plot(data_manager,
-                 name="ConvergenceLinearModels",
-                 x="N", y="mse", label="method", num_cells_per_dim=num_cells_per_dim,
-                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                 log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 mse=mse,
-                 models=linear_models,
-                 method=lambda models: names_dict[str(models)]
-                 )
 
-    generic_plot(data_manager,
-                 name="TimeComplexityLinearModels",
-                 x="N", y="time", label="method", num_cells_per_dim=num_cells_per_dim,
-                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                 log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 mse=mse,
-                 models=linear_models,
-                 method=lambda models: names_dict[str(models)]
-                 )
+    def plot_convergence(data, x, y, hue, ax, threshold=25, rateonly=rateonly, *args, **kwargs):
+        # sns.scatterplot(data=data, x=x, y=y, hue=label, ax=ax)
+        for method, df in data.groupby(hue):
+            name = f"{names_dict[str(method)]}"
+            if method in rateonly:
+                hinv = np.sqrt(df[x].values)
+                valid_ix = hinv > threshold
+                rate, origin = np.ravel(np.linalg.lstsq(
+                    np.vstack([np.log(hinv[valid_ix]), np.ones(np.sum(valid_ix))]).T,
+                    np.log(df[y].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
+                # ax.plot(df[x].values[valid_ix], np.sqrt(df[x].values[valid_ix]) ** rate * np.exp(origin), "-",
+                #         c=model_color[method], linewidth=3, alpha=0.5)
+                name = name + f": O({abs(rate):.1f})"
+            sns.lineplot(df[x], df[y], color=model_color[method], label=name, ax=ax,
+                         marker="o", linestyle="--", alpha=1)
+            # ax.plot(df[x], df[y], marker=".", linestyle=":", c=model_color[method], label=name)
+        ax.set_xlabel(r"$n$")
+        ax.set_ylabel(r"$||u-\tilde u ||_{L_2}$")
 
-    generic_plot(data_manager,
-                 name="TimeComplexityMSELinearModels",
-                 x="time", y="mse", label="method", num_cells_per_dim=num_cells_per_dim,
-                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                 log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 mse=mse,
-                 models=linear_models,
-                 method=lambda models: names_dict[str(models)]
-                 )
+        # n = np.sort(np.unique(data[x]))
+        # ax.plot(n, 1 / n, ":", c=cgray, linewidth=2, alpha=0.5, label=r"$O(h^{-1})$")
+        # ax.plot(n, 1 / n ** 2, ":", c=cgray, linewidth=2, alpha=0.5, label=r"$O(h^{-2})$")
+        # ax.plot(n, 1 / n ** 3, ":", c=cgray, linewidth=2, alpha=0.5, label=r"$O(h^{-3})$")
 
-    plot_reconstruction(
-        data_manager,
-        name="",
-        folder='LinearMethodsReconstructionComparison',
-        axes_by=['models'],
-        plot_by=['num_cells_per_dim'],
-        axes_xy_proportions=(15, 15),
-        difference=False,
-        plot_curve=True,
-        plot_curve_winner=False,
-        plot_vh_classification=False,
-        plot_singular_cells=False,
-        plot_original_image=True,
-        numbers_on=True,
-        plot_again=True,
-        num_cores=1,
-        # trim=trim
-    )
 
-    kvbf
-    # -------------------- AERO models -------------------- #
+    for group, models2plot in accepted_models.items():
+        generic_plot(data_manager,
+                     name=f"Convergence_{group}",
+                     folder=group,
+                     x="N", y="error", label="models", num_cells_per_dim=num_cells_per_dim,
+                     plot_func=plot_convergence,
+                     # plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                     log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                     error=error,
+                     models=models2plot,
+                     sort_by=["models", "N"],
+                     method=lambda models: names_dict[str(models)]
+                     )
 
-    generic_plot(data_manager,
-                 name="ConvergenceAERO",
-                 x="N", y="mse", label="models", num_cells_per_dim=num_cells_per_dim,
-                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                 log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 mse=mse,
-                 models=[
-                     "piecewise_constant",
-                     "elvira",
-                     "elvira_w",
-                     "elvira_w_oriented",
-                     "linear_obera",
-                     "linear_aero",
-                     "linear_aero_w",
-                     "quadratic_obera_non_adaptive",
-                     "quadratic_obera",
-                     "quadratic_aero",
-                     "elvira_go100_ref2",
-                     "quadratic_aero_ref2",
-                     "circle_avg",
-                     "circle_vander_avg",
-                 ],
-                 )
+        generic_plot(data_manager,
+                     name=f"TimeComplexity_{group}",
+                     folder=group,
+                     x="N", y="time", label="method", num_cells_per_dim=num_cells_per_dim,
+                     plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                     log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                     error=error,
+                     models=models2plot,
+                     method=lambda models: names_dict[str(models)]
+                     )
 
-    generic_plot(data_manager,
-                 name="ConvergenceModels",
-                 x="N", y="mse", label="models", num_cells_per_dim=num_cells_per_dim,
-                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                 log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 mse=mse,
-                 models=[
-                     "piecewise_constant",
-                     # "elvira",
-                     # "elvira_w",
-                     "elvira_w_oriented",
-                     # "linear_obera",
-                     # "linear_aero",
-                     # "linear_aero_w",
-                     "quadratic_obera_non_adaptive",
-                     "quadratic_obera",
-                     "quadratic_aero",
-                     # "elvira_go100_ref2",
-                     # "quadratic_aero_ref2",
-                     "circle_avg",
-                     # "circle_vander_avg",
-                 ],
-                 )
+        generic_plot(data_manager,
+                     name=f"TimeComplexityMSE_{group}",
+                     folder=group,
+                     x="time", y="error", label="method", num_cells_per_dim=num_cells_per_dim,
+                     plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                     log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                     error=error,
+                     models=models2plot,
+                     method=lambda models: names_dict[str(models)]
+                     )
 
-    generic_plot(data_manager,
-                 name="TimeComplexityModels",
-                 x="N", y="time", label="models", num_cells_per_dim=num_cells_per_dim,
-                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                 log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 mse=mse,
-                 models=[
-                     "piecewise_constant",
-                     # "elvira",
-                     # "elvira_w",
-                     "elvira_w_oriented",
-                     # "linear_obera",
-                     # "linear_aero",
-                     # "linear_aero_w",
-                     "quadratic_obera_non_adaptive",
-                     "quadratic_obera",
-                     "quadratic_aero",
-                     # "elvira_go100_ref2",
-                     # "quadratic_aero_ref2",
-                     "circle_avg",
-                     # "circle_vander_avg",
-                 ],
-                 )
-    generic_plot(data_manager,
-                 name="TimeComplexityMSEModels",
-                 x="time", y="mse", label="models", num_cells_per_dim=num_cells_per_dim,
-                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                 log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 mse=mse,
-                 models=[
-                     "piecewise_constant",
-                     # "elvira",
-                     # "elvira_w",
-                     "elvira_w_oriented",
-                     # "linear_obera",
-                     # "linear_aero",
-                     # "linear_aero_w",
-                     "quadratic_obera_non_adaptive",
-                     "quadratic_obera",
-                     "quadratic_aero",
-                     # "elvira_go100_ref2",
-                     # "quadratic_aero_ref2",
-                     "circle_avg",
-                     # "circle_vander_avg",
-                 ],
-                 )
-
-    generic_plot(data_manager,
-                 name="ConvergenceRefinement",
-                 x="N", y="mse", label="models", num_cells_per_dim=num_cells_per_dim,
-                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                 log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 mse=mse,
-                 models=[
-                     "piecewise_constant",
-                     # "elvira",
-                     # "elvira_w",
-                     "elvira_w_oriented",
-                     # "linear_obera",
-                     # "linear_aero",
-                     # "linear_aero_w",
-                     # "quadratic_obera_non_adaptive",
-                     # "quadratic_obera",
-                     "quadratic_aero",
-                     "elvira_go100_ref2",
-                     "quadratic_aero_ref2",
-                     # "circle_avg",
-                     # "circle_vander_avg",
-                 ],
-                 )
-
-    generic_plot(data_manager,
-                 name="TimeComplexityMSERefinement",
-                 x="time", y="mse", label="models", num_cells_per_dim=num_cells_per_dim,
-                 mse=mse,
-                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                 log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 models=[
-                     "piecewise_constant",
-                     # "elvira",
-                     # "elvira_w",
-                     "elvira_w_oriented",
-                     # "linear_obera",
-                     # "linear_aero",
-                     # "linear_aero_w",
-                     # "quadratic_obera_non_adaptive",
-                     # "quadratic_obera",
-                     "quadratic_aero",
-                     "elvira_go100_ref2",
-                     "quadratic_aero_ref2",
-                     # "circle_avg",
-                     # "circle_vander_avg",
-                 ],
-                 )
-
-    generic_plot(data_manager,
-                 name="TimeComplexityRefinement",
-                 x="N", y="time", label="models", num_cells_per_dim=num_cells_per_dim,
-                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                 log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 models=[
-                     "piecewise_constant",
-                     # "elvira",
-                     # "elvira_w",
-                     "elvira_w_oriented",
-                     # "linear_obera",
-                     # "linear_aero",
-                     # "linear_aero_w",
-                     # "quadratic_obera_non_adaptive",
-                     # "quadratic_obera",
-                     "quadratic_aero",
-                     "elvira_go100_ref2",
-                     "quadratic_aero_ref2",
-                     # "circle_avg",
-                     # "circle_vander_avg",
-                 ],
-                 )
-
-    # plot_reconstruction(
-    #     data_manager,
-    #     name="",
-    #     folder='ReconstructionComparison',
-    #     axes_by=['models'],
-    #     plot_by=['num_cells_per_dim'],
-    #     axes_xy_proportions=(15, 15),
-    #     difference=False,
-    #     plot_curve=True,
-    #     plot_curve_winner=False,
-    #     plot_vh_classification=False,
-    #     plot_singular_cells=False,
-    #     plot_original_image=True,
-    #     numbers_on=True,
-    #     plot_again=True,
-    #     num_cores=15,
-    #     # trim=trim
-    # )
-    # plot_original_image(
-    #     data_manager,
-    #     folder='reconstruction',
-    #     axes_by=[],
-    #     plot_by=['image', 'models', 'num_cells_per_dim', 'refinement'],
-    #     axes_xy_proportions=(15, 15),
-    #     numbers_on=True
-    # )
+        plot_reconstruction(
+            data_manager,
+            folder=group,
+            name=f"{group}",
+            axes_by=['models'],
+            models=models2plot,
+            plot_by=['num_cells_per_dim'],
+            axes_xy_proportions=(15, 15),
+            difference=False,
+            plot_curve=True,
+            plot_curve_winner=False,
+            plot_vh_classification=False,
+            plot_singular_cells=False,
+            plot_original_image=True,
+            numbers_on=True,
+            plot_again=False,
+            num_cores=1,
+            # trim=trim
+        )
 
     print("CO2 consumption: ", data_manager.CO2kg)
     copy_main_script_version(__file__, data_manager.path)

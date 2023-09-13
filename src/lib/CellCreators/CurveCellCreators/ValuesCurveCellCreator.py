@@ -40,7 +40,9 @@ class ValuesCurveCellCreator(CurveCellCreatorBase):
             y_points=stencil_values,
             value_up=value_up,
             value_down=value_down,
-            center=np.argmin(np.abs(x_points - coords[independent_axis] - 0.5))
+            center=np.argmin(np.abs(x_points - coords[independent_axis] - 0.5)),
+            weights=np.exp(-(x_points - coords[independent_axis] - 0.5)**2)
+            # weights=1 * ((np.abs(x_points - coords[independent_axis] - 0.5)) < (len(x_points) // 2 + 1))
         )
         curve.set_y_shift(np.min(stencil.coords[:, 1 - independent_axis]))
         if self.natural_params:
@@ -51,8 +53,8 @@ class ValuesCurveCellCreator(CurveCellCreatorBase):
 
 class ValuesLineConsistentCurveCellCreator(ValuesCurveCellCreator):
     def __init__(self, regular_opposite_cell_searcher: Callable,
-                 natural_params=False):
-        super().__init__(vander_curve=partial(CurveAveragePolynomial, degree=1),
+                 natural_params=False, ccew=0):
+        super().__init__(vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=ccew),
                          regular_opposite_cell_searcher=regular_opposite_cell_searcher,
                          natural_params=natural_params)
 
@@ -69,7 +71,9 @@ class ValuesLineConsistentCurveCellCreator(ValuesCurveCellCreator):
             y_points=stencil_values,
             value_up=value_up,
             value_down=value_down,
-            center=np.argmin(np.abs(x_points - coords[independent_axis] - 0.5))
+            center=np.argmin(np.abs(x_points - coords[independent_axis] - 0.5)),
+            # weights=1/(1+np.abs(x_points - coords[independent_axis] - 0.5))**2
+            weights=1 * ((np.abs(x_points - coords[independent_axis] - 0.5)) < 2)
         )
         curve.set_y_shift(stencil_values[curve.center] - curve.function(curve.x_points[curve.center]))
         curve.set_y_shift(np.min(stencil.coords[:, 1 - independent_axis]))

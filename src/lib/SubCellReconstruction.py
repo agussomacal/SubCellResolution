@@ -110,7 +110,7 @@ class SubCellReconstruction:
 
                                 # number of function evaluation without gradient is twice the number of parameters
                                 x0 = np.ravel(proposed_cell.curve.params)
-                                res = minimize(optim_func, x0=x0, method="L-BFGS-B",
+                                res = minimize(optim_func, x0=x0, method="L-BFGS-B", tol=1e-10,
                                                options={'maxiter': self.obera_iterations * 2 * (1 + len(x0))})
                                 proposed_cell.curve.params = res.x
                                 self.obera_fevals[proposed_cell.CELL_TYPE][coords.tuple] += res.nfev
@@ -149,7 +149,8 @@ class SubCellReconstruction:
         return reconstruct_arbitrary_size(cells=self.cells, resolution=self.resolution, size=size)
 
 
-def reconstruct_arbitrary_size(cells: Dict[Tuple[int, ...], CellBase], resolution, size: Union[Tuple, np.ndarray]):
+def reconstruct_arbitrary_size(cells: Dict[Tuple[int, ...], CellBase], resolution, size: Union[Tuple, np.ndarray],
+                               cells2reconstruct: List[Tuple] = None):
     """
     Uses evaluation to reconstruct.
     :param size:
@@ -158,13 +159,16 @@ def reconstruct_arbitrary_size(cells: Dict[Tuple[int, ...], CellBase], resolutio
     size = np.array(size)
     values = np.zeros(size)
     for ix in itertools.product(*list(map(range, size))):
-        values[ix] = cells[tuple(map(int, np.array(ix) / size * resolution))].evaluate(
-            (np.array(ix) / size * resolution)[np.newaxis, :])
+        cell_ix = tuple(map(int, np.array(ix) / size * resolution))
+        if cells2reconstruct is None and cell_ix in cells2reconstruct:
+            values[ix] = cells[cell_ix].evaluate(
+                (np.array(ix) / size * resolution)[np.newaxis, :])
     return values
 
 
 def reconstruct_by_factor(cells: Dict[Tuple[int, ...], CellBase], resolution,
-                          resolution_factor: Union[int, Tuple, np.ndarray] = 1):
+                          resolution_factor: Union[int, Tuple, np.ndarray] = 1,
+                          cells2reconstruct: List[Tuple] = None):
     """
     Uses averages to reconstruct.
     :param resolution_factor:
@@ -173,7 +177,7 @@ def reconstruct_by_factor(cells: Dict[Tuple[int, ...], CellBase], resolution,
     resolution_factor = np.array([resolution_factor] * len(resolution), dtype=int) \
         if isinstance(resolution_factor, int) else np.array(resolution_factor)
     average_values = np.zeros(resolution_factor * np.array(resolution, dtype=int))
-    for ix in mesh_iterator(resolution, out_type=np.array):
+    for ix in mesh_iterator(resolution, out_type=np.array) if cells2reconstruct is None else cells2reconstruct:
         for sub_ix in mesh_iterator(resolution_factor, out_type=np.array):
             rectangle_upper_left_vertex = ix + sub_ix / resolution_factor
             rectangle_down_right_vertex = rectangle_upper_left_vertex + 1.0 / resolution_factor

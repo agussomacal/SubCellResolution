@@ -84,3 +84,7 @@ def get_reconstruction_error_in_interface(image, enhanced_image, reconstruction,
         # TODO: should be the evaluations not the averages.
         enhanced_image = calculate_averages_from_image(enhanced_image, num_cells_per_dim=np.shape(reconstruction))
     return np.mean(np.abs(np.array(reconstruction) - enhanced_image)[mask])
+
+
+def singular_cells_mask(avg_values):
+    return (0 < avg_values) * (avg_values < 1)
