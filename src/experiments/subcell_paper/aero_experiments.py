@@ -22,7 +22,8 @@ from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
 from lib.CellCreators.CurveCellCreators.LearningCurveCellCreator import LearningCurveCellCreator
 from lib.CellCreators.CurveCellCreators.TaylorCurveCellCreator import TaylorCircleCurveCellCreator
-from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator
+from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator, \
+    ValuesLineConsistentCurveCellCreator
 from lib.CellCreators.RegularCellCreator import MirrorCellCreator
 from lib.CellIterators import iterate_all
 from lib.CellOrientators import BaseOrientator, OrientPredefined
@@ -34,27 +35,28 @@ from lib.SmoothnessCalculators import indifferent
 from lib.StencilCreators import StencilCreatorFixedShape, StencilCreatorAdaptive
 from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasureBase, CellCreatorPipeline
 
-N = int(1e6)
-workers = 10
-dataset_manager_3_8pi = DatasetsManagerLinearCurves(
-    velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
-    workers=workers, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
-    value_up_random=False
-)
 
-nnlm = LearningMethodManager(
-    dataset_manager=dataset_manager_3_8pi,
-    type_of_problem=CURVE_PROBLEM,
-    trainable_model=Pipeline(
-        [
-            ("Flatter", FunctionTransformer(flatter)),
-            ("NN", MLPRegressor(hidden_layer_sizes=(20, 20,), activation='relu', learning_rate_init=0.1,
-                                learning_rate="adaptive", solver="lbfgs"))
-        ]
-    ),
-    refit=False, n2use=-1,
-    training_noise=1e-5, train_percentage=0.9
-)
+# N = int(1e6)
+# workers = 10
+# dataset_manager_3_8pi = DatasetsManagerLinearCurves(
+#     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
+#     workers=workers, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
+#     value_up_random=False
+# )
+#
+# nnlm = LearningMethodManager(
+#     dataset_manager=dataset_manager_3_8pi,
+#     type_of_problem=CURVE_PROBLEM,
+#     trainable_model=Pipeline(
+#         [
+#             ("Flatter", FunctionTransformer(flatter)),
+#             ("NN", MLPRegressor(hidden_layer_sizes=(20, 20,), activation='relu', learning_rate_init=0.1,
+#                                 learning_rate="adaptive", solver="lbfgs"))
+#         ]
+#     ),
+#     refit=False, n2use=-1,
+#     training_noise=1e-5, train_percentage=0.9
+# )
 
 
 def fit_model(sub_cell_model):
@@ -146,7 +148,15 @@ def linear_aero_w():
         partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=CCExtraWeight)), 1,
         "LinearAvg100", 0, CCExtraWeight, 2,
         StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3,
-                               center_weight=100))
+                               center_weight=2.1))
+
+
+@fit_model
+def linear_aero_consistent():
+    return get_sub_cell_model(ValuesLineConsistentCurveCellCreator, 1,
+                              "LinearAvgConsistent", 0, CCExtraWeight, 2,
+                              StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3,
+                                                     center_weight=2.1))
 
 
 @fit_model
@@ -155,13 +165,13 @@ def linear_aero():
         partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=0)), 1,
         "LinearAvg", 0, CCExtraWeight, 2,
         StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3,
-                               center_weight=100))
+                               center_weight=2.1))
 
 
-@fit_model
-def nn_linear():
-    return get_sub_cell_model(partial(LearningCurveCellCreator, nnlm), 1,
-                              "LinearNN", 0, CCExtraWeight, 2)
+# @fit_model
+# def nn_linear():
+#     return get_sub_cell_model(partial(LearningCurveCellCreator, nnlm), 1,
+#                               "LinearNN", 0, CCExtraWeight, 2)
 
 
 @fit_model
@@ -316,9 +326,10 @@ if __name__ == "__main__":
         # elvira,
         # elvira_w,
         # elvira_w_oriented,
-        linear_obera,
+        # linear_obera,
         # linear_aero,
-        linear_aero_w,
+        # linear_aero_w,
+        linear_aero_consistent,
         # nn_linear,
 
         # quadratic_obera_non_adaptive,
@@ -332,8 +343,8 @@ if __name__ == "__main__":
         # circle_vander_avg,
         recalculate=True
     )
-    num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()
-    num_cores = 15
+    num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()[:5]
+    num_cores = 3
     lab.execute(
         data_manager,
         num_cores=num_cores,
@@ -373,6 +384,7 @@ if __name__ == "__main__":
         "linear_obera": "OBERA Linear",
         "linear_aero": "AERO Linear",
         "linear_aero_w": "AERO-W Linear",
+        "linear_aero_consistent": "AERO Linear Column Consistent",
         "quadratic_obera_non_adaptive": "OBERA Quadratic 3x3",
         "quadratic_obera": "OBERA Quadratic",
         "quadratic_aero": "AERO Quadratic",
@@ -396,8 +408,10 @@ if __name__ == "__main__":
         "elvira_w_oriented",
         "linear_obera",
         "linear_aero",
-        "linear_aero_w"
+        "linear_aero_w",
+        "linear_aero_consistent"
     ]
+
     generic_plot(data_manager,
                  name="ConvergenceLinearModels",
                  x="N", y="mse", label="method", num_cells_per_dim=num_cells_per_dim,
@@ -431,7 +445,7 @@ if __name__ == "__main__":
     plot_reconstruction(
         data_manager,
         name="",
-        folder='LineqrMethodsReconstructionComparison',
+        folder='LinearMethodsReconstructionComparison',
         axes_by=['models'],
         plot_by=['num_cells_per_dim'],
         axes_xy_proportions=(15, 15),
@@ -443,7 +457,7 @@ if __name__ == "__main__":
         plot_original_image=True,
         numbers_on=True,
         plot_again=True,
-        num_cores=15,
+        num_cores=1,
         # trim=trim
     )
 

@@ -49,6 +49,36 @@ class ValuesCurveCellCreator(CurveCellCreatorBase):
             yield curve
 
 
+class ValuesLineConsistentCurveCellCreator(ValuesCurveCellCreator):
+    def __init__(self, regular_opposite_cell_searcher: Callable,
+                 natural_params=False):
+        super().__init__(vander_curve=partial(CurveAveragePolynomial, degree=1),
+                         regular_opposite_cell_searcher=regular_opposite_cell_searcher,
+                         natural_params=natural_params)
+
+    def create_curves(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
+                      coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
+                      stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
+        value_up, value_down = get_values_up_down(coords, regular_opposite_cells)
+        stencil_values = prepare_stencil4one_dimensionalization(independent_axis, value_up, value_down, stencil,
+                                                                smoothness_index, indexer)
+        stencil_values = stencil_values.sum(axis=1)
+        x_points = get_x_points(stencil, independent_axis)
+        curve = self.vander_curve(
+            x_points=x_points,
+            y_points=stencil_values,
+            value_up=value_up,
+            value_down=value_down,
+            center=np.argmin(np.abs(x_points - coords[independent_axis] - 0.5))
+        )
+        curve.set_y_shift(stencil_values[curve.center] - curve.function(curve.x_points[curve.center]))
+        curve.set_y_shift(np.min(stencil.coords[:, 1 - independent_axis]))
+        if self.natural_params:
+            yield curve.get_natural_parametrization_curve()
+        else:
+            yield curve
+
+
 class ValuesLinearCellCreator(ValuesCurveCellCreator):
     def __init__(self, regular_opposite_cell_searcher: Callable, natural_params=False, avg_method=False):
         super().__init__(partial(CurveAveragePolynomial if avg_method else CurveVandermondePolynomial, degree=1),

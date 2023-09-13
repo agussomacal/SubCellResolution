@@ -152,8 +152,8 @@ class StencilCreatorSmoothnessDistTradeOff(StencilCreatorFixedShape):
 def get_near_singular_cell_coords(coords: CellCoords, dependent_axis: int, regularity_mask: np.ndarray,
                                   indexer: ArrayIndexerNd) -> (Tuple[Tuple[int, int], Tuple[int, int]], np.ndarray):
     assert all([mode == CYCLIC for mode in indexer.modes]), "Only for periodic condition problems."
-    for direction in [1, -1]:
-        for i in np.arange(np.shape(regularity_mask)[dependent_axis]):
+    for i in np.arange(np.shape(regularity_mask)[dependent_axis]):
+        for direction in [1, -1]:
             coords_i = 1 * coords.coords
             coords_i[dependent_axis] += direction * i
             if regularity_mask[indexer[coords_i]] != REGULAR_CELL:
@@ -273,13 +273,15 @@ class StencilCreatorAdaptive(StencilCreator):
                 singular_cells_sides[dx].append(sc)
                 regular_opposite_cells_sides[dx].append(rc)
 
-        smoothness = list(map(len, singular_cells_sides[-1] + [singular_cells_center] + singular_cells_sides[1]))
+        # smoothness = np.array(
+        #     list(map(len, singular_cells_sides[-1][::-1] + [singular_cells_center] + singular_cells_sides[1])))
+        # smoothness[smoothness <= 2] = 0  # only penalize when grows more than 2 singular cells.
         ropcells = np.array(
-            regular_opposite_cells_sides[-1] + [regular_opposite_cells_center] + regular_opposite_cells_sides[1])
+            regular_opposite_cells_sides[-1][::-1] + [regular_opposite_cells_center] + regular_opposite_cells_sides[1])
         heights = [np.max(ropcells[i:i + self.independent_dim_stencil_size, :, dependent_axis]) - np.min(
             ropcells[i:i + self.independent_dim_stencil_size, :, dependent_axis]) +
-                   self.center_weight * abs(i - self.independent_dim_stencil_size // 2) +
-                   1e-2 * np.sum(smoothness[i:i + self.independent_dim_stencil_size])
+                   self.center_weight * abs(i - self.independent_dim_stencil_size // 2)
+                   # np.sum(smoothness[i:i + self.independent_dim_stencil_size])
                    # center stencils are preferable
                    for i in range(self.independent_dim_stencil_size)]
         left_border = np.argmin(heights)
