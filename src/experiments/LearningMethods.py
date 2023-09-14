@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 # import torch
 from sklearn.base import BaseEstimator
 from sklearn.ensemble import RandomForestRegressor
@@ -8,7 +9,7 @@ from sklearn.preprocessing import FunctionTransformer
 from sklearn.tree import DecisionTreeRegressor
 
 from lib.MLutils.skkeras import SKKerasFNN
-# from lib.MLutils.sktorch import SKTorchFNN
+from lib.MLutils.sktorch import SKTorchFNN
 
 
 def flatter(X):
@@ -115,6 +116,19 @@ skkeras_20x20_relu = Pipeline(
                                        epochs=100000, activation='relu', validation_size=0.1,
                                        restarts=1, max_time4fitting=np.Inf, workers=1,
                                        batch_size=0.1, criterion="mse", solver="Adam",
+                                       lr=None, lr_lower_limit=1e-12,
+                                       lr_upper_limit=1, n_epochs_without_improvement=100,
+                                       random_state=42))
+    ]
+)
+
+sktorch_20x20_relu = Pipeline(
+    [
+        ("Flatter", FunctionTransformer(flatter)),
+        ("SKTorchFNN20x20", SKTorchFNN(hidden_layer_sizes=(20, 20),
+                                       epochs=100000, activation='relu', validation_size=0.1,
+                                       restarts=1, max_time4fitting=np.Inf, workers=1,
+                                       batch_size=0.1, criterion=torch.nn.MSELoss(), solver=torch.optim.Adam,
                                        lr=None, lr_lower_limit=1e-12,
                                        lr_upper_limit=1, n_epochs_without_improvement=100,
                                        random_state=42))

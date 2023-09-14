@@ -9,7 +9,7 @@ from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
 from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import generic_plot
-from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR
+from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, CCExtraWeight
 from experiments.subcell_paper.obera_experiments import get_shape, get_sub_cell_model
 from experiments.subcell_paper.tools import calculate_averages_from_curve
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
@@ -20,6 +20,7 @@ from lib.CellCreators.CurveCellCreators.TaylorCurveCellCreator import TaylorCirc
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesDefaultCircleCellCreator, \
     ValuesDefaultCurveCellCreator, ValuesDefaultLinearCellCreator, ValuesCircleCellCreator, ValuesCurveCellCreator, \
     ValuesLinearCellCreator
+from lib.Curves.AverageCurves import CurveAveragePolynomial
 from lib.Curves.VanderCurves import CurveVandermondePolynomial
 
 
@@ -53,26 +54,65 @@ def fit_model(sub_cell_model):
     return decorated_func
 
 
+# -------------------- Linear -------------------- #
 @fit_model
-def circle_aero(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
-    return get_sub_cell_model(partial(TaylorCircleCurveCellCreator, ccew=central_cell_extra_weight), refinement,
-                              "Circle",
-                              iterations, central_cell_extra_weight, metric)
-
-
-@fit_model
-def linear_i(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+def linear_aero_param(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
     return get_sub_cell_model(
-        partial(ValuesLinearCellCreator, natural_params=True), refinement,
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=central_cell_extra_weight),
+                natural_params=True),
+        refinement, "Linear", iterations, central_cell_extra_weight, metric)
+
+
+@fit_model
+def linear_aero_reparam(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=central_cell_extra_weight),
+                natural_params=False),
+        refinement, "Linear", iterations, central_cell_extra_weight, metric)
+
+
+@fit_model
+def linear_points_param(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveVandermondePolynomial, degree=1, ccew=central_cell_extra_weight),
+                natural_params=True),
+        refinement, "Linear", iterations, central_cell_extra_weight, metric)
+
+
+@fit_model
+def linear_points_reparam(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveVandermondePolynomial, degree=1, ccew=central_cell_extra_weight),
+                natural_params=False),
+        refinement, "Linear", iterations, central_cell_extra_weight, metric)
+
+
+@fit_model
+def linear_dafault_param(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+    return get_sub_cell_model(
+        partial(DefaultPolynomialCurveCellCreator, degree=1), refinement,
         "Linear", iterations, central_cell_extra_weight, metric)
 
 
+# -------------------- CIRCLE -------------------- #
 @fit_model
-def quadratic_i(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+def circle_aero_param(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
     return get_sub_cell_model(
-        partial(ValuesCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=2),
-                natural_params=True), refinement,
-        "Quadratic", iterations, central_cell_extra_weight, metric)
+        partial(TaylorCircleCurveCellCreator, ccew=central_cell_extra_weight, natural_params=True), refinement,
+        "Circle",
+        iterations, central_cell_extra_weight, metric)
+
+
+@fit_model
+def circle_aero_reparam(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+    return get_sub_cell_model(
+        partial(TaylorCircleCurveCellCreator, ccew=central_cell_extra_weight, natural_params=False), refinement,
+        "Circle",
+        iterations, central_cell_extra_weight, metric)
 
 
 @fit_model
@@ -82,36 +122,9 @@ def circle_i(refinement: int, iterations: int, central_cell_extra_weight: float,
 
 
 @fit_model
-def linear_pi(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
-    return get_sub_cell_model(
-        ValuesLinearCellCreator, refinement,
-        "Linear", iterations, central_cell_extra_weight, metric)
-
-
-@fit_model
-def quadratic_pi(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
-    return get_sub_cell_model(
-        partial(ValuesCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=2)), refinement,
-        "Quadratic", iterations, central_cell_extra_weight, metric)
-
-
-@fit_model
 def circle_pi(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
     return get_sub_cell_model(ValuesCircleCellCreator, refinement, "Circle",
                               iterations, central_cell_extra_weight, metric)
-
-
-@fit_model
-def linear_p(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
-    return get_sub_cell_model(ValuesDefaultLinearCellCreator, refinement, "Linear", iterations,
-                              central_cell_extra_weight, metric)
-
-
-@fit_model
-def quadratic_p(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
-    return get_sub_cell_model(
-        partial(ValuesDefaultCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=2)), refinement,
-        "Quadratic", iterations, central_cell_extra_weight, metric)
 
 
 @fit_model
@@ -122,10 +135,32 @@ def circle_p(refinement: int, iterations: int, central_cell_extra_weight: float,
 
 
 @fit_model
-def linear(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+def circle(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+    return get_sub_cell_model(DefaultCircleCurveCellCreator, refinement, "Circle",
+                              iterations, central_cell_extra_weight, metric)
+
+
+# -------------------- Quadratic -------------------- #
+@fit_model
+def quadratic_i(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
     return get_sub_cell_model(
-        partial(DefaultPolynomialCurveCellCreator, degree=1), refinement,
-        "Linear", iterations, central_cell_extra_weight, metric)
+        partial(ValuesCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=2),
+                natural_params=True), refinement,
+        "Quadratic", iterations, central_cell_extra_weight, metric)
+
+
+@fit_model
+def quadratic_pi(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=2)), refinement,
+        "Quadratic", iterations, central_cell_extra_weight, metric)
+
+
+@fit_model
+def quadratic_p(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
+    return get_sub_cell_model(
+        partial(ValuesDefaultCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=2)), refinement,
+        "Quadratic", iterations, central_cell_extra_weight, metric)
 
 
 @fit_model
@@ -135,16 +170,10 @@ def quadratic(refinement: int, iterations: int, central_cell_extra_weight: float
         "Quadratic", iterations, central_cell_extra_weight, metric)
 
 
-@fit_model
-def circle(refinement: int, iterations: int, central_cell_extra_weight: float, metric):
-    return get_sub_cell_model(DefaultCircleCurveCellCreator, refinement, "Circle",
-                              iterations, central_cell_extra_weight, metric)
-
-
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
-        name='OBERAiterationsCircle',
+        name='OBERAiterations',
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
@@ -177,19 +206,21 @@ if __name__ == "__main__":
 
     lab.define_new_block_of_functions(
         "models",
-        linear,
-        linear_p,
-        linear_pi,
-        linear_i,
-        quadratic,
-        quadratic_p,
-        quadratic_pi,
-        quadratic_i,
-        circle,
-        circle_p,
-        circle_pi,
-        circle_i,
-        circle_aero,
+        linear_dafault_param,
+        linear_points_param,
+        linear_points_reparam,
+        linear_aero_param,
+        linear_aero_reparam,
+        # quadratic,
+        # quadratic_p,
+        # quadratic_pi,
+        # quadratic_i,
+        # circle,
+        # circle_p,
+        # circle_pi,
+        # circle_i,
+        # circle_aero,
+        # circle_aero_reparam,
         recalculate=False
     )
     metrics = [1, 2]
@@ -214,10 +245,11 @@ if __name__ == "__main__":
 
     # ---------- Effect of re-parametrization and warm start --------- #
     order = [
-        'linear',
-        'linear_p',
-        'linear_i',
-        'linear_pi',
+        "linear_dafault_param",
+        "linear_points_param",
+        "linear_points_reparam",
+        "linear_aero_param",
+        "linear_aero_reparam",
         'quadratic',
         'quadratic_p',
         'quadratic_i',
@@ -227,42 +259,50 @@ if __name__ == "__main__":
         'circle_i',
         'circle_pi',
         'circle_aero',
+        'circle_aero_reparam',
     ]
 
+    # def variant(models):
+    #     if "_" in models:
+    #         if "aero" in models:
+    #             new_name = "AERO initialization"
+    #             if "reparam" in models:
+    #                 new_name += " re-parameterized"
+    #         else:
+    #             new_name = models.split("_")[1].replace("i", " and warm start")
+    #             if "p" in new_name:
+    #                 new_name = new_name.replace("p", "re-parameterized")
+    #             else:
+    #                 new_name = "normal params" + new_name
+    #     else:
+    #         new_name = "normal params"
+    #     return new_name
 
     def variant(models):
-        if "_" in models:
-            if "aero" in models:
-                new_name = "AERO initialization"
-            else:
-                new_name = models.split("_")[1].replace("i", " and warm start")
-                if "p" in new_name:
-                    new_name = new_name.replace("p", "re-parameterized")
-                else:
-                    new_name = "normal params" + new_name
-        else:
-            new_name = "normal params"
-        return new_name
+        models = models.replace("_reparam", " re-parameterized")
+        models = models.replace("_param", "")
+        models = models.replace("_", " ")
+        return models
 
 
-    generic_plot(data_manager,
-                 name="FevalsReParamWarmStartEffect",
-                 x="fevals", y="error", label="variant",
-                 plot_func=NamedPartial(sns.lineplot,
-                                        marker="o", linestyle="--",
-                                        # hue_order=["normal params", "re-parameterized",
-                                        #            "normal params and warm start",
-                                        #            "re-parameterized and warm start"]
-                                        ),
-                 log="y",
-                 time=lambda model: np.mean(np.array(list(model.times[CURVE_CELL_TYPE].values()))),
-                 fevals=lambda model: np.array(list(model.obera_fevals[CURVE_CELL_TYPE].values())),
-                 curve=lambda models: models.split("_")[0],
-                 variant=variant,
-                 sort_by=["models"],
-                 plot_by=["metric", "curve"],
-                 axes_by=["central_cell_extra_weight", ],
-                 )
+    # generic_plot(data_manager,
+    #              name="FevalsReParamWarmStartEffect",
+    #              x="fevals", y="error", label="variant",
+    #              plot_func=NamedPartial(sns.lineplot,
+    #                                     marker="o", linestyle="--",
+    #                                     # hue_order=["normal params", "re-parameterized",
+    #                                     #            "normal params and warm start",
+    #                                     #            "re-parameterized and warm start"]
+    #                                     ),
+    #              log="y",
+    #              time=lambda model: np.mean(np.array(list(model.times[CURVE_CELL_TYPE].values()))),
+    #              fevals=lambda model: np.array(list(model.obera_fevals[CURVE_CELL_TYPE].values())),
+    #              curve=lambda models: models.split("_")[0],
+    #              variant=variant,
+    #              sort_by=["models"],
+    #              plot_by=["metric", "curve"],
+    #              axes_by=["central_cell_extra_weight", ],
+    #              )
 
     generic_plot(data_manager,
                  name="TimeReParamWarmStartEffect",

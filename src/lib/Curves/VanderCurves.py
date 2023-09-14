@@ -27,9 +27,13 @@ class CurveVandermondePolynomial(CurveVander, CurvePolynomial):
                          weights=weights)
 
     def new_params2natural_params(self, x_points, y_points):
+        # return np.linalg.lstsq(
+        #     np.vander(x_points, N=self.degree + 1, increasing=True),
+        #     y_points.reshape((-1, 1)),
+        #     rcond=None)[0].ravel()
         return np.linalg.lstsq(
-            np.vander(x_points, N=self.degree + 1, increasing=True),
-            y_points.reshape((-1, 1)),
+            np.vander(x_points, N=self.degree + 1, increasing=True) * self.weights[:, np.newaxis],
+            (y_points * self.weights).reshape((-1, 1)),
             rcond=None)[0].ravel()
         # return np.ravel(get_inv_vandermonde_matrix(x_points) @ y_points.reshape((-1, 1)))
 

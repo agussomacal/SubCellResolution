@@ -12,15 +12,18 @@ from lib.Curves.CurveCircle import CurveSemiCircle, CircleParams
 from lib.Curves.CurvePolynomial import CurvePolynomial
 from lib.Curves.Curves import Curve
 from lib.Curves.Curves import CurveReparametrized
+from lib.Curves.VanderCurves import CurveVanderCircle
 from lib.StencilCreators import Stencil
 
 
 class TaylorCurveCellCreator(ValuesCurveCellCreator):
-    def __init__(self, curve: Type[Curve], degree, regular_opposite_cell_searcher: Callable, ccew=0):
+    def __init__(self, curve: Type[Curve], degree, regular_opposite_cell_searcher: Callable, ccew=0,
+                 natural_params=True):
         super().__init__(
             vander_curve=partial(CurveAveragePolynomial, degree=degree, ccew=ccew),
             regular_opposite_cell_searcher=regular_opposite_cell_searcher, natural_params=False)
         self.curve = curve
+        self.natural_params4circle = natural_params
 
     def get_curve_from_taylor(self, curve_polynomial: CurveReparametrized) -> Curve:
         raise Exception("Not implemented.")
@@ -40,9 +43,9 @@ class TaylorCircleCurveCellCreator(TaylorCurveCellCreator):
     For the case of the circle uses the quadratic to get the curvature and then the radius and positions of the center.
     """
 
-    def __init__(self, regular_opposite_cell_searcher: Callable, ccew=0):
+    def __init__(self, regular_opposite_cell_searcher: Callable, ccew=0, natural_params=True):
         super().__init__(curve=CurveSemiCircle, degree=2, regular_opposite_cell_searcher=regular_opposite_cell_searcher,
-                         ccew=ccew)
+                         ccew=ccew, natural_params=natural_params)
 
     def get_curve_from_taylor(self, curve_polynomial: (CurvePolynomial, CurveReparametrized)) -> CurveReparametrized:
         xc = curve_polynomial.x_points[curve_polynomial.center]
@@ -61,7 +64,7 @@ class TaylorCircleCurveCellCreator(TaylorCurveCellCreator):
         # p1 = poly.deriv()(xc)
         # 1 / (2 * p2 / (1 + (p1) ** 2) ** (3 / 2)) / 28
         concavity = np.sign(p2)
-        return CurveSemiCircle(
+        circle = CurveSemiCircle(
             # CircleParams(x0=xc + p1 / p2, y0=p0 - 1 / p2, radius=np.sqrt(1 + p1 ** 2) / p2),
             CircleParams(x0=xc - np.sign(p1) * concavity * dy,
                          y0=p0 + concavity * dx, radius=r),
@@ -69,3 +72,20 @@ class TaylorCircleCurveCellCreator(TaylorCurveCellCreator):
             value_down=curve_polynomial.value_down,
             concave=p2 > 0,
         )
+        if self.natural_params4circle:
+            return circle
+        else:
+            x_points = np.linspace(np.min(curve_polynomial.x_points), np.max(curve_polynomial.x_points), num=3)
+            try:
+                return CurveVanderCircle(x_points=x_points,
+                                         y_points=circle.function(x_points),
+                                         value_up=curve_polynomial.value_up,
+                                         value_down=curve_polynomial.value_down, center=curve_polynomial.center,
+                                         weights=None)
+            except:
+                # when the circle has a problem go for vander directly
+                return CurveVanderCircle(x_points=x_points,
+                                         y_points=curve_polynomial.function(x_points),
+                                         value_up=curve_polynomial.value_up,
+                                         value_down=curve_polynomial.value_down, center=curve_polynomial.center,
+                                         weights=None)

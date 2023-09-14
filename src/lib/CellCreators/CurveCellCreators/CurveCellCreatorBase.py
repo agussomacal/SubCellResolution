@@ -62,7 +62,7 @@ def prepare_stencil4one_dimensionalization(independent_axis: int, value_up: Unio
 
     # reshape stencil in rectangular form
     ks = np.max(stencil.coords, axis=0) - np.min(stencil.coords, axis=0) + 1
-    stencil_values = stencil.values.reshape(ks)
+    stencil_values = np.copy(stencil.values).reshape(ks)
     stencil_values = np.transpose(stencil_values, [independent_axis, 1 - independent_axis])
 
     # thresholding in case of piecewise-regular

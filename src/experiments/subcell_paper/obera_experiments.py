@@ -13,7 +13,7 @@ from PerplexityLab.visualization import perplex_plot, generic_plot, one_line_ite
 from experiments.VizReconstructionUtils import plot_cells, plot_cells_identity, plot_cells_vh_classification_core, \
     plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders
 from experiments.subcell_paper.tools import calculate_averages_from_curve
-from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR
+from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, runsinfo
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
@@ -31,8 +31,6 @@ from lib.Curves.VanderCurves import CurveVandermondePolynomial
 from lib.SmoothnessCalculators import naive_piece_wise
 from lib.StencilCreators import StencilCreatorFixedShape
 from lib.SubCellReconstruction import SubCellReconstruction, CellCreatorPipeline, ReconstructionErrorMeasure
-
-CATEGORICAL_PALETTE = sns.color_palette("colorblind")
 
 
 def get_sub_cell_model(curve_cell_creator, refinement, name, iterations, central_cell_extra_weight, metric,
@@ -181,17 +179,6 @@ def circle(refinement: int, iterations: int, central_cell_extra_weight: float, m
                               iterations, central_cell_extra_weight, metric)
 
 
-#
-# def image_reconstruction_from_curve(sub_discretization2bound_error, model):
-#     t0 = time.time()
-#     reconstruction = model.reconstruct_by_factor(resolution_factor=sub_discretization2bound_error)
-#     t_reconstruct = time.time() - t0
-#     return {
-#         "reconstruction": reconstruction,
-#         "time_to_reconstruct": t_reconstruct
-#     }
-
-
 @perplex_plot()
 @one_line_iterator
 def plot_reconstruction(fig, ax, image4error, num_cells_per_dim, model, reconstruction, alpha=0.5,
@@ -246,104 +233,22 @@ def plot_reconstruction(fig, ax, image4error, num_cells_per_dim, model, reconstr
         numbers_on=numbers_on,
         prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
     )
-    # ax.set_xlim((-0.5 + trim[0][0], model.resolution[0] - trim[0][1] - 0.5))
-    # ax.set_ylim((model.resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
+
     ax.set_xlim((-0.5 + trim[0][0] * model.resolution[0], model.resolution[0] * trim[0][1] - 0.5))
     ax.set_ylim((model.resolution[1] * trim[1][0] - 0.5, model.resolution[1] * trim[1][1] - 0.5))
 
 
-# def image_reconstruction(image, shape, model, reconstruction_factor):
-#     # image = get_image(image)
-#     t0 = time.time()
-#     if EVALUATIONS:
-#         reconstruction = model.reconstruct_arbitrary_size(np.array(np.shape(shape)) // reconstruction_factor)
-#     else:
-#         reconstruction = model.reconstruct_by_factor(
-#             resolution_factor=np.array(np.array(np.shape(image)) / np.array(model.resolution), dtype=int))
-#     t_reconstruct = time.time() - t0
-#
-#     if reconstruction_factor > 1:
-#         if EVALUATIONS:
-#             step = np.array(np.array(np.shape(image)) / np.array(np.shape(reconstruction)), dtype=int)
-#             image = image[np.arange(0, np.shape(image)[0], step[0], dtype=int)][:,
-#                     np.arange(0, np.shape(image)[1], step[1], dtype=int)]
-#         else:
-#             image = calculate_averages_from_image(image, num_cells_per_dim=np.shape(reconstruction))
-#     reconstruction_error = np.abs(np.array(reconstruction) - image)
-#     return {
-#         "reconstruction": reconstruction,
-#         "reconstruction_error": reconstruction_error,
-#         "time_to_reconstruct": t_reconstruct
-#     }
-
-
-# @perplex_plot
-# def plot_convergence_curves(fig, ax, num_cells_per_dim, reconstruction_error, models):
-#     data = pd.DataFrame.from_dict({
-#         "N": np.array(num_cells_per_dim) ** 2,
-#         "Error": list(map(np.mean, reconstruction_error)),
-#         "Model": models
-#     })
-#     for model, d in data.groupby("Model"):
-#         plt.plot(d["N"], d["Error"], label=model)
-#     ax.set_xticks(num_cells_per_dim, num_cells_per_dim)
-#     y_ticks = np.arange(1 - int(np.log10(data["Error"].min())))
-#     ax.set_yticks(10.0 ** (-y_ticks), [fr"$10^{-y}$" for y in y_ticks])
-#     ax.set_yscale("log")
-#     ax.set_xscale("log")
-#     ax.legend()
-#
-#
-# @perplex_plot()
-# def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction, alpha=0.5,
-#                         plot_original_image=True,
-#                         difference=False, plot_curve=True, plot_curve_winner=False, plot_vh_classification=True,
-#                         plot_singular_cells=True, cmap="magma", trim=((0, 0), (0, 0)), numbers_on=True, *args,
-#                         **kwargs):
-#     image = image.pop()
-#     num_cells_per_dim = num_cells_per_dim.pop()
-#     model = model.pop()
-#     reconstruction = reconstruction.pop()
-#
-#     model_resolution = np.array(model.resolution)
-#     image = load_image(image)
-#
-#     if plot_original_image:
-#         plot_cells(ax, colors=image, mesh_shape=model_resolution, alpha=alpha, cmap="Greys_r",
-#                    vmin=np.min(image), vmax=np.max(image))
-#
-#     if difference:
-#         # TODO: should be the evaluations not the averages.
-#         image = calculate_averages_from_image(image, num_cells_per_dim=np.shape(reconstruction))
-#         plot_cells(ax, colors=reconstruction - image, mesh_shape=model.resolution, alpha=alpha, cmap=cmap, vmin=-1,
-#                    vmax=1)
-#     else:
-#         plot_cells(ax, colors=reconstruction, mesh_shape=model.resolution, alpha=alpha, cmap=cmap, vmin=-1, vmax=1)
-#
-#     if plot_curve:
-#         if plot_curve_winner:
-#             plot_cells_identity(ax, model.resolution, model.cells, alpha=0.8)
-#             # plot_cells_type_of_curve_core(ax, model.resolution, model.cells, alpha=0.8)
-#         elif plot_vh_classification:
-#             plot_cells_vh_classification_core(ax, model.resolution, model.cells, alpha=0.8)
-#         elif plot_singular_cells:
-#             plot_cells_not_regular_classification_core(ax, model.resolution, model.cells, alpha=0.8)
-#         plot_curve_core(ax, curve_cells=[cell for cell in model.cells.values() if
-#                                          cell.CELL_TYPE == CURVE_CELL_TYPE])
-#
-#     draw_cell_borders(
-#         ax, mesh_shape=num_cells_per_dim,
-#         refinement=model_resolution // num_cells_per_dim,
-#         numbers_on=numbers_on,
-#         prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
-#     )
-#     ax.set_xlim((-0.5 + trim[0][0], model.resolution[0] - trim[0][1] - 0.5))
-#     ax.set_ylim((model.resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
+runsinfo.append_info(
+    circler=0.232,
+    circlex=0.511,
+    circley=0.486
+)
 
 
 def get_shape(shape_name):
     if shape_name == "Circle":
-        return CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232))
+        return CurveCircle(
+            params=CircleParams(x0=runsinfo["circlex"], y0=runsinfo["circley"], radius=runsinfo["circler"]))
     else:
         raise Exception("Not implemented.")
 

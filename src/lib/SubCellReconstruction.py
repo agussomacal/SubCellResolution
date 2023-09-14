@@ -160,7 +160,7 @@ def reconstruct_arbitrary_size(cells: Dict[Tuple[int, ...], CellBase], resolutio
     values = np.zeros(size)
     for ix in itertools.product(*list(map(range, size))):
         cell_ix = tuple(map(int, np.array(ix) / size * resolution))
-        if cells2reconstruct is None and cell_ix in cells2reconstruct:
+        if cells2reconstruct is None or cell_ix in cells2reconstruct:
             values[ix] = cells[cell_ix].evaluate(
                 (np.array(ix) / size * resolution)[np.newaxis, :])
     return values

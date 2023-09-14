@@ -19,7 +19,7 @@ from sklearn.base import BaseEstimator
 from sklearn.utils import shuffle
 from tqdm import tqdm
 
-from src.lib.performance_utils import get_workers
+from PerplexityLab.miscellaneous import get_workers
 
 SIGMOID = LOGISTIC = 'sigmoid'
 RELU = 'relu'
@@ -195,7 +195,7 @@ class SKTorchBase(torch.nn.Module, BaseEstimator):
         return restarts, optimizer, best_model
 
     def fit(self, query: np.ndarray, target: np.ndarray):
-        raise Exception("Model broken, Solve bugs before using.")
+        # raise Exception("Model broken, Solve bugs before using.")
         query = np.array(query)
         target = np.array(target)
 

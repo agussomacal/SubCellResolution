@@ -16,3 +16,6 @@ CurveAverageQuadraticCC = ClassPartialInit(CurveAveragePolynomial, class_name="C
 
 runsinfo = RunsInfo2Latex(path2latex=f"{subcell_paper_folder_path}/main.tex")
 runsinfo.insert_preamble_in_latex_file()
+runsinfo.append_info(
+    cceweight=CCExtraWeight
+)

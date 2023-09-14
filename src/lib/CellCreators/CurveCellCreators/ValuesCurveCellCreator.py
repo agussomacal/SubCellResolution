@@ -118,7 +118,6 @@ class ValuesCircleCellCreator(CurveCellCreatorBase):
         value_up = regular_opposite_cells[1].evaluate(coords.coords)
         value_down = regular_opposite_cells[0].evaluate(coords.coords)
         x_points, stencil_values = map2unidimensional(value_up, value_down, independent_axis, stencil)
-        concavity = get_concavity(x_points, stencil_values)
         curve = CurveVanderCircle(
             x_points=x_points,
             y_points=stencil_values,
