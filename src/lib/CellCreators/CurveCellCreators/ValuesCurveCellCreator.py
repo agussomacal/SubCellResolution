@@ -44,11 +44,13 @@ class ValuesCurveCellCreator(CurveCellCreatorBase):
             weights=np.exp(-(x_points - coords[independent_axis] - 0.5)**2)
             # weights=1 * ((np.abs(x_points - coords[independent_axis] - 0.5)) < (len(x_points) // 2 + 1))
         )
-        curve.set_y_shift(np.min(stencil.coords[:, 1 - independent_axis]))
-        if self.natural_params:
-            yield curve.get_natural_parametrization_curve()
-        else:
-            yield curve
+        # TODO: Solve this better, some problem in certain stencils create polynomial deg 2 with nan coefs
+        if not np.any(np.isnan(curve.params)):
+            curve.set_y_shift(np.min(stencil.coords[:, 1 - independent_axis]))
+            if self.natural_params:
+                yield curve.get_natural_parametrization_curve()
+            else:
+                yield curve
 
 
 class ValuesLineConsistentCurveCellCreator(ValuesCurveCellCreator):

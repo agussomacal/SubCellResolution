@@ -39,15 +39,39 @@ from lib.SubCellScheme import SubCellScheme
 
 EVALUATIONS = True
 
+# ========== ========== Names and colors to present ========== ========== #
+names_dict = {
+    "upwind": "Up Wind",
+    "elvira": "ELVIRA",
+    "elvira_oriented": "ELVIRA Oriented",
+    "aero_linear": "AERO Linear",
+    "aero_linear_oriented": "AERO Linear Oriented",
+    "quadratic_oriented": "AERO Quadratic Oriented",
+    "quadratic": "AERO Quadratic",
+    "aero_lq": "AERO Linear Quadratic",
+    "aero_lq_vertex": "AERO Quadratic Vertex",
+    "obera_aero_lq_vertex": "OBERA-AERO Linear Quadratic Vertex",
+}
+model_color = {
+    "upwind": cpink,
+    "elvira": corange,
+    # "elvira_oriented": cbrown,
+    "aero_linear": cyellow,
+    # "aero_linear_oriented": cgray,
+    # "quadratic_oriented": ccyan,
+    "quadratic": cblue,
+    # "aero_lq": cpurple,
+    "aero_lq_vertex": cgreen,
+    # "obera_aero_lq_vertex": cred,
+}
+names_dict = {k: names_dict[k] for k in model_color.keys()}
 
-# N = int(1e6)
-# workers = 10
-# dataset_manager_3_8pi = DatasetsManagerLinearCurves(
-#     velocity_range=((0, 0), (0, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
-#     workers=workers, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
-#     value_up_random=False
-# )
+runsinfo.append_info(
+    **{k.replace("_", "-"): v for k, v in names_dict.items()}
+)
 
+
+# ========== ========== Experiment definitions ========== ========== #
 def calculate_true_solution(image, num_cells_per_dim, velocity, ntimes):
     image = load_image(image)
     pixels_per_cell = np.array(np.shape(image)) / num_cells_per_dim
@@ -108,6 +132,14 @@ def fit_model(subcell_reconstruction):
     return decorated_func
 
 
+scheme_error = lambda image, true_solution, solution: np.mean(
+    np.abs((np.array(solution[1:]) - np.array(true_solution[1:]))), axis=(1, 2))
+
+scheme_reconstruction_error = lambda true_reconstruction, reconstruction, reconstruction_factor: np.array([
+    get_reconstruction_error(tr_i, reconstruction=r_i, reconstruction_factor=reconstruction_factor)
+    for r_i, tr_i in zip(reconstruction, true_reconstruction)])
+
+# ========== ========== Models definitions ========== ========== #
 reconstruction_error_measure_default = ReconstructionErrorMeasure(
     StencilCreatorFixedShape((3, 3)),
     metric=2, central_cell_extra_weight=1,
@@ -260,7 +292,6 @@ tem = CellCreatorPipeline(
 )
 
 
-@fit_model
 def upwind():
     return SubCellReconstruction(
         name="All",
@@ -275,7 +306,6 @@ def upwind():
     )
 
 
-@fit_model
 def elvira():
     return SubCellReconstruction(
         name="All",
@@ -290,7 +320,6 @@ def elvira():
     )
 
 
-@fit_model
 def elvira_oriented():
     return SubCellReconstruction(
         name="All",
@@ -306,7 +335,6 @@ def elvira_oriented():
     )
 
 
-@fit_model
 def aero_linear_oriented():
     return SubCellReconstruction(
         name="All",
@@ -322,7 +350,6 @@ def aero_linear_oriented():
     )
 
 
-@fit_model
 def aero_linear():
     return SubCellReconstruction(
         name="All",
@@ -337,7 +364,6 @@ def aero_linear():
     )
 
 
-@fit_model
 def quadratic_oriented():
     return SubCellReconstruction(
         name="All",
@@ -353,7 +379,6 @@ def quadratic_oriented():
     )
 
 
-@fit_model
 def quadratic():
     return SubCellReconstruction(
         name="All",
@@ -368,7 +393,6 @@ def quadratic():
     )
 
 
-@fit_model
 def aero_lq():
     return SubCellReconstruction(
         name="All",
@@ -383,7 +407,6 @@ def aero_lq():
     )
 
 
-@fit_model
 def aero_lq_vertex():
     return SubCellReconstruction(
         name="All",
@@ -420,7 +443,6 @@ def aero_lq_vertex():
     )
 
 
-@fit_model
 def obera_aero_lq_vertex():
     return SubCellReconstruction(
         name="All",
@@ -521,7 +543,7 @@ def plot_reconstruction_time_i(fig, ax, true_reconstruction, num_cells_per_dim, 
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
-        name='SchemesTest',
+        name='Schemes',
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
@@ -537,23 +559,25 @@ if __name__ == "__main__":
 
     lab.define_new_block_of_functions(
         "models",
-        upwind,
-        # elvira_oriented,
-        elvira,
-        aero_linear,
-        # aero_linear_oriented,
-        quadratic,
-        # quadratic_oriented,
-        # aero_lq,
-        aero_lq_vertex,
-        # obera_aero_lq_vertex,
+        *map(fit_model, [
+            upwind,
+            # elvira_oriented,
+            elvira,
+            aero_linear,
+            # aero_linear_oriented,
+            quadratic,
+            # quadratic_oriented,
+            # aero_lq,
+            aero_lq_vertex,
+            # obera_aero_lq_vertex,
+        ]),
         recalculate=False
     )
 
     ntimes = 20
     lab.execute(
         data_manager,
-        num_cores=15,
+        num_cores=1,
         forget=False,
         save_on_iteration=15,
         refinement=[1],
@@ -562,52 +586,15 @@ if __name__ == "__main__":
         num_cells_per_dim=[30],  # 60
         noise=[0],
         image=[
-            # "yoda.jpg",
-            # "DarthVader.jpeg",
+            "yoda.jpg",
+            "DarthVader.jpeg",
             "Ellipsoid_1680x1680.jpg",
             "ShapesVertex_1680x1680.jpg",
             "HandVertex_1680x1680.jpg",
             "Polygon_1680x1680.jpg",
         ],
-        iterations=[0],  # 500
         reconstruction_factor=[5],
     )
-
-    names_dict = {
-        "upwind": "Up Wind",
-        "elvira": "ELVIRA",
-        "elvira_oriented": "ELVIRA Oriented",
-        "aero_linear": "AERO Linear",
-        "aero_linear_oriented": "AERO Linear Oriented",
-        "quadratic_oriented": "AERO Quadratic Oriented",
-        "quadratic": "AERO Quadratic",
-        "aero_lq": "AERO Linear Quadratic",
-        "aero_lq_vertex": "AERO Linear Quadratic Vertex",
-        "obera_aero_lq_vertex": "OBERA-AERO Linear Quadratic Vertex",
-    }
-    model_color = {
-        "upwind": cpink,
-        "elvira": corange,
-        # "elvira_oriented": cbrown,
-        "aero_linear": cyellow,
-        # "aero_linear_oriented": cgray,
-        # "quadratic_oriented": ccyan,
-        "quadratic": cblue,
-        # "aero_lq": cpurple,
-        "aero_lq_vertex": cgreen,
-        # "obera_aero_lq_vertex": cred,
-    }
-
-    runsinfo.append_info(
-        **{k.replace("_", "-"): v for k, v in names_dict.items()}
-    )
-
-    scheme_error = lambda image, true_solution, solution: np.mean(
-        np.abs((np.array(solution[1:]) - np.array(true_solution[1:]))), axis=(1, 2))
-
-    scheme_reconstruction_error = lambda true_reconstruction, reconstruction, reconstruction_factor: np.array([
-        get_reconstruction_error(tr_i, reconstruction=r_i, reconstruction_factor=reconstruction_factor)
-        for tr_i, r_i in zip(true_reconstruction[:-1], reconstruction)])
 
     generic_plot(data_manager,
                  name="ErrorInTime",
@@ -625,7 +612,7 @@ if __name__ == "__main__":
 
     generic_plot(data_manager,
                  name="ReconstructionErrorInTime",
-                 x="times", y="scheme_error", label="models", plot_by=["num_cells_per_dim", "image"],
+                 x="times", y="scheme_error", label="method", plot_by=["num_cells_per_dim", "image"],
                  # models=["elvira", "quadratic"],
                  times=lambda ntimes: np.arange(ntimes), scheme_error=scheme_reconstruction_error,
                  plot_func=NamedPartial(
@@ -639,7 +626,7 @@ if __name__ == "__main__":
 
     generic_plot(data_manager,
                  name="Time2Fit",
-                 x="image", y="time_to_fit", label="models", plot_by=["num_cells_per_dim", "image"],
+                 x="image", y="time_to_fit", label="method", plot_by=["num_cells_per_dim", "image"],
                  # models=["elvira", "quadratic"],
                  times=lambda ntimes: np.arange(ntimes),
                  plot_func=NamedPartial(
@@ -655,8 +642,9 @@ if __name__ == "__main__":
         plot_time_i(data_manager, folder="Solution", name=f"Time{i}", i=i, alpha=0.8, cmap="viridis",
                     trim=((0, 0), (0, 0)), folder_by=['image', 'num_cells_per_dim'],
                     plot_by=[],
-                    axes_by=["models"],
+                    axes_by=["method"],
                     models=list(model_color.keys()),
+                    method=lambda models: names_dict[models],
                     numbers_on=True, error=True)
 
         plot_reconstruction_time_i(
@@ -666,8 +654,9 @@ if __name__ == "__main__":
             folder='Reconstruction',
             folder_by=['image', 'num_cells_per_dim'],
             plot_by=[],
-            axes_by=["models"],
+            axes_by=["method"],
             models=list(model_color.keys()),
+            method=lambda models: names_dict[models],
             axes_xy_proportions=(15, 15),
             difference=False,
             plot_curve=True,
