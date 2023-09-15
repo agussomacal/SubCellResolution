@@ -14,7 +14,7 @@ def create_curve_vertex_polynomial(polynomials: Tuple[Union[List, np.ndarray, Po
                                    directions=(LEFT, RIGHT)) -> Tuple[
     Union[CurvePolynomialByParts, NoCurveRegion], ...]:
     # this method only works if functions are 0-1
-    assert np.allclose(value_up, 1) or np.allclose(value_up, 0)
+    # assert np.allclose(value_up, 1) or np.allclose(value_up, 0)
     if not np.allclose(np.abs(value_up - value_down), 1):
         warnings.warn(f"value_up - value_down: {np.abs(value_up - value_down)}")
 

@@ -4,30 +4,46 @@ from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.StencilCreators import get_fixed_stencil_values
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 
-
 # https://pyimagesearch.com/2021/05/12/image-gradients-with-opencv-sobel-and-scharr/
 
+ScharrKernel = np.array(
+    [[3, 10, 3],
+     [0, 0, 0],
+     [-3, -10, -3]])
+OptimSobel3x3 = np.array([
+    [1, 3.5887, 1],
+    [0, 0, 0],
+    [-1, -3.5887, -1]
+])
+OptimSobel5x5 = np.array([
+    [0.0007, 0.0052, 0.0370, 0.0052, 0.0007],
+    [0.0037, 0.1187, 0.2589, 0.1187, 0.0037],
+    [0, 0, 0, 0, 0],
+    [-0.0037, -0.1187, -0.2589, -0.1187, -0.0037],
+    [-0.0007, -0.0052, -0.0370, -0.0052, -0.0007],
+])
 
-def approximate_gradient_by(average_values, method="scharr", normalize=False):
+
+def approximate_gradient_by(average_values, method="optim", normalize=False):
     """
     https://pyimagesearch.com/2021/05/12/image-gradients-with-opencv-sobel-and-scharr/
     :return:
     """
-    assert np.shape(average_values) == (3, 3), "Gradient approximation only working for 3x3 stencils."
-    if method == "scharr":
-        scharr_gy = np.array(
-            [[-3, 0, 3],
-             [-10, 0, 10],
-             [-3, 0, 3]])
-        scharr_gx = np.array(
-            [[-3, -10, -3],
-             [0, 0, 0],
-             [3, 10, 3]])
-        g = np.array([np.sum(average_values * scharr_gx), np.sum(average_values * scharr_gy)])
-    elif method == "sobel":
-        raise Exception("Not implemented method {}.".format(method))
+    assert np.shape(average_values) in [(3, 3), (5, 5)], "Gradient approximation only working for 3x3 stencils."
+    if np.shape(average_values) == (3, 3):
+        if method == "scharr":
+            gx = ScharrKernel
+        elif method == "optim":
+            gx = OptimSobel3x3
+        else:
+            raise Exception("Not implemented method {}.".format(method))
+    elif np.shape(average_values) == (5, 5):
+        gx = OptimSobel5x5
     else:
-        raise Exception("Not implemented method {}.".format(method))
+        raise Exception("Gradient approximation only working for 3x3 or 5x5 stencils.")
+
+    gy = gx.T
+    g = np.array([np.sum(average_values * gx), np.sum(average_values * gy)])
     if normalize and np.all(g != 0):
         g /= np.sqrt(np.dot(g, g))
     return g
@@ -54,12 +70,13 @@ class OrientPredefined(BaseOrientator):
 
 
 class OrientByGradient(BaseOrientator):
-    def __init__(self, kernel_size=(3, 3), dimensionality: int = 2):
+    def __init__(self, kernel_size=(3, 3), dimensionality: int = 2, method="optim"):
         super().__init__(dimensionality)
         self.kernel_size = kernel_size
+        self.method = method
 
     def get_independent_axis(self, coords: CellCoords, average_values: np.ndarray, indexer: ArrayIndexerNd) -> int:
         assert len(np.shape(average_values)) == 2, "Only for 2 dimensions."
-        stencil = get_fixed_stencil_values(self.kernel_size, coords, average_values, indexer)
-        independent_axis = int(np.abs(np.diff(stencil, axis=0)).sum() >= np.abs(np.diff(stencil, axis=1)).sum())
-        return independent_axis
+        stencil_values = get_fixed_stencil_values(self.kernel_size, coords, average_values, indexer)
+        g = approximate_gradient_by(stencil_values, method=self.method, normalize=False)
+        return int(np.abs(g[0]) >= np.abs(g[1]))
