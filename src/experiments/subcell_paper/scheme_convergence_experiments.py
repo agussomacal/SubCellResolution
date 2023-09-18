@@ -14,8 +14,9 @@ from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, pl
     plot_cells_vh_classification_core, plot_cells_not_regular_classification_core, plot_curve_core
 from experiments.subcell_paper.global_params import CurveAverageQuadraticCC, CCExtraWeight, cpink, corange, cyellow, \
     cblue, cgreen, runsinfo, cbrown, cgray, cpurple, cred, ccyan, EVALUATIONS
-from experiments.subcell_paper.scheme_experiments import upwind, elvira, aero_linear, quadratic, aero_lq_vertex, \
-    model_color, scheme_error, names_dict, scheme_reconstruction_error
+from experiments.subcell_paper.ex_scheme import model_color, names_dict
+from experiments.subcell_paper.models2compare import upwind, elvira, aero_linear, quadratic, aero_lq_vertex, \
+    scheme_error, scheme_reconstruction_error
 from experiments.subcell_paper.tools import get_reconstruction_error, calculate_averages_from_image, load_image, \
     reconstruct
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL

@@ -152,7 +152,7 @@ def plot_cells_not_regular_classification_core(ax, mesh_shape, all_cells, alpha=
         rectangle_mode=True)
 
 
-def plot_cells_identity(ax, mesh_shape, all_cells, alpha=1.0):
+def plot_cells_identity(ax, mesh_shape, all_cells, alpha=0.5, color_dict=None):
     cell_types = defaultdict(list)
     for cell in all_cells.values():
         cell_types[str(cell)].append(cell.coords.tuple)
@@ -161,9 +161,11 @@ def plot_cells_identity(ax, mesh_shape, all_cells, alpha=1.0):
         ax=ax,
         mesh_shape=mesh_shape,
         special_cells=[
-            SpecialCellsPlotTuple(name=k, indexes=v, color=sns.color_palette("colorblind")[i % 8], alpha=alpha) for
+            SpecialCellsPlotTuple(name=k, indexes=v,
+                                  color=sns.color_palette("colorblind")[i % 8] if color_dict is None else color_dict,
+                                  alpha=alpha) for
             i, (k, v) in enumerate(cell_types.items())],
-        rectangle_mode=True
+        rectangle_mode=False
     )
 
 
@@ -235,10 +237,11 @@ def get_curve_vertex(curve_cell: CurveVertexPolynomial, coords2=None):
             yield points[np.ravel(points_inside_cell), :]
 
 
-def plot_curve_core(ax, curve_cells):
+def plot_curve_core(ax, curve_cells, color=None):
     for curve_cell in curve_cells:
         # for points in (get_curve_vertex(curve_cell) if
         # isinstance(curve_cell.curve, VertexLinearExtended) else get_curve(curve_cell)):
         for points in get_curve(curve_cell) if curve_cell.CELL_TYPE == CURVE_CELL_TYPE else get_curve_vertex(
                 curve_cell):
-            ax.plot(*transform_points2plot(points).T, '-', c=COLOR_CURVE, alpha=1, linewidth=2.5)
+            c = COLOR_CURVE if color is None else color[str(curve_cell)]
+            ax.plot(*transform_points2plot(points).T, '-', c=c, alpha=1, linewidth=2.5)
