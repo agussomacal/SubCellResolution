@@ -260,6 +260,7 @@ def aero_lq_vertex(smoothness_calculator=naive_piece_wise, refinement=1, angle_t
 winner_color_dict = {
     'PolynomialCelldegree (1, 1)': cgray,
     'CellCurveBaseCurveAveragePolynomialLine': cblue,
+    "CellCurveBaseCurvePolynomialLine": cblue,
     'CellCurveBaseCurveAverageQuadraticCCQuadratic': cgreen,
     'CellCurveBaseVertexLinearExtendedVertexCurvePolynomialByPartsLineaddCurvePolynomialByPartsLine': cred,
     'CellCurveBaseCurveVertexPolynomialVertexCurvePolynomialByPartsLineaddCurvePolynomialByPartsLine': corange,

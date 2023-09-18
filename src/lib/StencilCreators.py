@@ -208,6 +208,11 @@ class StencilCreatorAdaptive(StencilCreator):
 
         ropcells = np.array(
             regular_opposite_cells_sides[-1][::-1] + [regular_opposite_cells_center] + regular_opposite_cells_sides[1])
+
+        if len(ropcells) == 0:
+            delta = self.independent_dim_stencil_size // 2
+            return np.transpose([(coords - np.array((delta, delta))).tuple, (coords + np.array((delta, delta))).tuple])
+
         heights = [np.max(ropcells[i:i + self.independent_dim_stencil_size, :, dependent_axis]) - np.min(
             ropcells[i:i + self.independent_dim_stencil_size, :, dependent_axis]) +
                    self.center_weight * abs(i - self.independent_dim_stencil_size // 2)
@@ -223,6 +228,7 @@ class StencilCreatorAdaptive(StencilCreator):
             0] + 1 != self.independent_dim_stencil_size:
             delta = self.independent_dim_stencil_size // 2
             return np.transpose([(coords - np.array((delta, delta))).tuple, (coords + np.array((delta, delta))).tuple])
+
         return stencil_boundaries
 
     def get_stencil(self, average_values: np.ndarray, smoothness_index: np.ndarray, coords: CellCoords,
