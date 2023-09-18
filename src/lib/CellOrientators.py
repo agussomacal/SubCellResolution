@@ -1,3 +1,5 @@
+from typing import List
+
 import numpy as np
 
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
@@ -55,8 +57,9 @@ class BaseOrientator:
     def __init__(self, dimensionality: int = 2):
         self.dimensionality = dimensionality
 
-    def get_independent_axis(self, coords: CellCoords, average_values: np.ndarray, indexer: ArrayIndexerNd) -> int:
-        return 0
+    def get_independent_axis(self, coords: CellCoords, average_values: np.ndarray, indexer: ArrayIndexerNd) -> List[
+        int]:
+        return [0]
 
 
 class OrientPredefined(BaseOrientator):
@@ -64,19 +67,27 @@ class OrientPredefined(BaseOrientator):
         super().__init__(dimensionality)
         self.predefined_axis = predefined_axis
 
-    def get_independent_axis(self, coords: CellCoords, average_values: np.ndarray, indexer: ArrayIndexerNd) -> int:
+    def get_independent_axis(self, coords: CellCoords, average_values: np.ndarray, indexer: ArrayIndexerNd) -> List[
+        int]:
         assert len(np.shape(average_values)) == 2, "Only for 2 dimensions."
-        return self.predefined_axis
+        return [self.predefined_axis]
 
 
 class OrientByGradient(BaseOrientator):
-    def __init__(self, kernel_size=(3, 3), dimensionality: int = 2, method="optim"):
+    def __init__(self, kernel_size=(3, 3), dimensionality: int = 2, method="optim", angle_threshold=45):
         super().__init__(dimensionality)
         self.kernel_size = kernel_size
         self.method = method
+        self.angle_threshold = angle_threshold*np.pi/180
 
-    def get_independent_axis(self, coords: CellCoords, average_values: np.ndarray, indexer: ArrayIndexerNd) -> int:
+    def get_independent_axis(self, coords: CellCoords, average_values: np.ndarray, indexer: ArrayIndexerNd) -> List[
+        int]:
         assert len(np.shape(average_values)) == 2, "Only for 2 dimensions."
         stencil_values = get_fixed_stencil_values(self.kernel_size, coords, average_values, indexer)
         g = approximate_gradient_by(stencil_values, method=self.method, normalize=False)
-        return int(np.abs(g[0]) >= np.abs(g[1]))
+        gx = np.abs(g[0])
+        gy = np.abs(g[1])
+        orientation = int(gx >= gy)
+        # if approximated angle is lower than threshold propose only one orientation
+        return [orientation] if np.arctan(min(gy, gx) / (max(gx, gy) + 1e-15)) <= self.angle_threshold \
+            else [orientation, 1 - orientation]

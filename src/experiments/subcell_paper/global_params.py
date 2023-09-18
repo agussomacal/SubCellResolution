@@ -7,9 +7,13 @@ from seaborn import color_palette
 
 cblue, corange, cgreen, cred, cpurple, cbrown, cpink, cgray, cyellow, ccyan = color_palette("tab10")
 
+EVALUATIONS = True
+
 SUB_CELL_DISCRETIZATION2BOUND_ERROR = 10
 OBERA_ITERS = 500
 CCExtraWeight = 100  # central cell extra weight 100
+
+angle_threshold = 35
 
 CurveAverageQuadraticCC = ClassPartialInit(CurveAveragePolynomial, class_name="CurveAverageQuadraticCC",
                                            degree=2, ccew=CCExtraWeight)

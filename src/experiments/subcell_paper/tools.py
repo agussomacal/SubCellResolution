@@ -87,4 +87,4 @@ def get_reconstruction_error_in_interface(image, enhanced_image, reconstruction,
 
 
 def singular_cells_mask(avg_values):
-    return (0 < avg_values) * (avg_values < 1)
+    return (0 < np.array(avg_values)) * (np.array(avg_values) < 1)

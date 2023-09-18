@@ -20,7 +20,7 @@ import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial
-from experiments.subcell_paper.global_params import CurveAverageQuadraticCC, CCExtraWeight
+from experiments.subcell_paper.global_params import CurveAverageQuadraticCC, CCExtraWeight, EVALUATIONS
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
@@ -34,8 +34,6 @@ from lib.CellIterators import iterate_by_reconstruction_error_and_smoothness
 from lib.CellOrientators import BaseOrientator, OrientByGradient, OrientPredefined
 from lib.StencilCreators import StencilCreatorAdaptive, StencilCreatorFixedShape
 from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasure, CellCreatorPipeline
-
-EVALUATIONS = True
 
 
 def trigonometric(image, amplitude, frequency):
@@ -283,6 +281,7 @@ def poly02h_elvira(smoothness_calculator):
         obera_iterations=0
     )
 
+
 @fit_model
 def poly1_elvira(smoothness_calculator):
     return SubCellReconstruction(
@@ -296,6 +295,7 @@ def poly1_elvira(smoothness_calculator):
         [regular_deg2_same_region],
         obera_iterations=0
     )
+
 
 @fit_model
 def poly02_qelvira(smoothness_calculator):

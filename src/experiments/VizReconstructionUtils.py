@@ -103,7 +103,8 @@ def plot_cells(ax, colors, mesh_shape=None, cmap=None, alpha=None, vmin=None, vm
     ax.yaxis.tick_left()
 
 
-def plot_specific_cells(ax, mesh_shape: Tuple[int], special_cells: List[SpecialCellsPlotTuple], rectangle_mode=False):
+def plot_specific_cells(ax, mesh_shape: Tuple[int, ...], special_cells: List[SpecialCellsPlotTuple],
+                        rectangle_mode=False):
     """
 
     :param ax:

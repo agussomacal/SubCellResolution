@@ -13,9 +13,9 @@ from PerplexityLab.visualization import generic_plot, one_line_iterator, perplex
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, plot_cells_identity, \
     plot_cells_vh_classification_core, plot_cells_not_regular_classification_core, plot_curve_core
 from experiments.subcell_paper.global_params import CurveAverageQuadraticCC, CCExtraWeight, cpink, corange, cyellow, \
-    cblue, cgreen, runsinfo, cbrown, cgray, cpurple, cred, ccyan
+    cblue, cgreen, runsinfo, cbrown, cgray, cpurple, cred, ccyan, EVALUATIONS, angle_threshold
 from experiments.subcell_paper.tools import get_reconstruction_error, calculate_averages_from_image, load_image, \
-    reconstruct
+    reconstruct, singular_cells_mask
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import REGULAR_CELL_TYPE
@@ -36,8 +36,6 @@ from lib.StencilCreators import StencilCreatorAdaptive, StencilCreatorFixedShape
 from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasure, CellCreatorPipeline, \
     keep_cells_on_condition, curve_condition, ReconstructionErrorMeasureDefaultStencil
 from lib.SubCellScheme import SubCellScheme
-
-EVALUATIONS = True
 
 # ========== ========== Names and colors to present ========== ========== #
 names_dict = {
@@ -106,7 +104,7 @@ def fit_model(subcell_reconstruction):
             init_average_values=avg_values, indexer=ArrayIndexerNd(avg_values, "cyclic"),
             velocity=np.array(velocity), ntimes=ntimes,
             # interface_oracle=None
-            interface_oracle=(np.array(true_solution) > 0) * (np.array(true_solution) < 1)
+            interface_oracle=singular_cells_mask(true_solution)
         )
         t_fit = time.time() - t0
 
@@ -175,7 +173,7 @@ piecewise01 = CellCreatorPipeline(
 elvira_cc = CellCreatorPipeline(
     cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                           condition=operator.eq),
-    orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, method="optim"),
+    orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, method="optim", angle_threshold=angle_threshold),
     stencil_creator=StencilCreatorFixedShape((3, 3)),
     cell_creator=ELVIRACurveCellCreator(
         regular_opposite_cell_searcher=get_opposite_regular_cells),
@@ -208,7 +206,7 @@ aero_l = CellCreatorPipeline(
     cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                           condition=operator.eq),
     # orientator=OrientPredefined(predefined_axis=0, dimensionality=2),
-    orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, method="optim"),
+    orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, method="optim", angle_threshold=angle_threshold),
     stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
                                            independent_dim_stencil_size=3),
     cell_creator=ValuesLineConsistentCurveCellCreator(ccew=CCExtraWeight,
@@ -245,7 +243,7 @@ aero_q = CellCreatorPipeline(
     cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                           condition=operator.eq),
     # orientator=OrientPredefined(predefined_axis=0, dimensionality=2),
-    orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, method="optim"),
+    orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, method="optim", angle_threshold=angle_threshold),
     stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
                                            independent_dim_stencil_size=3),
     cell_creator=ValuesCurveCellCreator(

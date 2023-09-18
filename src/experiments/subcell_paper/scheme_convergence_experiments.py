@@ -13,7 +13,7 @@ from PerplexityLab.visualization import generic_plot, one_line_iterator, perplex
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, plot_cells_identity, \
     plot_cells_vh_classification_core, plot_cells_not_regular_classification_core, plot_curve_core
 from experiments.subcell_paper.global_params import CurveAverageQuadraticCC, CCExtraWeight, cpink, corange, cyellow, \
-    cblue, cgreen, runsinfo, cbrown, cgray, cpurple, cred, ccyan
+    cblue, cgreen, runsinfo, cbrown, cgray, cpurple, cred, ccyan, EVALUATIONS
 from experiments.subcell_paper.scheme_experiments import upwind, elvira, aero_linear, quadratic, aero_lq_vertex, \
     model_color, scheme_error, names_dict, scheme_reconstruction_error
 from experiments.subcell_paper.tools import get_reconstruction_error, calculate_averages_from_image, load_image, \
@@ -38,8 +38,6 @@ from lib.StencilCreators import StencilCreatorAdaptive, StencilCreatorFixedShape
 from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasure, CellCreatorPipeline, \
     keep_cells_on_condition, curve_condition, ReconstructionErrorMeasureDefaultStencil
 from lib.SubCellScheme import SubCellScheme
-
-EVALUATIONS = True
 
 
 # ========== ========== Experiment definitions ========== ========== #
