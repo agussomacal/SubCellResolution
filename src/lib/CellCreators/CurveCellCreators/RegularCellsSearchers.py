@@ -2,7 +2,7 @@ from typing import Dict, Tuple, Callable
 
 import numpy as np
 
-from lib.AuxiliaryStructures.Constants import NEIGHBOURHOOD_8_MANHATTAN
+from lib.AuxiliaryStructures.Constants import NEIGHBOURHOOD_8_MANHATTAN, REGULAR_CELL, CURVE_CELL
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.CellCreators.CellCreatorBase import CellBase, REGULAR_CELL_TYPE
 from lib.CellOrientators import approximate_gradient_by
@@ -75,13 +75,15 @@ def get_regular_opposite_cell_coords_by_minmax(coords: CellCoords, average_value
     :return:
     """
 
-    neighbours = np.array([direction, -direction, direction[::-1], -direction[::-1]])
+    # neighbours = np.array([direction, -direction, direction[::-1], -direction[::-1]])
+    neighbours = NEIGHBOURHOOD_8_MANHATTAN
 
     regular_opposite_cells = [coords.array, coords.array]
-    singular_cells = set()
+    singular_cells = {coords.tuple}
     for f, mmfunc in enumerate([np.argmax, np.argmin]):
         for _ in np.arange(np.shape(average_values)[0]):
             new_coords = regular_opposite_cells[f] + neighbours
+            new_coords = np.array([c for c in new_coords if tuple(c) not in singular_cells])
             winner = mmfunc([average_values[indexer[c]] for c in new_coords])
             singular_cells.add(tuple(regular_opposite_cells[f].tolist()))
             regular_opposite_cells[f] = new_coords[winner]
@@ -141,14 +143,7 @@ def get_opposite_regular_cells_by_minmax(coords: CellCoords, cells: Dict[Tuple[i
     :param kwargs:
     :return:
     """
-    if direction == "grad":
-        direction = approximate_gradient_by(
-            average_values=get_fixed_stencil_values(stencil_size=(3, 3), coords=coords, average_values=average_values,
-                                                    indexer=indexer),
-            method="scharr",
-            normalize=True
-        ) / 2
-    elif direction == "vertical":
+    if direction == "vertical":
         direction = np.array([0, 1])
     else:
         raise Exception(f"Direction {direction} not implemented.")
@@ -156,8 +151,24 @@ def get_opposite_regular_cells_by_minmax(coords: CellCoords, cells: Dict[Tuple[i
     regular_opposite_cell_coords, _ = get_regular_opposite_cell_coords_by_minmax(
         coords=coords, average_values=average_values, indexer=indexer,
         direction=direction[[independent_axis, 1 - independent_axis]],
-        acceptance_criterion=lambda coords_i: indexer[coords_i] in cells.keys() and
-                                              (cells[indexer[coords_i]].CELL_TYPE == REGULAR_CELL_TYPE))
+        # acceptance_criterion=lambda coords_i: indexer[coords_i] in cells.keys() and
+        #                                       (cells[indexer[coords_i]].CELL_TYPE == REGULAR_CELL_TYPE)
+        acceptance_criterion=lambda coords_i: (kwargs["smoothness_index"][indexer[coords_i]] == REGULAR_CELL) and (
+                indexer[coords_i] in cells.keys() and
+                (cells[indexer[coords_i]].CELL_TYPE == REGULAR_CELL_TYPE))
+    )
+
+    if any([cells[indexer[regular_opposite_cell_coords[0]]].CELL_TYPE != REGULAR_CELL_TYPE,
+            cells[indexer[regular_opposite_cell_coords[1]]].CELL_TYPE != REGULAR_CELL_TYPE]):
+        regular_opposite_cell_coords, _ = get_regular_opposite_cell_coords_by_minmax(
+            coords=coords, average_values=average_values, indexer=indexer,
+            direction=direction[[independent_axis, 1 - independent_axis]],
+            # acceptance_criterion=lambda coords_i: indexer[coords_i] in cells.keys() and
+            #                                       (cells[indexer[coords_i]].CELL_TYPE == REGULAR_CELL_TYPE)
+            acceptance_criterion=lambda coords_i: (kwargs["smoothness_index"][indexer[coords_i]] == REGULAR_CELL) and (
+                    indexer[coords_i] in cells.keys() and
+                    (cells[indexer[coords_i]].CELL_TYPE == REGULAR_CELL_TYPE))
+        )
 
     # order from down to up given dependant axis.
     regular_opposite_cell_coords = sorted(regular_opposite_cell_coords, key=lambda c: c[1 - independent_axis])

@@ -1,3 +1,4 @@
+import operator
 import time
 from functools import partial
 
@@ -14,9 +15,10 @@ from experiments.subcell_paper.global_params import CCExtraWeight, EVALUATIONS
 from experiments.subcell_paper.models2compare import elvira_cc, aero_q
 from experiments.subcell_paper.tools import get_reconstruction_error, calculate_averages_from_image, load_image, \
     get_reconstruction_error_in_interface, reconstruct
+from lib.AuxiliaryStructures.Constants import REGULAR_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells_by_distance
-from lib.CellIterators import iterate_all
+from lib.CellIterators import iterate_all, iterate_by_reconstruction_error_and_smoothness
 from lib.CellOrientators import BaseOrientator
 from lib.SmoothnessCalculators import oracle
 from lib.StencilCreators import StencilCreatorFixedShape
@@ -93,9 +95,9 @@ reconstruction_error_measure = ReconstructionErrorMeasure(StencilCreatorFixedSha
                                                           metric=2,
                                                           central_cell_extra_weight=100)
 regular_deg2half_same_region = CellCreatorPipeline(
-    cell_iterator=iterate_all,
-    # cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=REGULAR_CELL,
-    #                       condition=operator.eq),  # only regular cells
+    # cell_iterator=iterate_all,
+    cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=REGULAR_CELL,
+                          condition=operator.eq),  # only regular cells
     orientator=BaseOrientator(dimensionality=2),
     stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=3),
     # stencil_creator=StencilCreatorFixedShape(stencil_shape=(5, 5)),
@@ -107,9 +109,9 @@ regular_deg2half_same_region = CellCreatorPipeline(
         dimensionality=2, full_rank=False)
 )
 regular_deg2_same_region = CellCreatorPipeline(
-    cell_iterator=iterate_all,
-    # cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=REGULAR_CELL,
-    #                       condition=operator.eq),  # only regular cells
+    # cell_iterator=iterate_all,
+    cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=REGULAR_CELL,
+                          condition=operator.eq),  # only regular cells
     orientator=BaseOrientator(dimensionality=2),
     stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=3),
     # cell_creator=PolynomialRegularCellCreator(
@@ -122,9 +124,9 @@ regular_deg2_same_region = CellCreatorPipeline(
         dimensionality=2, full_rank=True)
 )
 regular_deg1_same_region = CellCreatorPipeline(
-    cell_iterator=iterate_all,
-    # cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=REGULAR_CELL,
-    #                       condition=operator.eq),  # only regular cells
+    # cell_iterator=iterate_all,
+    cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=REGULAR_CELL,
+                          condition=operator.eq),  # only regular cells
     orientator=BaseOrientator(dimensionality=2),
     stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=3),
     cell_creator=PolynomialRegularCellCreator(
@@ -133,9 +135,9 @@ regular_deg1_same_region = CellCreatorPipeline(
 )
 
 regular_constant_same_region = CellCreatorPipeline(
-    cell_iterator=iterate_all,
-    # cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=REGULAR_CELL,
-    #                       condition=operator.eq),  # only regular cells
+    # cell_iterator=iterate_all,
+    cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=REGULAR_CELL,
+                          condition=operator.eq),  # only regular cells
     orientator=BaseOrientator(dimensionality=2),
     stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=3),
     cell_creator=PolynomialRegularCellCreator(degree=0)
@@ -287,6 +289,24 @@ def poly2_qelvira(smoothness_calculator, angle_threshold=20):
 
 
 @fit_model
+def poly2h_qelvira(smoothness_calculator, angle_threshold=20):
+    return SubCellReconstruction(
+        name="All",
+        smoothness_calculator=smoothness_calculator,
+        reconstruction_error_measure=reconstruction_error_measure,
+        refinement=1,
+        cell_creators=
+        # regular cell with piecewise_constant
+        [
+            regular_deg2half_same_region,
+            elvira_cc(angle_threshold=angle_threshold),
+            aero_q(angle_threshold=angle_threshold),
+        ],
+        obera_iterations=0
+    )
+
+
+@fit_model
 def poly02_qelvira(smoothness_calculator, angle_threshold=20):
     return SubCellReconstruction(
         name="All",
@@ -330,9 +350,12 @@ if __name__ == "__main__":
 
     if name == 'PieceWiseRegularQELVIRA':
         models = [
-            poly0_elvira,
-            poly2_elvira,
-            poly2_qelvira
+            # poly0_elvira,
+            # poly2_elvira,
+            # poly2h_elvira,
+            # poly2_qelvira,
+            # poly2h_qelvira,
+            poly02_qelvira
         ]
     else:
         models = [
@@ -363,15 +386,15 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "models",
         *models,
-        recalculate=False
+        recalculate=True
     )
 
     lab.execute(
         data_manager,
-        num_cores=10,
+        num_cores=15,
         recalculate=False,
         save_on_iteration=15,
-        forget=True,
+        forget=False,
         frequency=[0.5, 2],
         # amplitude=[1e-5, 1e-4, 1e-3, 1e-2, 5e-2, 1e-1, 2e-1, 5e-1],
         amplitude=[1e-3, 1e-2, 1e-1],
@@ -420,7 +443,7 @@ if __name__ == "__main__":
         plot_original_image=True,
         numbers_on=True,
         plot_again=True,
-        num_cores=1,
+        num_cores=15,
     )
 
     print("CO2 consumption: ", data_manager.CO2kg)

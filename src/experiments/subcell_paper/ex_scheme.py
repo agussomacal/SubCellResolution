@@ -199,15 +199,15 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "models",
         *map(fit_model, [
-            upwind,
+            # upwind,
             # elvira_oriented,
-            elvira,
-            aero_linear,
+            # elvira,
+            # aero_linear,
             # aero_linear_oriented,
             quadratic,
             # quadratic_oriented,
             # aero_lq,
-            aero_lq_vertex,
+            # aero_lq_vertex,
             # obera_aero_lq_vertex,
         ]),
         recalculate=False
@@ -225,9 +225,9 @@ if __name__ == "__main__":
         num_cells_per_dim=[30],  # 60
         noise=[0],
         image=[
-            "yoda.jpg",
-            "DarthVader.jpeg",
-            "Ellipsoid_1680x1680.jpg",
+            # "yoda.jpg",
+            # "DarthVader.jpeg",
+            # "Ellipsoid_1680x1680.jpg",
             "ShapesVertex_1680x1680.jpg",
             "HandVertex_1680x1680.jpg",
             "Polygon_1680x1680.jpg",
