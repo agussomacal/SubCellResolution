@@ -2,6 +2,7 @@ from typing import Dict, Tuple, Callable
 
 import numpy as np
 
+from lib.AuxiliaryStructures.Constants import NEIGHBOURHOOD_8_MANHATTAN
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.CellCreators.CellCreatorBase import CellBase, REGULAR_CELL_TYPE
 from lib.CellOrientators import approximate_gradient_by
@@ -57,6 +58,32 @@ def get_regular_opposite_cell_coords_by_direction(coords: CellCoords, cells: Dic
                 singular_cells.add(tuple(coords_i))
     # sort from low to up.
     # regular_opposite_cells = sorted(regular_opposite_cells, key=lambda c: average_values[c])
+    return regular_opposite_cells, singular_cells
+
+
+def get_regular_opposite_cell_coords_by_minmax(coords: CellCoords, average_values: np.ndarray, indexer: ArrayIndexerNd,
+                                               acceptance_criterion: Callable) \
+        -> (Tuple[Tuple[int, int], Tuple[int, int]], set):
+    """
+
+    :param coords:
+    :param cells:
+    :param average_values:
+    :param indexer:
+    :param direction:
+    :param start: to avoid searching to near the singular cell at the beginning.
+    :return:
+    """
+    regular_opposite_cells = [coords.array, coords.array]
+    singular_cells = set()
+    for f, mmfunc in enumerate([np.argmax, np.argmin]):
+        for _ in np.arange(np.shape(average_values)[0]):
+            new_coords = regular_opposite_cells[f] + NEIGHBOURHOOD_8_MANHATTAN
+            winner = mmfunc([average_values[indexer[c]] for c in new_coords])
+            singular_cells.add(tuple(regular_opposite_cells[f].tolist()))
+            regular_opposite_cells[f] = new_coords[winner]
+            if acceptance_criterion(regular_opposite_cells[f]):
+                break
     return regular_opposite_cells, singular_cells
 
 
@@ -118,7 +145,7 @@ def get_opposite_regular_cells(coords: CellCoords, cells: Dict[Tuple[int], CellB
                                                     indexer=indexer),
             method="scharr",
             normalize=True
-        )/2
+        ) / 2
     elif direction == "vertical":
         direction = np.array([0, 1])
     else:
