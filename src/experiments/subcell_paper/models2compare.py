@@ -8,7 +8,7 @@ from experiments.subcell_paper.global_params import CCExtraWeight, angle_thresho
 from experiments.subcell_paper.tools import get_reconstruction_error
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
-from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells
+from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells_by_minmax
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesLineConsistentCurveCellCreator, \
     ValuesCurveCellCreator
 from lib.CellCreators.CurveCellCreators.VertexCellCreator import LinearVertexCellCurveCellCreator
@@ -76,7 +76,7 @@ def elvira_cc(angle_threshold):
                                     angle_threshold=angle_threshold),
         stencil_creator=StencilCreatorFixedShape((3, 3)),
         cell_creator=ELVIRACurveCellCreator(
-            regular_opposite_cell_searcher=get_opposite_regular_cells),
+            regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax),
         reconstruction_error_measure=reconstruction_error_measure_3x3_w
     )
 
@@ -91,7 +91,7 @@ def aero_l(angle_threshold):
         stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
                                                independent_dim_stencil_size=3),
         cell_creator=ValuesLineConsistentCurveCellCreator(ccew=CCExtraWeight,
-                                                          regular_opposite_cell_searcher=get_opposite_regular_cells),
+                                                          regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax),
         reconstruction_error_measure=reconstruction_error_measure_3x3_w
     )
 
@@ -106,7 +106,7 @@ def aero_q(angle_threshold):
                                                independent_dim_stencil_size=3),
         cell_creator=ValuesCurveCellCreator(
             vander_curve=CurveAverageQuadraticCC,
-            regular_opposite_cell_searcher=get_opposite_regular_cells),
+            regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax),
         reconstruction_error_measure=reconstruction_error_measure_3x3_w
     )
 
@@ -117,7 +117,7 @@ tem = CellCreatorPipeline(
     orientator=OrientPredefined(predefined_axis=0),
     stencil_creator=StencilCreatorFixedShape(stencil_shape=(3, 3)),
     cell_creator=VertexCellCreatorUsingNeighboursLines(
-        regular_opposite_cell_searcher=partial(get_opposite_regular_cells, direction="grad"),
+        regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax,
     ),
     reconstruction_error_measure=reconstruction_error_measure_3x3_w
 )
@@ -249,7 +249,7 @@ def aero_lq_vertex(smoothness_calculator=naive_piece_wise, refinement=1, angle_t
                                             angle_threshold=angle_threshold),
                 stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=4),
                 cell_creator=LinearVertexCellCurveCellCreator(
-                    regular_opposite_cell_searcher=get_opposite_regular_cells),
+                    regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax),
                 reconstruction_error_measure=reconstruction_error_measure_3x3_w
             )
         ],

@@ -12,14 +12,14 @@ from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import perplex_plot, generic_plot, one_line_iterator
 from experiments.VizReconstructionUtils import plot_cells, plot_cells_identity, plot_cells_vh_classification_core, \
     plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders
-from experiments.subcell_paper.tools import calculate_averages_from_curve
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, runsinfo
+from experiments.subcell_paper.tools import calculate_averages_from_curve
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.ParametersCurveCellCreators import DefaultCircleCurveCellCreator, \
     DefaultPolynomialCurveCellCreator
-from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells
+from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells_by_minmax
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator, \
     ValuesDefaultCurveCellCreator, ValuesLinearCellCreator, ValuesDefaultLinearCellCreator, \
     ValuesDefaultCircleCellCreator, ValuesCircleCellCreator
@@ -35,7 +35,7 @@ from lib.SubCellReconstruction import SubCellReconstruction, CellCreatorPipeline
 
 def get_sub_cell_model(curve_cell_creator, refinement, name, iterations, central_cell_extra_weight, metric,
                        stencil_creator=StencilCreatorFixedShape((3, 3)),
-                       orientators=[OrientByGradient(kernel_size=(3, 3), dimensionality=2)]):
+                       orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, angle_threshold=45)):
     return SubCellReconstruction(
         name=name,
         smoothness_calculator=naive_piece_wise,
@@ -52,16 +52,16 @@ def get_sub_cell_model(curve_cell_creator, refinement, name, iterations, central
                 stencil_creator=StencilCreatorFixedShape(stencil_shape=(1, 1)),
                 cell_creator=PiecewiseConstantRegularCellCreator(
                     apriori_up_value=1, apriori_down_value=0, dimensionality=2)
-            ), ] +
-        [
-            # curve cell with piecewise_constant
+            ),
+            # curve cell
             CellCreatorPipeline(
                 cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
                                       condition=operator.eq),
                 orientator=orientator,
                 stencil_creator=stencil_creator,
-                cell_creator=curve_cell_creator(regular_opposite_cell_searcher=get_opposite_regular_cells))
-            for orientator in orientators],
+                cell_creator=curve_cell_creator(regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax)
+            )
+        ],
         obera_iterations=iterations
     )
 

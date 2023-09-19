@@ -62,7 +62,7 @@ def get_regular_opposite_cell_coords_by_direction(coords: CellCoords, cells: Dic
 
 
 def get_regular_opposite_cell_coords_by_minmax(coords: CellCoords, average_values: np.ndarray, indexer: ArrayIndexerNd,
-                                               acceptance_criterion: Callable) \
+                                               acceptance_criterion: Callable, direction=np.array([1, 0])) \
         -> (Tuple[Tuple[int, int], Tuple[int, int]], set):
     """
 
@@ -74,11 +74,14 @@ def get_regular_opposite_cell_coords_by_minmax(coords: CellCoords, average_value
     :param start: to avoid searching to near the singular cell at the beginning.
     :return:
     """
+
+    neighbours = np.array([direction, -direction, direction[::-1], -direction[::-1]])
+
     regular_opposite_cells = [coords.array, coords.array]
     singular_cells = set()
     for f, mmfunc in enumerate([np.argmax, np.argmin]):
         for _ in np.arange(np.shape(average_values)[0]):
-            new_coords = regular_opposite_cells[f] + NEIGHBOURHOOD_8_MANHATTAN
+            new_coords = regular_opposite_cells[f] + neighbours
             winner = mmfunc([average_values[indexer[c]] for c in new_coords])
             singular_cells.add(tuple(regular_opposite_cells[f].tolist()))
             regular_opposite_cells[f] = new_coords[winner]
@@ -117,6 +120,44 @@ def get_opposite_cells_by_smoothness_threshold(coords: CellCoords, cells: Dict[T
     # regular_opposite_cell_coords = regular_opposite_cell_coords[stencil_order]
     # regular_opposite_cell_coords, _ = get_regular_opposite_cell_coords_sorted(coords, average_values, 1-independent_axis,
     #                                                                           smoothness_index >= threshold, indexer)
+
+    # order from down to up given dependant axis.
+    regular_opposite_cell_coords = sorted(regular_opposite_cell_coords, key=lambda c: c[1 - independent_axis])
+    return tuple([cells[tuple(indexer[o])] for o in regular_opposite_cell_coords])
+
+
+def get_opposite_regular_cells_by_minmax(coords: CellCoords, cells: Dict[Tuple[int], CellBase],
+                                         independent_axis: int, average_values: np.ndarray,
+                                         indexer: ArrayIndexerNd, direction="vertical", **kwargs):
+    """
+
+    Given the direction of the dependent axis will go up and down searching for the two regular cells.
+    :param coords:
+    :param cells:
+    :param independent_axis:
+    :param average_values:
+    :param smoothness_index:
+    :param indexer:
+    :param kwargs:
+    :return:
+    """
+    if direction == "grad":
+        direction = approximate_gradient_by(
+            average_values=get_fixed_stencil_values(stencil_size=(3, 3), coords=coords, average_values=average_values,
+                                                    indexer=indexer),
+            method="scharr",
+            normalize=True
+        ) / 2
+    elif direction == "vertical":
+        direction = np.array([0, 1])
+    else:
+        raise Exception(f"Direction {direction} not implemented.")
+
+    regular_opposite_cell_coords, _ = get_regular_opposite_cell_coords_by_minmax(
+        coords=coords, average_values=average_values, indexer=indexer,
+        direction=direction[[independent_axis, 1 - independent_axis]],
+        acceptance_criterion=lambda coords_i: indexer[coords_i] in cells.keys() and
+                                              (cells[indexer[coords_i]].CELL_TYPE == REGULAR_CELL_TYPE))
 
     # order from down to up given dependant axis.
     regular_opposite_cell_coords = sorted(regular_opposite_cell_coords, key=lambda c: c[1 - independent_axis])

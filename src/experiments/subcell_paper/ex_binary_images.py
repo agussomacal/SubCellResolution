@@ -22,7 +22,7 @@ if __name__ == "__main__":
             quadratic,
             aero_lq_vertex,
         ]),
-        recalculate=True
+        recalculate=False
     )
     lab.execute(
         data_manager,
@@ -33,14 +33,15 @@ if __name__ == "__main__":
         num_cells_per_dim=[20, 42],  # 20, 42, 84 168 , 84
         noise=[0],
         image=[
-            # "yoda.jpg",
-            # "DarthVader.jpeg",
-            # "Ellipsoid_1680x1680.jpg",
+            "yoda.jpg",
+            "DarthVader.jpeg",
+            "Ellipsoid_1680x1680.jpg",
             "ShapesVertex_1680x1680.jpg",
-            # "HandVertex_1680x1680.jpg",
-            # "Polygon_1680x1680.jpg",
+            "HandVertex_1680x1680.jpg",
+            "Polygon_1680x1680.jpg",
         ],
-        reconstruction_factor=[5]
+        reconstruction_factor=[5],
+        angle_threshold=[25]
     )
 
     plot_reconstruction(
@@ -48,17 +49,6 @@ if __name__ == "__main__":
         name="Reconstruction",
         folder='Reconstruction',
         plot_by=['image', 'models', 'num_cells_per_dim'],
-        models=[
-            "aero_lq_vertex"
-        ],
-        image=[
-            # "yoda.jpg",
-            # "DarthVader.jpeg",
-            # "Ellipsoid_1680x1680.jpg",
-            "ShapesVertex_1680x1680.jpg",
-            # "HandVertex_1680x1680.jpg",
-            # "Polygon_1680x1680.jpg",
-        ],
         axes_xy_proportions=(15, 15),
         difference=False,
         plot_curve=True,

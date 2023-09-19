@@ -1,39 +1,26 @@
-import seaborn as sns
-
-from PerplexityLab.visualization import generic_plot
-from experiments.image_reconstruction import plot_reconstruction
-from experiments.subcell_paper.models2compare import elvira, elvira_cc, aero_q
-from experiments.subcell_paper.tools import get_reconstruction_error, calculate_averages_from_image, load_image, \
-    get_reconstruction_error_in_interface, reconstruct
-from lib.CellCreators.RegularCellCreator import MirrorCellCreator, \
-    PolynomialRegularCellCreator, weight_cells_by_smoothness, weight_cells_by_distance
-from lib.CellIterators import iterate_all
-from lib.SmoothnessCalculators import oracle
-from lib.StencilCreators import StencilCreatorSameRegionAdaptive
-
-import operator
 import time
 from functools import partial
 
 import numpy as np
+import seaborn as sns
 
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial
-from experiments.subcell_paper.global_params import CurveAverageQuadraticCC, CCExtraWeight, EVALUATIONS
-from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
+from PerplexityLab.visualization import generic_plot
+from experiments.image_reconstruction import plot_reconstruction
+from experiments.subcell_paper.global_params import CCExtraWeight, EVALUATIONS
+from experiments.subcell_paper.models2compare import elvira_cc, aero_q
+from experiments.subcell_paper.tools import get_reconstruction_error, calculate_averages_from_image, load_image, \
+    get_reconstruction_error_in_interface, reconstruct
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
-from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
-from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells, \
-    get_opposite_regular_cells_by_stencil
-from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator
-from lib.CellCreators.CurveCellCreators.VertexCellCreator import LinearVertexCellCurveCellCreator
-from lib.CellCreators.RegularCellCreator import PiecewiseConstantRegularCellCreator
-from lib.CellCreators.VertexCellCreators.VertexCellCreatorBase import VertexCellCreatorUsingNeighboursLines
-from lib.CellIterators import iterate_by_reconstruction_error_and_smoothness
-from lib.CellOrientators import BaseOrientator, OrientByGradient, OrientPredefined
-from lib.StencilCreators import StencilCreatorAdaptive, StencilCreatorFixedShape
+from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells_by_distance
+from lib.CellIterators import iterate_all
+from lib.CellOrientators import BaseOrientator
+from lib.SmoothnessCalculators import oracle
+from lib.StencilCreators import StencilCreatorFixedShape
+from lib.StencilCreators import StencilCreatorSameRegionAdaptive
 from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasure, CellCreatorPipeline
 
 

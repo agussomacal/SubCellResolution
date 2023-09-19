@@ -1,42 +1,20 @@
 import operator
-import time
-from functools import partial
 
 import numpy as np
-import seaborn as sns
 
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
-from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import generic_plot, one_line_iterator, perplex_plot
-from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, plot_cells_identity, \
-    plot_cells_vh_classification_core, plot_cells_not_regular_classification_core, plot_curve_core, plot_specific_cells, \
+from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, plot_specific_cells, \
     SpecialCellsPlotTuple
-from experiments.subcell_paper.global_params import CurveAverageQuadraticCC, CCExtraWeight, cpink, corange, cyellow, \
-    cblue, cgreen, runsinfo, cbrown, cgray, cpurple, cred, ccyan, EVALUATIONS, angle_threshold
-from experiments.subcell_paper.tools import get_reconstruction_error, calculate_averages_from_image, load_image, \
-    reconstruct, singular_cells_mask
-from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
+from experiments.subcell_paper.global_params import cblue, cgreen, cred
+from experiments.subcell_paper.tools import calculate_averages_from_image, load_image, \
+    singular_cells_mask
+from lib.AuxiliaryStructures.Constants import CURVE_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
-from lib.CellCreators.CellCreatorBase import REGULAR_CELL_TYPE
-from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
-from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells, \
-    get_opposite_regular_cells_by_stencil
-from lib.CellCreators.CurveCellCreators.TaylorCurveCellCreator import TaylorCircleCurveCellCreator
-from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator, \
-    ValuesLineConsistentCurveCellCreator
-from lib.CellCreators.CurveCellCreators.VertexCellCreator import LinearVertexCellCurveCellCreator
-from lib.CellCreators.RegularCellCreator import PiecewiseConstantRegularCellCreator, MirrorCellCreator
-from lib.CellCreators.VertexCellCreators.VertexCellCreatorBase import VertexCellCreatorUsingNeighboursLines
-from lib.CellIterators import iterate_by_reconstruction_error_and_smoothness, \
-    iterate_all
-from lib.CellOrientators import BaseOrientator, OrientByGradient, OrientPredefined
-from lib.SmoothnessCalculators import naive_piece_wise
-from lib.StencilCreators import StencilCreatorAdaptive, StencilCreatorFixedShape
-from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasure, CellCreatorPipeline, \
-    keep_cells_on_condition, curve_condition, ReconstructionErrorMeasureDefaultStencil
-from lib.SubCellScheme import SubCellScheme
+from lib.CellIterators import iterate_by_reconstruction_error_and_smoothness
+from lib.CellOrientators import OrientByGradient
 
 # ========== ========== Names and colors to present ========== ========== #
 names_dict = {

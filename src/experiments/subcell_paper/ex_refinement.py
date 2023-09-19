@@ -19,9 +19,7 @@ if __name__ == "__main__":
         "models",
         *map(fit_model, [
             elvira,
-            # aero_linear,
             quadratic,
-            # aero_lq_vertex,
         ]),
         recalculate=False
     )

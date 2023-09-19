@@ -26,7 +26,7 @@ from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurv
     ValuesLineConsistentCurveCellCreator, ValuesCircleCellCreator
 from lib.CellCreators.RegularCellCreator import MirrorCellCreator
 from lib.CellIterators import iterate_all
-from lib.CellOrientators import BaseOrientator, OrientPredefined
+from lib.CellOrientators import BaseOrientator, OrientPredefined, OrientByGradient
 from lib.Curves.AverageCurves import CurveAveragePolynomial
 from lib.Curves.VanderCurves import CurveVandermondePolynomial
 from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import CURVE_PROBLEM
@@ -132,13 +132,13 @@ def piecewise_constant(*args):
 @fit_model
 def elvira():
     return get_sub_cell_model(ELVIRACurveCellCreator, 1, "ELVIRA", 0, 0, 2,
-                              orientators=[OrientPredefined(predefined_axis=0), OrientPredefined(predefined_axis=1)])
+                              orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, angle_threshold=0))
 
 
 @fit_model
 def elvira_w():
-    return get_sub_cell_model(ELVIRACurveCellCreator, 1, "ELVIRA100", 0, CCExtraWeight, 2,
-                              orientators=[OrientPredefined(predefined_axis=0), OrientPredefined(predefined_axis=1)])
+    return get_sub_cell_model(ELVIRACurveCellCreator, 1, "ELVIRA-W", 0, CCExtraWeight, 2,
+                              orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, angle_threshold=0))
 
 
 @fit_model
@@ -170,29 +170,30 @@ def linear_obera_w():
 
 
 @fit_model
+def linear_aero():
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=0)), 1,
+        "LinearAvg", 0, CCExtraWeight, 2,
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3,
+                                               center_weight=2.1))
+
+
+@fit_model
 def linear_aero_w():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=CCExtraWeight)), 1,
         "LinearAvg100", 0, CCExtraWeight, 2,
-        StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3,
-                               center_weight=2.1))
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3,
+                                               center_weight=2.1))
 
 
 @fit_model
 def linear_aero_consistent():
     return get_sub_cell_model(partial(ValuesLineConsistentCurveCellCreator, ccew=CCExtraWeight), 1,
                               "LinearAvgConsistent", 0, CCExtraWeight, 1,
-                              StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3,
-                                                     center_weight=2.1))
-
-
-@fit_model
-def linear_aero():
-    return get_sub_cell_model(
-        partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=0)), 1,
-        "LinearAvg", 0, CCExtraWeight, 2,
-        StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3,
-                               center_weight=2.1))
+                              stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
+                                                                     independent_dim_stencil_size=3,
+                                                                     center_weight=2.1))
 
 
 @fit_model
@@ -207,10 +208,10 @@ def nn_linear():
 #                               "LinearNN", 0, CCExtraWeight, 2)
 
 
-@fit_model
-def nn_linear_keras():
-    return get_sub_cell_model(partial(LearningCurveCellCreator, nnlmkeras), 1,
-                              "LinearNN", 0, CCExtraWeight, 2)
+# @fit_model
+# def nn_linear_keras():
+#     return get_sub_cell_model(partial(LearningCurveCellCreator, nnlmkeras), 1,
+#                               "LinearNN", 0, CCExtraWeight, 2)
 
 
 @fit_model
@@ -227,7 +228,7 @@ def quadratic_obera():
         partial(ValuesCurveCellCreator,
                 vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=CCExtraWeight)), 1,
         "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 2,
-        StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3))
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3))
 
 
 @fit_model
@@ -236,7 +237,7 @@ def quadratic_aero():
         partial(ValuesCurveCellCreator,
                 vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=CCExtraWeight)), 1,
         "QuadraticAvg", 0, CCExtraWeight, 2,
-        StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
 
 
 @fit_model
@@ -245,7 +246,7 @@ def quadratic_aero_ref2():
         partial(ValuesCurveCellCreator,
                 vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=CCExtraWeight)), 2,
         "QuadraticAvg", 0, CCExtraWeight, 2,
-        StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
 
 
 @fit_model
@@ -253,28 +254,15 @@ def obera_circle():
     return get_sub_cell_model(
         partial(TaylorCircleCurveCellCreator, ccew=CCExtraWeight, natural_params=False), 1,
         "CircleAvg", OBERA_ITERS, CCExtraWeight, 2,
-        StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
 
 
 @fit_model
 def obera_circle_vander():
     return get_sub_cell_model(ValuesCircleCellCreator, 1,
                               "CircleAvg", OBERA_ITERS, CCExtraWeight, 2,
-                              StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
-
-
-# @fit_model
-# def circle_vander_avg():
-#     return get_sub_cell_model(
-#         partial(TaylorFromVanderCurveCellCreator, curve=CurveVanderCircle, degree=2, ccew=CCExtraWeight), 1,
-#         "CircleAvg", 0, CCExtraWeight, 2,
-#         StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
-
-
-# @fit_model
-# def circle(iterations: int, ):
-#     return get_sub_cell_model(partial(ValuesCurveCellCreator, vander_curve=CurveVanderCircle), 1,
-#                               "CirclePoint", iterations, central_cell_extra_weight, 2)
+                              stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0,
+                                                                     independent_dim_stencil_size=3))
 
 
 if __name__ == "__main__":
@@ -335,7 +323,7 @@ if __name__ == "__main__":
 
         # obera_circle,
         # obera_circle_vander,
-        recalculate=False
+        recalculate=True
     )
     # num_cells_per_dim = np.logspace(np.log10(10), np.log10(100), num=20, dtype=int).tolist()[:5]
     num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=20, dtype=int).tolist()
@@ -477,7 +465,8 @@ if __name__ == "__main__":
                      name=f"HConvergence_{group}",
                      folder=group,
                      x="h", y="error", label="models", num_cells_per_dim=num_cells_per_dim,
-                     plot_func=NamedPartial(plot_convergence, threshold=1 / 25),
+                     plot_func=NamedPartial(plot_convergence, threshold=1 / 25,
+                                            palette={names_dict[k]: v for k, v in model_color.items()}),
                      # plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
                      log="xy", h=lambda num_cells_per_dim: 1 / num_cells_per_dim,
                      error=error,
@@ -491,7 +480,8 @@ if __name__ == "__main__":
                      path=config.subcell_paper_figures_path,
                      folder=group,
                      x="N", y="time", label="method", num_cells_per_dim=num_cells_per_dim,
-                     plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                     plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--",
+                                            palette={names_dict[k]: v for k, v in model_color.items()}),
                      log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                      error=error,
                      models=models2plot,
@@ -503,7 +493,8 @@ if __name__ == "__main__":
                      path=config.subcell_paper_figures_path,
                      folder=group,
                      x="time", y="error", label="method", num_cells_per_dim=num_cells_per_dim,
-                     plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                     plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--",
+                                            palette={names_dict[k]: v for k, v in model_color.items()}),
                      log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                      error=error,
                      models=models2plot,

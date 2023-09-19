@@ -12,7 +12,7 @@ from lib.CellCreators.CellCreatorBase import REGULAR_CELL_TYPE
 
 
 def fit_model(sub_cell_model):
-    def decorated_func(image, noise, num_cells_per_dim, reconstruction_factor, refinement, angle_threshold=30):
+    def decorated_func(image, noise, num_cells_per_dim, reconstruction_factor, refinement, angle_threshold=25):
         image = load_image(image)
         avg_values = calculate_averages_from_image(image, num_cells_per_dim)
         np.random.seed(42)

@@ -1,42 +1,21 @@
 import operator
-import time
-from functools import partial
 
 import numpy as np
-import seaborn as sns
 
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
-from PerplexityLab.miscellaneous import NamedPartial
-from PerplexityLab.visualization import generic_plot, one_line_iterator, perplex_plot
-from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, plot_cells_identity, \
-    plot_cells_vh_classification_core, plot_cells_not_regular_classification_core, plot_curve_core, plot_specific_cells, \
+from PerplexityLab.visualization import one_line_iterator, perplex_plot
+from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, plot_specific_cells, \
     SpecialCellsPlotTuple, transform_points2plot
-from experiments.subcell_paper.global_params import CurveAverageQuadraticCC, CCExtraWeight, cpink, corange, cyellow, \
-    cblue, cgreen, runsinfo, cbrown, cgray, cpurple, cred, ccyan, EVALUATIONS, angle_threshold
-from experiments.subcell_paper.tools import get_reconstruction_error, calculate_averages_from_image, load_image, \
-    reconstruct, singular_cells_mask
-from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
+from experiments.subcell_paper.global_params import cblue, cgreen, cred
+from experiments.subcell_paper.tools import calculate_averages_from_image, load_image, \
+    singular_cells_mask
+from lib.AuxiliaryStructures.Constants import CURVE_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
-from lib.CellCreators.CellCreatorBase import REGULAR_CELL_TYPE
-from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
-from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells, \
-    get_opposite_regular_cells_by_stencil, get_regular_opposite_cell_coords_by_minmax
-from lib.CellCreators.CurveCellCreators.TaylorCurveCellCreator import TaylorCircleCurveCellCreator
-from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator, \
-    ValuesLineConsistentCurveCellCreator
-from lib.CellCreators.CurveCellCreators.VertexCellCreator import LinearVertexCellCurveCellCreator
-from lib.CellCreators.RegularCellCreator import PiecewiseConstantRegularCellCreator, MirrorCellCreator
-from lib.CellCreators.VertexCellCreators.VertexCellCreatorBase import VertexCellCreatorUsingNeighboursLines
-from lib.CellIterators import iterate_by_reconstruction_error_and_smoothness, \
-    iterate_all
-from lib.CellOrientators import BaseOrientator, OrientByGradient, OrientPredefined
-from lib.SmoothnessCalculators import naive_piece_wise
-from lib.StencilCreators import StencilCreatorAdaptive, StencilCreatorFixedShape
-from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasure, CellCreatorPipeline, \
-    keep_cells_on_condition, curve_condition, ReconstructionErrorMeasureDefaultStencil
-from lib.SubCellScheme import SubCellScheme
+from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_regular_opposite_cell_coords_by_minmax
+from lib.CellIterators import iterate_by_reconstruction_error_and_smoothness
+from lib.CellOrientators import OrientByGradient
 
 # ========== ========== Names and colors to present ========== ========== #
 names_dict = {
@@ -54,14 +33,17 @@ def experiment(image, num_cells_per_dim):
     avg_values = calculate_averages_from_image(image_array, num_cells_per_dim)
     smoothness_index = singular_cells_mask(avg_values)
     indexer = ArrayIndexerNd(avg_values, "cyclic")
+    orientator = OrientByGradient(kernel_size=(5, 5), dimensionality=2, method="optim", angle_threshold=45)
+
     regular_cells = dict()
     singular_cells = dict()
     for coords in iterate_by_reconstruction_error_and_smoothness(
             reconstruction_error=np.zeros(np.shape(avg_values)),
             smoothness_index=smoothness_index,
             value=CURVE_CELL, condition=operator.eq):
+        axis = orientator.get_independent_axis(coords, average_values=avg_values, indexer=indexer).pop()
         regular_cells[coords.tuple], singular_cells[coords.tuple] = get_regular_opposite_cell_coords_by_minmax(
-            coords, avg_values, indexer,
+            coords, avg_values, indexer, direction=np.array([1, 0])[[axis, 1 - axis]],
             acceptance_criterion=lambda c: smoothness_index[indexer[c]] == 0)
 
     return {
