@@ -213,6 +213,22 @@ def quadratic(smoothness_calculator=naive_piece_wise, refinement=1, angle_thresh
     )
 
 
+def qelvira(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=0):
+    return SubCellReconstruction(
+        name="All",
+        smoothness_calculator=smoothness_calculator,
+        reconstruction_error_measure=reconstruction_error_measure_default,
+        refinement=refinement,
+        cell_creators=
+        [
+            piecewise01,
+            elvira_cc(angle_threshold=angle_threshold),
+            aero_q(angle_threshold=angle_threshold)
+        ],
+        obera_iterations=0
+    )
+
+
 def aero_lq(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=0):
     return SubCellReconstruction(
         name="All",
@@ -238,7 +254,7 @@ def aero_lq_vertex(smoothness_calculator=naive_piece_wise, refinement=1, angle_t
         cell_creators=
         [
             piecewise01,
-            aero_l(angle_threshold=angle_threshold),
+            elvira_cc(angle_threshold),
             tem,
             aero_q(angle_threshold=angle_threshold),
             # ------------ AVRO ------------ #

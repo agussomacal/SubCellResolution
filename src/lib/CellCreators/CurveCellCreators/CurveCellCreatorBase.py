@@ -67,18 +67,21 @@ def prepare_stencil4one_dimensionalization(independent_axis: int, value_up: Unio
 
     # thresholding in case of piecewise-regular
     # assumes that smoothness comes with 1 for
-    stencil_smoothness = np.reshape([smoothness_index[indexer[coord]] for coord in stencil.coords], ks)
-    stencil_smoothness = np.transpose(stencil_smoothness, [independent_axis, 1 - independent_axis])
-    assert (np.sum(stencil_smoothness == 0) + np.sum(stencil_smoothness == 1)) == np.prod(
-        ks), "Only works if smoothness has 1 for curve cells and 0 otherwise."
-    below_ix = stencil_smoothness.cumsum(axis=1) == 0
-    above_ix = (stencil_smoothness.cumsum(axis=1) * (1 - stencil_smoothness)) > 0
-    stencil_values[below_ix] = value_down
-    stencil_values[above_ix] = value_up
+    # stencil_smoothness = np.reshape([smoothness_index[indexer[coord]] for coord in stencil.coords], ks)
+    # stencil_smoothness = np.transpose(stencil_smoothness, [independent_axis, 1 - independent_axis])
+    # assert (np.sum(stencil_smoothness == 0) + np.sum(stencil_smoothness == 1)) == np.prod(
+    #     ks), "Only works if smoothness has 1 for curve cells and 0 otherwise."
+    # below_ix = (stencil_smoothness.cumsum(axis=1) == 0) + (stencil_smoothness.cumsum(axis=0) == 0)
+    # above_ix = ((stencil_smoothness.cumsum(axis=1) == 0) + (stencil_smoothness.cumsum(axis=0) == 0) * (
+    #             1 - stencil_smoothness)) > 0
+    # # below_ix = stencil_smoothness.cumsum(axis=1) == 0
+    # # above_ix = (stencil_smoothness.cumsum(axis=1) * (1 - stencil_smoothness)) > 0
+    # stencil_values[below_ix] = value_down
+    # stencil_values[above_ix] = value_up
 
     # if the values are not 0 or 1
-    stencil_values = stencil_values - np.min(stencil_values)
-    stencil_values /= np.max(stencil_values)
+    stencil_values = stencil_values - min(value_up, value_down)
+    stencil_values /= max(value_up, value_down)
     # stencil_values = stencil_values - np.min((value_up, value_down))
     # stencil_values /= np.max((value_up, value_down))
 

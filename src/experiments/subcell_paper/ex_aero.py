@@ -16,7 +16,8 @@ from experiments.LearningMethods import flatter, sktorch_20x20_relu, skkeras_20x
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, OBERA_ITERS, \
     CCExtraWeight, runsinfo, cblue, corange, cgreen, cred, cpurple, cbrown, cpink, cgray, cyellow, ccyan
 from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
-from experiments.subcell_paper.tools import calculate_averages_from_image, calculate_averages_from_curve
+from experiments.subcell_paper.tools import calculate_averages_from_image, calculate_averages_from_curve, \
+    curve_cells_fitting_times
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
@@ -302,27 +303,27 @@ if __name__ == "__main__":
 
     lab.define_new_block_of_functions(
         "models",
-        piecewise_constant,
-        elvira,
-        elvira_w_oriented,
-        linear_obera,
-        linear_obera_w,
-        linear_aero,
-        linear_aero_w,
-        linear_aero_consistent,
-        nn_linear,
-        # nn_linear_torch,
-        # nn_linear_keras,
+        # piecewise_constant,
+        # elvira,
+        # elvira_w_oriented,
+        # linear_obera,
+        # linear_obera_w,
+        # linear_aero,
+        # linear_aero_w,
+        # linear_aero_consistent,
+        # nn_linear,
+        # # nn_linear_torch,
+        # # nn_linear_keras,
+        #
+        # quadratic_obera_non_adaptive,
+        # quadratic_obera,
+        # quadratic_aero,
+        #
+        # # elvira_go100_ref2,
+        # # quadratic_aero_ref2,
 
-        quadratic_obera_non_adaptive,
-        quadratic_obera,
-        quadratic_aero,
-
-        # elvira_go100_ref2,
-        # quadratic_aero_ref2,
-
-        # obera_circle,
-        # obera_circle_vander,
+        obera_circle,
+        obera_circle_vander,
         recalculate=True
     )
     # num_cells_per_dim = np.logspace(np.log10(10), np.log10(100), num=20, dtype=int).tolist()[:5]
@@ -448,6 +449,22 @@ if __name__ == "__main__":
 
     for group, models2plot in accepted_models.items():
         generic_plot(data_manager,
+                     name=f"TimeComplexityPerCellBar_{group}",
+                     path=config.subcell_paper_figures_path,
+                     folder=group,
+                     x="method", y="time", num_cells_per_dim=num_cells_per_dim,
+                     plot_func=NamedPartial(sns.boxenplot,
+                                            palette={names_dict[k]: v for k, v in model_color.items()}),
+                     log="y",
+                     time=curve_cells_fitting_times,
+                     N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                     error=error,
+                     models=models2plot,
+                     method=lambda models: names_dict[str(models)],
+                     format=".pdf"
+                     )
+
+        generic_plot(data_manager,
                      name=f"Convergence_{group}",
                      path=config.subcell_paper_figures_path,
                      folder=group,
@@ -458,7 +475,8 @@ if __name__ == "__main__":
                      error=error,
                      models=models2plot,
                      sort_by=["models", "N"],
-                     method=lambda models: names_dict[str(models)]
+                     method=lambda models: names_dict[str(models)],
+                     format=".pdf"
                      )
 
         generic_plot(data_manager,
@@ -472,7 +490,8 @@ if __name__ == "__main__":
                      error=error,
                      models=models2plot,
                      sort_by=["models", "h"],
-                     method=lambda models: names_dict[str(models)]
+                     method=lambda models: names_dict[str(models)],
+                     format=".pdf"
                      )
 
         generic_plot(data_manager,
@@ -482,10 +501,28 @@ if __name__ == "__main__":
                      x="N", y="time", label="method", num_cells_per_dim=num_cells_per_dim,
                      plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--",
                                             palette={names_dict[k]: v for k, v in model_color.items()}),
-                     log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                     log="xy",
+                     time=lambda time_to_fit: time_to_fit,
+                     N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                      error=error,
                      models=models2plot,
-                     method=lambda models: names_dict[str(models)]
+                     method=lambda models: names_dict[str(models)],
+                     format=".pdf"
+                     )
+        generic_plot(data_manager,
+                     name=f"TimeComplexityPerCell_{group}",
+                     path=config.subcell_paper_figures_path,
+                     folder=group,
+                     x="N", y="time", label="method", num_cells_per_dim=num_cells_per_dim,
+                     plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--",
+                                            palette={names_dict[k]: v for k, v in model_color.items()}),
+                     log="xy",
+                     time=curve_cells_fitting_times,
+                     N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                     error=error,
+                     models=models2plot,
+                     method=lambda models: names_dict[str(models)],
+                     format=".pdf"
                      )
 
         generic_plot(data_manager,
@@ -498,7 +535,8 @@ if __name__ == "__main__":
                      log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                      error=error,
                      models=models2plot,
-                     method=lambda models: names_dict[str(models)]
+                     method=lambda models: names_dict[str(models)],
+                     format=".pdf"
                      )
 
         plot_reconstruction(
@@ -517,7 +555,7 @@ if __name__ == "__main__":
             plot_original_image=True,
             numbers_on=True,
             plot_again=False,
-            num_cores=1,
+            num_cores=15,
             # trim=trim
         )
 

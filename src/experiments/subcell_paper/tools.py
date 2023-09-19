@@ -6,6 +6,7 @@ from matplotlib import pylab as plt
 from tqdm import tqdm
 
 import config
+from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
 from lib.Curves.Curves import Curve
 from lib.SubCellReconstruction import reconstruct_arbitrary_size, reconstruct_by_factor
 
@@ -88,3 +89,7 @@ def get_reconstruction_error_in_interface(image, enhanced_image, reconstruction,
 
 def singular_cells_mask(avg_values):
     return (0 < np.array(avg_values)) * (np.array(avg_values) < 1)
+
+
+def curve_cells_fitting_times(model):
+    return list(model.times[CURVE_CELL_TYPE].values())

@@ -47,13 +47,14 @@ def fit_model(sub_cell_model):
 def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction, alpha=0.5,
                         plot_original_image=True,
                         difference=False, plot_curve=True, plot_curve_winner=False, plot_vh_classification=True,
-                        plot_singular_cells=True, cmap="magma", trim=((0, 0), (0, 0)), numbers_on=True,
-                        winner_color_dict=None):
+                        plot_singular_cells=True, cmap="magma", cmapoi="Greys_r", alphaio=0.5, trim=((0, 0), (0, 0)),
+                        numbers_on=True,
+                        winner_color_dict=None, draw_cells=True):
     model_resolution = np.array(model.resolution)
     image = load_image(image)
 
     if plot_original_image:
-        plot_cells(ax, colors=image, mesh_shape=model_resolution, alpha=alpha, cmap="Greys_r",
+        plot_cells(ax, colors=image, mesh_shape=model_resolution, alpha=alphaio, cmap=cmapoi,
                    vmin=np.min(image), vmax=np.max(image))
 
     if difference:
@@ -75,11 +76,12 @@ def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction
         plot_curve_core(ax, curve_cells=[cell for cell in model.cells.values() if
                                          cell.CELL_TYPE != REGULAR_CELL_TYPE], color=winner_color_dict)
 
-    draw_cell_borders(
-        ax, mesh_shape=num_cells_per_dim,
-        refinement=model_resolution // num_cells_per_dim,
-        numbers_on=numbers_on,
-        prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
-    )
+    if draw_cells:
+        draw_cell_borders(
+            ax, mesh_shape=num_cells_per_dim,
+            refinement=model_resolution // num_cells_per_dim,
+            numbers_on=numbers_on,
+            prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
+        )
     ax.set_xlim((-0.5 + trim[0][0], model.resolution[0] - trim[0][1] - 0.5))
     ax.set_ylim((model.resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
