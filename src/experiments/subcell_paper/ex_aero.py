@@ -38,11 +38,10 @@ from lib.StencilCreators import StencilCreatorFixedShape, StencilCreatorAdaptive
 from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasureBase, CellCreatorPipeline
 
 N = int(1e6)
-workers = 10
 dataset_manager_3_8pi = DatasetsManagerLinearCurves(
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
-    workers=workers, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
-    value_up_random=False
+    workers=15, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
+    value_up_random=True
 )
 
 nnlm = LearningMethodManager(
@@ -55,7 +54,7 @@ nnlm = LearningMethodManager(
                                 learning_rate="adaptive", solver="lbfgs"))
         ]
     ),
-    refit=False, n2use=-1,
+    refit=True, n2use=-1,
     training_noise=1e-5, train_percentage=0.9
 )
 
@@ -303,28 +302,28 @@ if __name__ == "__main__":
 
     lab.define_new_block_of_functions(
         "models",
-        # piecewise_constant,
-        # elvira,
-        # elvira_w_oriented,
-        # linear_obera,
-        # linear_obera_w,
-        # linear_aero,
-        # linear_aero_w,
-        # linear_aero_consistent,
-        # nn_linear,
-        # # nn_linear_torch,
-        # # nn_linear_keras,
-        #
-        # quadratic_obera_non_adaptive,
-        # quadratic_obera,
-        # quadratic_aero,
-        #
-        # # elvira_go100_ref2,
-        # # quadratic_aero_ref2,
+        piecewise_constant,
+        elvira,
+        elvira_w_oriented,
+        linear_obera,
+        linear_obera_w,
+        linear_aero,
+        linear_aero_w,
+        linear_aero_consistent,
+        nn_linear,
+        # nn_linear_torch,
+        # nn_linear_keras,
+
+        quadratic_obera_non_adaptive,
+        quadratic_obera,
+        quadratic_aero,
+
+        # elvira_go100_ref2,
+        # quadratic_aero_ref2,
 
         obera_circle,
         obera_circle_vander,
-        recalculate=True
+        recalculate=False
     )
     # num_cells_per_dim = np.logspace(np.log10(10), np.log10(100), num=20, dtype=int).tolist()[:5]
     num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=20, dtype=int).tolist()

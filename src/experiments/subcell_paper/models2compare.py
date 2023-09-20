@@ -3,7 +3,7 @@ from functools import partial
 
 import numpy as np
 
-from experiments.subcell_paper.global_params import CCExtraWeight, angle_threshold, CurveAverageQuadraticCC, cgray, \
+from experiments.subcell_paper.global_params import CCExtraWeight, CurveAverageQuadraticCC, cgray, \
     cblue, cgreen, cred, corange
 from experiments.subcell_paper.tools import get_reconstruction_error
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
@@ -36,9 +36,14 @@ reconstruction_error_measure_default_singular = ReconstructionErrorMeasure(
     StencilCreatorFixedShape((3, 3)),
     metric=2, central_cell_extra_weight=1,
     keeping_cells_condition=partial(keep_cells_on_condition, condition=curve_condition))
-reconstruction_error_measure_3x3_w = ReconstructionErrorMeasureDefaultStencil(
-    StencilCreatorFixedShape((3, 3)),
-    metric=2, central_cell_extra_weight=CCExtraWeight)
+
+
+def reconstruction_error_measure_3x3_w(ccw=CCExtraWeight):
+    return ReconstructionErrorMeasureDefaultStencil(
+        StencilCreatorFixedShape((3, 3)),
+        metric=2, central_cell_extra_weight=ccw)
+
+
 reconstruction_error_measure_3x3_w_singular = ReconstructionErrorMeasureDefaultStencil(
     StencilCreatorFixedShape((3, 3)),
     metric=2, central_cell_extra_weight=CCExtraWeight,
@@ -68,7 +73,7 @@ piecewise01 = CellCreatorPipeline(
 )
 
 
-def elvira_cc(angle_threshold):
+def elvira_cc(angle_threshold, weight=CCExtraWeight):
     return CellCreatorPipeline(
         cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                               condition=operator.eq),
@@ -77,7 +82,7 @@ def elvira_cc(angle_threshold):
         stencil_creator=StencilCreatorFixedShape((3, 3)),
         cell_creator=ELVIRACurveCellCreator(
             regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax),
-        reconstruction_error_measure=reconstruction_error_measure_3x3_w
+        reconstruction_error_measure=reconstruction_error_measure_3x3_w(weight)
     )
 
 
@@ -92,7 +97,7 @@ def aero_l(angle_threshold):
                                                independent_dim_stencil_size=3),
         cell_creator=ValuesLineConsistentCurveCellCreator(ccew=CCExtraWeight,
                                                           regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax),
-        reconstruction_error_measure=reconstruction_error_measure_3x3_w
+        reconstruction_error_measure=reconstruction_error_measure_3x3_w()
     )
 
 
@@ -107,7 +112,7 @@ def aero_q(angle_threshold):
         cell_creator=ValuesCurveCellCreator(
             vander_curve=CurveAverageQuadraticCC,
             regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax),
-        reconstruction_error_measure=reconstruction_error_measure_3x3_w
+        reconstruction_error_measure=reconstruction_error_measure_3x3_w()
     )
 
 
@@ -119,7 +124,7 @@ tem = CellCreatorPipeline(
     cell_creator=VertexCellCreatorUsingNeighboursLines(
         regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax,
     ),
-    reconstruction_error_measure=reconstruction_error_measure_3x3_w
+    reconstruction_error_measure=reconstruction_error_measure_3x3_w()
 )
 
 
@@ -266,7 +271,7 @@ def aero_lq_vertex(smoothness_calculator=naive_piece_wise, refinement=1, angle_t
                 stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=4),
                 cell_creator=LinearVertexCellCurveCellCreator(
                     regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax),
-                reconstruction_error_measure=reconstruction_error_measure_3x3_w
+                reconstruction_error_measure=reconstruction_error_measure_3x3_w()
             )
         ],
         obera_iterations=0

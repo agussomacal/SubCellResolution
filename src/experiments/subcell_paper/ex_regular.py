@@ -11,7 +11,7 @@ from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import generic_plot
 from experiments.image_reconstruction import plot_reconstruction
-from experiments.subcell_paper.global_params import CCExtraWeight, EVALUATIONS
+from experiments.subcell_paper.global_params import CCExtraWeight, EVALUATIONS, cpink, corange, cred, cgreen
 from experiments.subcell_paper.models2compare import elvira_cc, aero_q
 from experiments.subcell_paper.tools import get_reconstruction_error, calculate_averages_from_image, load_image, \
     get_reconstruction_error_in_interface, reconstruct
@@ -24,6 +24,9 @@ from lib.SmoothnessCalculators import oracle
 from lib.StencilCreators import StencilCreatorFixedShape
 from lib.StencilCreators import StencilCreatorSameRegionAdaptive
 from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasure, CellCreatorPipeline
+
+ELVIRA_CC_WEIGHT = 0
+ANGLE_THRESHOLD = 30
 
 
 def trigonometric(image, amplitude, frequency):
@@ -153,9 +156,38 @@ regular_constant_same_region = CellCreatorPipeline(
 #     cell_creator=MirrorCellCreator()
 # )
 
+@fit_model
+def poly02half(smoothness_calculator):
+    return SubCellReconstruction(
+        name="All",
+        smoothness_calculator=smoothness_calculator,
+        reconstruction_error_measure=reconstruction_error_measure,
+        refinement=1,
+        cell_creators=
+        [  # regular cell with piecewise_constant
+            CellCreatorPipeline(
+                cell_iterator=iterate_all,
+                orientator=BaseOrientator(dimensionality=2),
+                stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=3),
+                cell_creator=PolynomialRegularCellCreator(degree=0)
+            ),
+            CellCreatorPipeline(
+                cell_iterator=iterate_all,
+                orientator=BaseOrientator(dimensionality=2),
+                stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=3),
+                cell_creator=PolynomialRegularCellCreator(
+                    degree=2, noisy=False,
+                    weight_function=partial(weight_cells_by_distance, central_cell_importance=CCExtraWeight,
+                                            distance_weight=0.5),
+                    dimensionality=2, full_rank=False)
+            ),
+        ],
+        obera_iterations=0
+    )
+
 
 @fit_model
-def poly0_elvira(smoothness_calculator, angle_threshold=20):
+def poly0_elvira(smoothness_calculator):
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=smoothness_calculator,
@@ -164,14 +196,14 @@ def poly0_elvira(smoothness_calculator, angle_threshold=20):
         cell_creators=
         [  # regular cell with piecewise_constant
             regular_constant_same_region,
-            elvira_cc(angle_threshold=angle_threshold),
+            elvira_cc(angle_threshold=ANGLE_THRESHOLD, weight=ELVIRA_CC_WEIGHT),
         ],
         obera_iterations=0
     )
 
 
 @fit_model
-def poly1_elvira(smoothness_calculator, angle_threshold=20):
+def poly1_elvira(smoothness_calculator):
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=smoothness_calculator,
@@ -180,14 +212,14 @@ def poly1_elvira(smoothness_calculator, angle_threshold=20):
         cell_creators=
         [  # regular cell with piecewise_constant
             regular_deg1_same_region,
-            elvira_cc(angle_threshold=angle_threshold),
+            elvira_cc(angle_threshold=ANGLE_THRESHOLD, weight=ELVIRA_CC_WEIGHT),
         ],
         obera_iterations=0
     )
 
 
 @fit_model
-def poly2_elvira(smoothness_calculator, angle_threshold=20):
+def poly2_elvira(smoothness_calculator):
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=smoothness_calculator,
@@ -196,14 +228,14 @@ def poly2_elvira(smoothness_calculator, angle_threshold=20):
         cell_creators=
         [  # regular cell with piecewise_constant
             regular_deg2_same_region,
-            elvira_cc(angle_threshold=angle_threshold),
+            elvira_cc(angle_threshold=ANGLE_THRESHOLD, weight=ELVIRA_CC_WEIGHT),
         ],
         obera_iterations=0
     )
 
 
 @fit_model
-def poly02_elvira(smoothness_calculator, angle_threshold=20):
+def poly02_elvira(smoothness_calculator):
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=smoothness_calculator,
@@ -212,7 +244,7 @@ def poly02_elvira(smoothness_calculator, angle_threshold=20):
         cell_creators=
         [  # regular cell with piecewise_constant
             regular_constant_same_region,
-            elvira_cc(angle_threshold=angle_threshold),
+            elvira_cc(angle_threshold=ANGLE_THRESHOLD, weight=ELVIRA_CC_WEIGHT),
             regular_deg2_same_region,
         ],
         obera_iterations=0
@@ -220,7 +252,7 @@ def poly02_elvira(smoothness_calculator, angle_threshold=20):
 
 
 @fit_model
-def poly2h_elvira(smoothness_calculator, angle_threshold=20):
+def poly2h_elvira(smoothness_calculator):
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=smoothness_calculator,
@@ -229,14 +261,14 @@ def poly2h_elvira(smoothness_calculator, angle_threshold=20):
         cell_creators=
         [  # regular cell with piecewise_constant
             regular_deg2half_same_region,
-            elvira_cc(angle_threshold=angle_threshold),
+            elvira_cc(angle_threshold=ANGLE_THRESHOLD, weight=ELVIRA_CC_WEIGHT),
         ],
         obera_iterations=0
     )
 
 
 @fit_model
-def poly02h_elvira(smoothness_calculator, angle_threshold=20):
+def poly02h_elvira(smoothness_calculator):
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=smoothness_calculator,
@@ -245,7 +277,7 @@ def poly02h_elvira(smoothness_calculator, angle_threshold=20):
         cell_creators=
         [  # regular cell with piecewise_constant
             regular_constant_same_region,
-            elvira_cc(angle_threshold=angle_threshold),
+            elvira_cc(angle_threshold=ANGLE_THRESHOLD, weight=ELVIRA_CC_WEIGHT),
             regular_deg2half_same_region,
 
         ],
@@ -254,7 +286,7 @@ def poly02h_elvira(smoothness_calculator, angle_threshold=20):
 
 
 @fit_model
-def poly1_elvira(smoothness_calculator, angle_threshold=20):
+def poly1_elvira(smoothness_calculator):
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=smoothness_calculator,
@@ -263,15 +295,15 @@ def poly1_elvira(smoothness_calculator, angle_threshold=20):
         cell_creators=
         [
             regular_deg1_same_region,
-            elvira_cc(angle_threshold=angle_threshold),
-            aero_q(angle_threshold=angle_threshold),
+            elvira_cc(angle_threshold=ANGLE_THRESHOLD, weight=ELVIRA_CC_WEIGHT),
+            aero_q(angle_threshold=ANGLE_THRESHOLD),
             regular_deg2_same_region],
         obera_iterations=0
     )
 
 
 @fit_model
-def poly2_qelvira(smoothness_calculator, angle_threshold=20):
+def poly2_qelvira(smoothness_calculator):
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=smoothness_calculator,
@@ -281,15 +313,15 @@ def poly2_qelvira(smoothness_calculator, angle_threshold=20):
         # regular cell with piecewise_constant
         [
             regular_deg2_same_region,
-            elvira_cc(angle_threshold=angle_threshold),
-            aero_q(angle_threshold=angle_threshold),
+            elvira_cc(angle_threshold=ANGLE_THRESHOLD, weight=ELVIRA_CC_WEIGHT),
+            aero_q(angle_threshold=ANGLE_THRESHOLD),
         ],
         obera_iterations=0
     )
 
 
 @fit_model
-def poly2h_qelvira(smoothness_calculator, angle_threshold=20):
+def poly2h_qelvira(smoothness_calculator):
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=smoothness_calculator,
@@ -299,15 +331,15 @@ def poly2h_qelvira(smoothness_calculator, angle_threshold=20):
         # regular cell with piecewise_constant
         [
             regular_deg2half_same_region,
-            elvira_cc(angle_threshold=angle_threshold),
-            aero_q(angle_threshold=angle_threshold),
+            elvira_cc(angle_threshold=ANGLE_THRESHOLD, weight=ELVIRA_CC_WEIGHT),
+            aero_q(angle_threshold=ANGLE_THRESHOLD),
         ],
         obera_iterations=0
     )
 
 
 @fit_model
-def poly02_qelvira(smoothness_calculator, angle_threshold=20):
+def poly02_qelvira(smoothness_calculator):
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=smoothness_calculator,
@@ -317,8 +349,8 @@ def poly02_qelvira(smoothness_calculator, angle_threshold=20):
         # regular cell with piecewise_constant
         [
             regular_constant_same_region,
-            elvira_cc(angle_threshold=angle_threshold),
-            aero_q(angle_threshold=angle_threshold),
+            elvira_cc(angle_threshold=ANGLE_THRESHOLD, weight=ELVIRA_CC_WEIGHT),
+            aero_q(angle_threshold=ANGLE_THRESHOLD),
             regular_deg2_same_region
         ],
         obera_iterations=0
@@ -326,7 +358,7 @@ def poly02_qelvira(smoothness_calculator, angle_threshold=20):
 
 
 @fit_model
-def poly02h_qelvira(smoothness_calculator, angle_threshold=20):
+def poly02h_qelvira(smoothness_calculator):
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=smoothness_calculator,
@@ -336,8 +368,8 @@ def poly02h_qelvira(smoothness_calculator, angle_threshold=20):
         # regular cell with piecewise_constant
         [
             regular_constant_same_region,
-            elvira_cc(angle_threshold=angle_threshold),
-            aero_q(angle_threshold=angle_threshold),
+            elvira_cc(angle_threshold=ANGLE_THRESHOLD, weight=ELVIRA_CC_WEIGHT),
+            aero_q(angle_threshold=ANGLE_THRESHOLD),
             regular_deg2half_same_region
         ],
         obera_iterations=0
@@ -350,20 +382,18 @@ if __name__ == "__main__":
 
     if name == 'PieceWiseRegularQELVIRA':
         models = [
-            # poly0_elvira,
-            # poly2_elvira,
-            # poly2h_elvira,
-            # poly2_qelvira,
-            # poly2h_qelvira,
-            poly02_qelvira
+            poly02half,
+            poly0_elvira,
+            poly02h_elvira,
+            poly02h_qelvira
         ]
     else:
         models = [
             poly0_elvira,
             poly1_elvira,
             poly2_elvira,
-            poly02_elvira,
             poly2h_elvira,
+            poly02_elvira,
             poly02h_elvira,
         ]
 
@@ -380,13 +410,13 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "perturbation",
         trigonometric,
-        parabolas
+        # parabolas
     )
 
     lab.define_new_block_of_functions(
         "models",
         *models,
-        recalculate=True
+        recalculate=False
     )
 
     lab.execute(
@@ -396,32 +426,50 @@ if __name__ == "__main__":
         save_on_iteration=15,
         forget=False,
         frequency=[0.5, 2],
-        # amplitude=[1e-5, 1e-4, 1e-3, 1e-2, 5e-2, 1e-1, 2e-1, 5e-1],
-        amplitude=[1e-3, 1e-2, 1e-1],
-        # num_cells_per_dim=[20, 40],
-        num_cells_per_dim=[20],
+        amplitude=[1e-5, 1e-4, 1e-3, 1e-2, 5e-2, 1e-1, 2e-1, 5e-1],
+        num_cells_per_dim=[20, 40],
         noise=[0],
         image=[
             "Ellipsoid_1680x1680.jpg",
         ],
-        reconstruction_factor=[6],
+        reconstruction_factor=[1],
         # reconstruction_factor=[6],
     )
-
-    generic_plot(data_manager, x="amplitude", y="error", label="models",
-                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+    names_dict = {
+        "poly02half": "Quadratic",
+        "poly0_elvira": "Constant + ELVIRA",
+        "poly02h_elvira": "Constant + ELVIRA + Quadratic",
+        "poly02h_qelvira": "Constant + QELVIRA + Quadratic"
+    }
+    color_dict = {
+        "poly02half": cpink,
+        "poly0_elvira": corange,
+        "poly02h_elvira": cred,
+        "poly02h_qelvira": cgreen
+    }
+    generic_plot(data_manager,
+                 path=config.subcell_paper_figures_path,
+                 format=".pdf",
+                 x="amplitude", y="error", label="method",
+                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--",
+                                        palette={v: color_dict[k] for k, v in names_dict.items()}),
                  log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                  error=get_reconstruction_error,
+                 method=lambda models: names_dict[models],
                  # ylim=(1e-3, 1e0),
                  # axes_by=["frequency"],
                  plot_by=["reconstruction_factor", "N", "frequency", "perturbation"])
 
     generic_plot(data_manager,
                  name="InterfaceError",
-                 x="amplitude", y="interface_error", label="models",
-                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
+                 path=config.subcell_paper_figures_path,
+                 format=".pdf",
+                 x="amplitude", y="interface_error", label="method",
+                 plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--",
+                                        palette={v: color_dict[k] for k, v in names_dict.items()}),
                  log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                  interface_error=get_reconstruction_error_in_interface,
+                 method=lambda models: names_dict[models],
                  # ylim=(1e-3, 1e0),
                  axes_by=[],
                  plot_by=["reconstruction_factor", "N", "frequency", "perturbation"])

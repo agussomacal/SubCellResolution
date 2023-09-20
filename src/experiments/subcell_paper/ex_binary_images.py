@@ -30,7 +30,7 @@ if __name__ == "__main__":
         forget=False,
         save_on_iteration=None,
         refinement=[1],
-        num_cells_per_dim=[20],  # 20, 42, 84 168 , 84 4220,, 42
+        num_cells_per_dim=[20, 42],  # 20, 42, 84 168 , 84 4220,, 42
         noise=[0],
         image=[
             "yoda.jpg",
@@ -47,6 +47,7 @@ if __name__ == "__main__":
     plot_reconstruction(
         data_manager,
         path=config.subcell_paper_figures_path,
+        format=".pdf",
         name="Reconstruction",
         folder='Reconstruction',
         axes_by=[],
@@ -66,13 +67,12 @@ if __name__ == "__main__":
         plot_original_image=True,
         numbers_on=True,
         plot_again=True,
-        num_cores=1,
-        cmap="YlOrBr",
-        cmapoi="YlGn",
-        alphaio=0.7,
-        alpha=0,
-        format=".pdf"
-        # winner_color_dict=winner_color_dict,
+        num_cores=15,
+        # cmap="YlOrBr",
+        # cmapoi="YlGn",
+        # alphaio=0.7,
+        # alpha=0,
+        winner_color_dict=winner_color_dict,
     )
 
     plot_reconstruction(

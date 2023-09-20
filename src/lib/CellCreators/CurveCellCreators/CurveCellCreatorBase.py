@@ -56,10 +56,6 @@ def get_values_up_down(coords, regular_opposite_cells):
 def prepare_stencil4one_dimensionalization(independent_axis: int, value_up: Union[int, float],
                                            value_down: Union[int, float], stencil: Stencil,
                                            smoothness_index: np.ndarray, indexer: ArrayIndexerNd):
-    # # thresholding in case of piecewise-regular
-    # stencil_values[stencil_values < 0] = 0
-    # stencil_values[stencil_values > 1] = 1
-
     # reshape stencil in rectangular form
     ks = np.max(stencil.coords, axis=0) - np.min(stencil.coords, axis=0) + 1
     stencil_values = np.copy(stencil.values).reshape(ks)
@@ -67,25 +63,16 @@ def prepare_stencil4one_dimensionalization(independent_axis: int, value_up: Unio
 
     # thresholding in case of piecewise-regular
     # assumes that smoothness comes with 1 for
-    # stencil_smoothness = np.reshape([smoothness_index[indexer[coord]] for coord in stencil.coords], ks)
-    # stencil_smoothness = np.transpose(stencil_smoothness, [independent_axis, 1 - independent_axis])
-    # assert (np.sum(stencil_smoothness == 0) + np.sum(stencil_smoothness == 1)) == np.prod(
-    #     ks), "Only works if smoothness has 1 for curve cells and 0 otherwise."
-    # below_ix = (stencil_smoothness.cumsum(axis=1) == 0) + (stencil_smoothness.cumsum(axis=0) == 0)
-    # above_ix = ((stencil_smoothness.cumsum(axis=1) == 0) + (stencil_smoothness.cumsum(axis=0) == 0) * (
-    #             1 - stencil_smoothness)) > 0
-    # # below_ix = stencil_smoothness.cumsum(axis=1) == 0
-    # # above_ix = (stencil_smoothness.cumsum(axis=1) * (1 - stencil_smoothness)) > 0
-    # stencil_values[below_ix] = value_down
-    # stencil_values[above_ix] = value_up
+    stencil_smoothness = np.reshape([smoothness_index[indexer[coord]] for coord in stencil.coords], ks)
+    stencil_smoothness = np.transpose(stencil_smoothness, [independent_axis, 1 - independent_axis])
+    stencil_values[(stencil_values < (value_up+value_down)/2) & ((1-stencil_smoothness) == 1)] = min(value_up, value_down)
+    stencil_values[(stencil_values > (value_up+value_down)/2) & ((1-stencil_smoothness) == 1)] = max(value_up, value_down)
 
     # if the values are not 0 or 1
     stencil_values = stencil_values - min(value_up, value_down)
-    stencil_values /= max(value_up, value_down)
-    # stencil_values = stencil_values - np.min((value_up, value_down))
-    # stencil_values /= np.max((value_up, value_down))
+    stencil_values /= max(value_up, value_down) if value_up != value_down else 1
 
-    # one-dimensional versioin with 1 "down" and 0 "up"
+    # one-dimensional version with 1 "down" and 0 "up"
     stencil_values = (1 - stencil_values) if value_up > value_down else stencil_values
     return stencil_values
 

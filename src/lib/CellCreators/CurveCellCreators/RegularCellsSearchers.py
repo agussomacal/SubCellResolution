@@ -5,6 +5,7 @@ import numpy as np
 from lib.AuxiliaryStructures.Constants import NEIGHBOURHOOD_8_MANHATTAN, REGULAR_CELL, CURVE_CELL
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.CellCreators.CellCreatorBase import CellBase, REGULAR_CELL_TYPE
+from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import get_values_up_down
 from lib.CellOrientators import approximate_gradient_by
 from lib.StencilCreators import get_fixed_stencil_values, StencilCreatorFixedShape
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
@@ -78,17 +79,24 @@ def get_regular_opposite_cell_coords_by_minmax(coords: CellCoords, average_value
     # neighbours = np.array([direction, -direction, direction[::-1], -direction[::-1]])
     neighbours = NEIGHBOURHOOD_8_MANHATTAN
 
-    regular_opposite_cells = [coords.array, coords.array]
+    regular_opposite_cells = [coords.array + direction, coords.array - direction]
     singular_cells = {coords.tuple}
     for f, mmfunc in enumerate([np.argmax, np.argmin]):
+        visited = set()  # to avoid falling into loops that take you back to the same region.
         for _ in np.arange(np.shape(average_values)[0]):
             new_coords = regular_opposite_cells[f] + neighbours
-            new_coords = np.array([c for c in new_coords if tuple(c) not in singular_cells])
-            winner = mmfunc([average_values[indexer[c]] for c in new_coords])
+            new_coords = np.array(
+                [c for c in new_coords if
+                 tuple(c) not in visited.union(singular_cells.union(map(tuple, regular_opposite_cells)))])
+            winner = mmfunc([average_values[indexer[c]] + (
+                np.abs(np.dot(direction, regular_opposite_cells[0] - coords.array))) * 1e-5
+                             # add preference to cells in the dependent direction
+                             for c in new_coords])
             singular_cells.add(tuple(regular_opposite_cells[f].tolist()))
             regular_opposite_cells[f] = new_coords[winner]
             if acceptance_criterion(regular_opposite_cells[f]):
                 break
+            visited.union(map(tuple, new_coords))
     return regular_opposite_cells, singular_cells
 
 
@@ -157,18 +165,6 @@ def get_opposite_regular_cells_by_minmax(coords: CellCoords, cells: Dict[Tuple[i
                 indexer[coords_i] in cells.keys() and
                 (cells[indexer[coords_i]].CELL_TYPE == REGULAR_CELL_TYPE))
     )
-
-    if any([cells[indexer[regular_opposite_cell_coords[0]]].CELL_TYPE != REGULAR_CELL_TYPE,
-            cells[indexer[regular_opposite_cell_coords[1]]].CELL_TYPE != REGULAR_CELL_TYPE]):
-        regular_opposite_cell_coords, _ = get_regular_opposite_cell_coords_by_minmax(
-            coords=coords, average_values=average_values, indexer=indexer,
-            direction=direction[[independent_axis, 1 - independent_axis]],
-            # acceptance_criterion=lambda coords_i: indexer[coords_i] in cells.keys() and
-            #                                       (cells[indexer[coords_i]].CELL_TYPE == REGULAR_CELL_TYPE)
-            acceptance_criterion=lambda coords_i: (kwargs["smoothness_index"][indexer[coords_i]] == REGULAR_CELL) and (
-                    indexer[coords_i] in cells.keys() and
-                    (cells[indexer[coords_i]].CELL_TYPE == REGULAR_CELL_TYPE))
-        )
 
     # order from down to up given dependant axis.
     regular_opposite_cell_coords = sorted(regular_opposite_cell_coords, key=lambda c: c[1 - independent_axis])

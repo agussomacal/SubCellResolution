@@ -11,9 +11,9 @@ from PerplexityLab.visualization import generic_plot, one_line_iterator, perplex
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, plot_cells_identity, \
     plot_cells_vh_classification_core, plot_cells_not_regular_classification_core, plot_curve_core
 from experiments.subcell_paper.global_params import cpink, corange, cyellow, \
-    cblue, cgreen, runsinfo, EVALUATIONS
+    cblue, cgreen, runsinfo, EVALUATIONS, cpurple, cred
 from experiments.subcell_paper.models2compare import upwind, elvira, aero_linear, quadratic, aero_lq_vertex, \
-    scheme_error, scheme_reconstruction_error
+    scheme_error, scheme_reconstruction_error, aero_lq, qelvira
 from experiments.subcell_paper.tools import calculate_averages_from_image, load_image, \
     reconstruct, singular_cells_mask
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
@@ -24,26 +24,20 @@ from lib.SubCellScheme import SubCellScheme
 names_dict = {
     "upwind": "Up Wind",
     "elvira": "ELVIRA",
-    "elvira_oriented": "ELVIRA Oriented",
-    "aero_linear": "AERO Linear",
-    "aero_linear_oriented": "AERO Linear Oriented",
-    "quadratic_oriented": "AERO Quadratic Oriented",
-    "quadratic": "AERO Quadratic",
-    "aero_lq": "AERO Linear Quadratic",
-    "aero_lq_vertex": "AERO Quadratic Vertex",
-    "obera_aero_lq_vertex": "OBERA-AERO Linear Quadratic Vertex",
+    "aero_linear": "AERO-Linear",
+    "quadratic": "AERO-Quadratic",
+    "aero_lq": "AERO-Linear-Quadratic",
+    "qelvira": "ELVIRA AERO-Quadratic",
+    "aero_lq_vertex": "AERO-Quadratic Vertex",
 }
 model_color = {
     "upwind": cpink,
     "elvira": corange,
-    # "elvira_oriented": cbrown,
     "aero_linear": cyellow,
-    # "aero_linear_oriented": cgray,
-    # "quadratic_oriented": ccyan,
     "quadratic": cblue,
-    # "aero_lq": cpurple,
+    "aero_lq": cpurple,
+    "qelvira": cred,
     "aero_lq_vertex": cgreen,
-    # "obera_aero_lq_vertex": cred,
 }
 names_dict = {k: names_dict[k] for k in model_color.keys()}
 
@@ -110,9 +104,6 @@ def fit_model(subcell_reconstruction):
     # the other option is to pass to the block the name we wish to associate to the function.
     decorated_func.__name__ = subcell_reconstruction.__name__
     return decorated_func
-
-
-
 
 
 # ========== ========== Plots definitions ========== ========== #
@@ -199,24 +190,25 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "models",
         *map(fit_model, [
-            # upwind,
+            upwind,
             # elvira_oriented,
-            # elvira,
-            # aero_linear,
+            elvira,
+            aero_linear,
             # aero_linear_oriented,
             quadratic,
+            qelvira,
             # quadratic_oriented,
-            # aero_lq,
-            # aero_lq_vertex,
+            aero_lq,
+            aero_lq_vertex,
             # obera_aero_lq_vertex,
         ]),
         recalculate=False
     )
 
-    ntimes = 20
+    ntimes = 120
     lab.execute(
         data_manager,
-        num_cores=1,
+        num_cores=15,
         forget=False,
         save_on_iteration=15,
         refinement=[1],
@@ -232,11 +224,14 @@ if __name__ == "__main__":
             "HandVertex_1680x1680.jpg",
             "Polygon_1680x1680.jpg",
         ],
-        reconstruction_factor=[5],
+        # reconstruction_factor=[5],
+        reconstruction_factor=[1],
     )
 
     generic_plot(data_manager,
                  name="ErrorInTime",
+                 format=".pdf",
+                 path=config.subcell_paper_figures_path,
                  x="times", y="scheme_error", label="method", plot_by=["num_cells_per_dim", "image"],
                  # models=["elvira", "quadratic"],
                  times=lambda ntimes: np.arange(1, ntimes + 1),
@@ -252,6 +247,8 @@ if __name__ == "__main__":
 
     generic_plot(data_manager,
                  name="ReconstructionErrorInTime",
+                 format=".pdf",
+                 path=config.subcell_paper_figures_path,
                  x="times", y="scheme_error", label="method", plot_by=["num_cells_per_dim", "image"],
                  # models=["elvira", "quadratic"],
                  times=lambda ntimes: np.arange(ntimes), scheme_error=scheme_reconstruction_error,
