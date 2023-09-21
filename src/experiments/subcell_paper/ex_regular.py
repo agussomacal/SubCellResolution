@@ -11,7 +11,7 @@ from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import generic_plot
 from experiments.image_reconstruction import plot_reconstruction
-from experiments.subcell_paper.global_params import CCExtraWeight, EVALUATIONS, cpink, corange, cred, cgreen
+from experiments.subcell_paper.global_params import CCExtraWeight, EVALUATIONS, cpink, corange, cred, cgreen, runsinfo
 from experiments.subcell_paper.models2compare import elvira_cc, aero_q
 from experiments.subcell_paper.tools import get_reconstruction_error, calculate_averages_from_image, load_image, \
     get_reconstruction_error_in_interface, reconstruct
@@ -447,6 +447,9 @@ if __name__ == "__main__":
         "poly02h_elvira": cred,
         "poly02h_qelvira": cgreen
     }
+    runsinfo.append_info(
+        **{k.replace("_", "-"): v for k, v in names_dict.items()}
+    )
     generic_plot(data_manager,
                  path=config.subcell_paper_figures_path,
                  format=".pdf",
