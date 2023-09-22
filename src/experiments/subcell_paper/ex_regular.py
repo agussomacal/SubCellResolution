@@ -10,11 +10,11 @@ from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import generic_plot
-from experiments.image_reconstruction import plot_reconstruction
-from experiments.subcell_paper.global_params import CCExtraWeight, EVALUATIONS, cpink, corange, cred, cgreen
+from experiments.subcell_paper.global_params import CCExtraWeight, EVALUATIONS, cpink, corange, cred, cgreen, cblue
 from experiments.subcell_paper.models2compare import elvira_cc, aero_q
 from experiments.subcell_paper.tools import get_reconstruction_error, calculate_averages_from_image, load_image, \
     get_reconstruction_error_in_interface, reconstruct
+from experiments.subcell_paper.tools4binary_images import plot_reconstruction
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells_by_distance
@@ -142,7 +142,7 @@ regular_constant_same_region = CellCreatorPipeline(
     cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=REGULAR_CELL,
                           condition=operator.eq),  # only regular cells
     orientator=BaseOrientator(dimensionality=2),
-    stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=3),
+    stencil_creator=StencilCreatorSameRegionAdaptive(num_nodes_per_dim=1),
     cell_creator=PolynomialRegularCellCreator(degree=0)
 )
 
@@ -375,6 +375,23 @@ def poly02h_qelvira(smoothness_calculator):
         obera_iterations=0
     )
 
+@fit_model
+def poly02h_quadratic(smoothness_calculator):
+    return SubCellReconstruction(
+        name="All",
+        smoothness_calculator=smoothness_calculator,
+        reconstruction_error_measure=reconstruction_error_measure,
+        refinement=1,
+        cell_creators=
+        # regular cell with piecewise_constant
+        [
+            regular_constant_same_region,
+            aero_q(angle_threshold=ANGLE_THRESHOLD),
+            regular_deg2half_same_region
+        ],
+        obera_iterations=0
+    )
+
 
 if __name__ == "__main__":
     name = 'PieceWiseRegularQELVIRA'
@@ -385,7 +402,8 @@ if __name__ == "__main__":
             poly02half,
             poly0_elvira,
             poly02h_elvira,
-            poly02h_qelvira
+            poly02h_qelvira,
+            poly02h_quadratic
         ]
     else:
         models = [
@@ -423,29 +441,33 @@ if __name__ == "__main__":
         data_manager,
         num_cores=15,
         recalculate=False,
-        save_on_iteration=15,
+        save_on_iteration=None,
         forget=False,
         frequency=[0.5, 2],
+        # frequency=[2],
         amplitude=[1e-5, 1e-4, 1e-3, 1e-2, 5e-2, 1e-1, 2e-1, 5e-1],
+        # amplitude=[1e-4],
         num_cells_per_dim=[20, 40],
+        # num_cells_per_dim=[40],
         noise=[0],
         image=[
             "Ellipsoid_1680x1680.jpg",
         ],
         reconstruction_factor=[1],
-        # reconstruction_factor=[6],
     )
     names_dict = {
         "poly02half": "Quadratic",
         "poly0_elvira": "Constant + ELVIRA",
         "poly02h_elvira": "Constant + ELVIRA + Quadratic",
-        "poly02h_qelvira": "Constant + QELVIRA + Quadratic"
+        "poly02h_qelvira": "Constant + QELVIRA + Quadratic",
+        "poly02h_quadratic": "Constant + AERO-QUADRATIC + Quadratic"
     }
     color_dict = {
         "poly02half": cpink,
         "poly0_elvira": corange,
         "poly02h_elvira": cred,
-        "poly02h_qelvira": cgreen
+        "poly02h_qelvira": cgreen,
+        "poly02h_quadratic": cblue
     }
     generic_plot(data_manager,
                  path=config.subcell_paper_figures_path,
@@ -470,9 +492,34 @@ if __name__ == "__main__":
                  log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                  interface_error=get_reconstruction_error_in_interface,
                  method=lambda models: names_dict[models],
-                 # ylim=(1e-3, 1e0),
                  axes_by=[],
                  plot_by=["reconstruction_factor", "N", "frequency", "perturbation"])
+
+    plot_reconstruction(
+        data_manager,
+        path=config.subcell_paper_figures_path,
+        format=".pdf",
+        name="Reconstruction",
+        folder='reconstruction',
+        axes_by=[],
+        plot_by=["amplitude", 'models', 'image', "num_cells_per_dim", "reconstruction_factor", "frequency",
+                 "perturbation"],
+        models=["poly02h_qelvira"],
+        frequency=[2],
+        num_cells_per_dim=[20],
+        # folder_by=['image', "num_cells_per_dim", "reconstruction_factor", "frequency", "perturbation"],
+        axes_xy_proportions=(15, 15),
+        difference=False,
+        plot_curve=True,
+        plot_curve_winner=False,
+        plot_vh_classification=False,
+        plot_singular_cells=False,
+        plot_original_image=True,
+        numbers_on=True,
+        plot_again=True,
+        num_cores=15,
+        draw_cells=False
+    )
 
     plot_reconstruction(
         data_manager,

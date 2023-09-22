@@ -1,5 +1,6 @@
 import time
 from functools import partial
+from itertools import chain
 
 import numpy as np
 import seaborn as sns
@@ -11,8 +12,8 @@ import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
-from PerplexityLab.visualization import generic_plot
-from experiments.LearningMethods import flatter, sktorch_20x20_relu, skkeras_20x20_relu
+from PerplexityLab.visualization import generic_plot, make_data_frames
+from experiments.LearningMethods import flatter
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, OBERA_ITERS, \
     CCExtraWeight, runsinfo, cblue, corange, cgreen, cred, cpurple, cbrown, cpink, cgray, cyellow, ccyan
 from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
@@ -27,7 +28,7 @@ from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurv
     ValuesLineConsistentCurveCellCreator, ValuesCircleCellCreator
 from lib.CellCreators.RegularCellCreator import MirrorCellCreator
 from lib.CellIterators import iterate_all
-from lib.CellOrientators import BaseOrientator, OrientPredefined, OrientByGradient
+from lib.CellOrientators import BaseOrientator, OrientByGradient
 from lib.Curves.AverageCurves import CurveAveragePolynomial
 from lib.Curves.VanderCurves import CurveVandermondePolynomial
 from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import CURVE_PROBLEM
@@ -54,17 +55,18 @@ nnlm = LearningMethodManager(
                                 learning_rate="adaptive", solver="lbfgs"))
         ]
     ),
-    refit=True, n2use=-1,
-    training_noise=1e-5, train_percentage=0.9
-)
-
-nnlmkeras = LearningMethodManager(
-    dataset_manager=dataset_manager_3_8pi,
-    type_of_problem=CURVE_PROBLEM,
-    trainable_model=skkeras_20x20_relu,
     refit=False, n2use=-1,
     training_noise=1e-5, train_percentage=0.9
 )
+
+
+# nnlmkeras = LearningMethodManager(
+#     dataset_manager=dataset_manager_3_8pi,
+#     type_of_problem=CURVE_PROBLEM,
+#     trainable_model=skkeras_20x20_relu,
+#     refit=False, n2use=-1,
+#     training_noise=1e-5, train_percentage=0.9
+# )
 
 
 # nnlmtorch = LearningMethodManager(
@@ -417,8 +419,8 @@ if __name__ == "__main__":
     }
     rateonly = ["piecewise_constant", "quadratic_aero", "linear_aero_w", "elvira", "elvira_w_oriented", "linear_obera"]
 
-    error = lambda reconstruction, image4error: (
-        np.sqrt(np.mean(np.abs(reconstruction - image4error).ravel() ** 2))) if reconstruction is not None else np.nan
+    error = lambda reconstruction, image4error: np.mean(
+        np.abs(reconstruction - image4error).ravel()) if reconstruction is not None else np.nan
 
 
     def plot_convergence(data, x, y, hue, ax, threshold=25, rateonly=rateonly, *args, **kwargs):
@@ -445,8 +447,19 @@ if __name__ == "__main__":
         # ax.plot(n, 1 / n ** 2, ":", c=cgray, linewidth=2, alpha=0.5, label=r"$O(h^{-2})$")
         # ax.plot(n, 1 / n ** 3, ":", c=cgray, linewidth=2, alpha=0.5, label=r"$O(h^{-3})$")
 
+    df = next(make_data_frames(
+        data_manager,
+        var_names=["models", "time"],
+        group_by=[],
+        # models=models2plot,
+        time=curve_cells_fitting_times,
+    ))[1].groupby("models").apply(lambda x: np.nanmean(list(chain(*x["time"].values.tolist()))))
+    runsinfo.append_info(
+        **{k.replace("_", "-")+"-time": np.round(v, decimals=4) for k, v in df.items()}
+    )
 
     for group, models2plot in accepted_models.items():
+
         generic_plot(data_manager,
                      name=f"TimeComplexityPerCellBar_{group}",
                      path=config.subcell_paper_figures_path,

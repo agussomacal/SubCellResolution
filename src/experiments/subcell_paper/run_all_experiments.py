@@ -5,7 +5,8 @@ from time import time
 os.chdir("./../../")
 print(os.getcwd())
 dtime = dict()
-for experiment_name in ["ex_aero", "ex_binary_images", "ex_refinement", "ex_regular", "ex_scheme"]:
+# "ex_aero", "ex_binary_images", "ex_refinement", "ex_regular",
+for experiment_name in ["ex_scheme"]:
     try:
         print("========= ========= ========= ========= =========")
         print(f"         Running {experiment_name}              ")

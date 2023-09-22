@@ -8,10 +8,9 @@ from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import generic_plot
-from experiments.subcell_paper.ex_scheme import model_color, names_dict
+from experiments.subcell_paper.ex_scheme import model_color, names_dict, scheme_error, scheme_reconstruction_error
 from experiments.subcell_paper.global_params import EVALUATIONS
-from experiments.subcell_paper.models2compare import upwind, elvira, aero_linear, quadratic, aero_lq_vertex, \
-    scheme_error, scheme_reconstruction_error
+from experiments.subcell_paper.models2compare import upwind, elvira, aero_linear, quadratic, aero_qelvira_vertex
 from experiments.subcell_paper.tools import calculate_averages_from_image, load_image, \
     reconstruct
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
@@ -105,7 +104,7 @@ if __name__ == "__main__":
             elvira,
             aero_linear,
             quadratic,
-            aero_lq_vertex
+            aero_qelvira_vertex
         ]),
         recalculate=False
     )

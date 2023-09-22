@@ -9,7 +9,7 @@ from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import perplex_plot, one_line_iterator, generic_plot
 from experiments.subcell_paper.global_params import EVALUATIONS
-from experiments.subcell_paper.models2compare import aero_linear, aero_lq_vertex, elvira, quadratic, aero_lq, \
+from experiments.subcell_paper.models2compare import aero_linear, aero_qelvira_vertex, elvira, quadratic, aero_lq, \
     winner_color_dict
 from experiments.VizReconstructionUtils import plot_cells, plot_cells_identity, plot_cells_vh_classification_core, \
     plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders
@@ -71,7 +71,7 @@ if __name__ == "__main__":
             quadratic,
             # # quadratic_oriented,
             # # aero_lq,
-            aero_lq_vertex,
+            aero_qelvira_vertex,
             # obera_aero_lq_vertex,
         ]),
         recalculate=False

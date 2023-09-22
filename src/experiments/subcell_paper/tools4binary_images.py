@@ -44,12 +44,10 @@ def fit_model(sub_cell_model):
 
 @perplex_plot()
 @one_line_iterator
-def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction, alpha=0.5,
-                        plot_original_image=True,
+def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction, alpha=0.5, plot_original_image=True,
                         difference=False, plot_curve=True, plot_curve_winner=False, plot_vh_classification=True,
                         plot_singular_cells=True, cmap="magma", cmapoi="Greys_r", alphaio=0.5, trim=((0, 0), (0, 0)),
-                        numbers_on=True,
-                        winner_color_dict=None, draw_cells=True):
+                        numbers_on=True, winner_color_dict=None, draw_cells=True):
     model_resolution = np.array(model.resolution)
     image = load_image(image)
 

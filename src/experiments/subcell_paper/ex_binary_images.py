@@ -1,7 +1,7 @@
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
-from experiments.subcell_paper.models2compare import aero_linear, aero_lq_vertex, elvira, quadratic, winner_color_dict
+from experiments.subcell_paper.models2compare import aero_linear, aero_qelvira_vertex, elvira, quadratic, winner_color_dict
 from experiments.subcell_paper.tools4binary_images import fit_model, plot_reconstruction
 
 if __name__ == "__main__":
@@ -20,7 +20,7 @@ if __name__ == "__main__":
             elvira,
             aero_linear,
             quadratic,
-            aero_lq_vertex,
+            aero_qelvira_vertex,
         ]),
         recalculate=False
     )
@@ -52,7 +52,8 @@ if __name__ == "__main__":
         folder='Reconstruction',
         axes_by=[],
         plot_by=['image', 'models', 'num_cells_per_dim'],
-        models=["aero_lq_vertex"],
+        models=["aero_qelvira_vertex"],
+        # models=["aero_lq_vertex"],
         image=[
             "ShapesVertex_1680x1680.jpg",
             "HandVertex_1680x1680.jpg",
@@ -73,6 +74,7 @@ if __name__ == "__main__":
         # alphaio=0.7,
         # alpha=0,
         winner_color_dict=winner_color_dict,
+        draw_cells=False
     )
 
     plot_reconstruction(

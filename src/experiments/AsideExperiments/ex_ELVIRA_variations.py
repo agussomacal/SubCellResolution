@@ -9,11 +9,10 @@ from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import generic_plot
 from experiments.subcell_paper.global_params import EVALUATIONS
-from experiments.subcell_paper.models2compare import aero_linear, aero_lq_vertex, quadratic, winner_color_dict, \
-    reconstruction_error_measure_default, piecewise01, elvira_cc
+from experiments.subcell_paper.models2compare import reconstruction_error_measure_default, piecewise01, elvira_cc
 from experiments.subcell_paper.tools import load_image, calculate_averages_from_image, reconstruct, \
     get_reconstruction_error
-from experiments.subcell_paper.tools4binary_images import fit_model, plot_reconstruction
+from experiments.subcell_paper.tools4binary_images import plot_reconstruction
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.SmoothnessCalculators import naive_piece_wise
 from lib.SubCellReconstruction import SubCellReconstruction

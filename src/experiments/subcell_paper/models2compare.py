@@ -1,11 +1,8 @@
 import operator
 from functools import partial
 
-import numpy as np
-
 from experiments.subcell_paper.global_params import CCExtraWeight, CurveAverageQuadraticCC, cgray, \
     cblue, cgreen, cred, corange
-from experiments.subcell_paper.tools import get_reconstruction_error
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells_by_minmax
@@ -20,13 +17,6 @@ from lib.SmoothnessCalculators import naive_piece_wise
 from lib.StencilCreators import StencilCreatorFixedShape, StencilCreatorAdaptive
 from lib.SubCellReconstruction import ReconstructionErrorMeasure, keep_cells_on_condition, curve_condition, \
     ReconstructionErrorMeasureDefaultStencil, CellCreatorPipeline, SubCellReconstruction
-
-# ========== ========== Error definitions ========== ========== #
-scheme_error = lambda image, true_solution, solution: np.mean(
-    np.abs((np.array(solution[1:]) - np.array(true_solution[1:]))), axis=(1, 2))
-scheme_reconstruction_error = lambda true_reconstruction, reconstruction, reconstruction_factor: np.array([
-    get_reconstruction_error(tr_i, reconstruction=r_i, reconstruction_factor=reconstruction_factor)
-    for r_i, tr_i in zip(reconstruction, true_reconstruction)])
 
 # ========== ========== Reconstruction error ========== ========== #
 reconstruction_error_measure_default = ReconstructionErrorMeasure(
@@ -250,7 +240,7 @@ def aero_lq(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshol
     )
 
 
-def aero_lq_vertex(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=0, *args, **kwargs):
+def aero_qelvira_vertex(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=0, *args, **kwargs):
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=smoothness_calculator,
