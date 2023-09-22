@@ -10,7 +10,8 @@ from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import generic_plot
-from experiments.subcell_paper.global_params import CCExtraWeight, EVALUATIONS, cpink, corange, cred, cgreen, cblue
+from experiments.subcell_paper.global_params import CCExtraWeight, EVALUATIONS, cpink, corange, cred, cgreen, cblue, \
+    runsinfo
 from experiments.subcell_paper.models2compare import elvira_cc, aero_q
 from experiments.subcell_paper.tools import get_reconstruction_error, calculate_averages_from_image, load_image, \
     get_reconstruction_error_in_interface, reconstruct
