@@ -469,6 +469,9 @@ if __name__ == "__main__":
         "poly02h_qelvira": cgreen,
         "poly02h_quadratic": cblue
     }
+    runsinfo.append_info(
+        **{k.replace("_", "-"): v for k, v in names_dict.items()}
+    )
     generic_plot(data_manager,
                  path=config.subcell_paper_figures_path,
                  format=".pdf",
@@ -492,6 +495,7 @@ if __name__ == "__main__":
                  log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                  interface_error=get_reconstruction_error_in_interface,
                  method=lambda models: names_dict[models],
+                 # ylim=(1e-3, 1e0),
                  axes_by=[],
                  plot_by=["reconstruction_factor", "N", "frequency", "perturbation"])
 
