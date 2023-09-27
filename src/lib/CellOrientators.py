@@ -7,7 +7,10 @@ from lib.StencilCreators import get_fixed_stencil_values
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 
 # https://pyimagesearch.com/2021/05/12/image-gradients-with-opencv-sobel-and-scharr/
-
+SobelKernel = np.array(
+    [[1, 2, 1],
+     [0, 0, 0],
+     [-1, -2, -1]])
 ScharrKernel = np.array(
     [[3, 10, 3],
      [0, 0, 0],
@@ -33,7 +36,9 @@ def approximate_gradient_by(average_values, method="optim", normalize=False):
     """
     assert np.shape(average_values) in [(3, 3), (5, 5)], "Gradient approximation only working for 3x3 stencils."
     if np.shape(average_values) == (3, 3):
-        if method == "scharr":
+        if method == "sobel":
+            gx = SobelKernel
+        elif method == "scharr":
             gx = ScharrKernel
         elif method == "optim":
             gx = OptimSobel3x3

@@ -101,7 +101,30 @@ if __name__ == "__main__":
         data_manager,
         num_cores=15,
         forget=False,
-        save_on_iteration=15,
+        save_on_iteration=None,
+        num_cells_per_dim=[10, 15, 20, 28, 30, 42],  # 60
+        image=[
+            # "yoda.jpg",
+            # "DarthVader.jpeg",
+            "Ellipsoid_1680x1680.jpg",
+            "ShapesVertex_1680x1680.jpg",
+            "HandVertex_1680x1680.jpg",
+            "Polygon_1680x1680.jpg",
+        ],
+        angle_threshold=[
+            30,
+            45
+        ],
+        method=["sobel"],
+        kernel_size=[
+            (3, 3),
+        ]
+    )
+    lab.execute(
+        data_manager,
+        num_cores=15,
+        forget=False,
+        save_on_iteration=None,
         num_cells_per_dim=[10, 15, 20, 28, 30, 42],  # 60
         image=[
             # "yoda.jpg",
@@ -125,10 +148,10 @@ if __name__ == "__main__":
     generic_plot(
         data_manager,
         x="num_cells_per_dim", y="prop_mixed_cells", label="orientator",
-        orientator=lambda kernel_size, angle_threshold: f"Grad: {kernel_size} - {angle_threshold}º",
+        orientator=lambda kernel_size, angle_threshold, method: f"{method}: {kernel_size} - {angle_threshold}º",
         prop_mixed_cells=lambda orientations, num_singular_cells: list(orientations.values()).count(
             3) / num_singular_cells,
         axes_by=["image"]
     )
-    plot_orientation(data_manager, axes_by=["angle_threshold", "kernel_size"],
+    plot_orientation(data_manager, axes_by=["angle_threshold", "kernel_size", "method"],
                      plot_by=["image", "num_cells_per_dim"])
