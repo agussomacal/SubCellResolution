@@ -17,7 +17,7 @@ OptimSobel3x3 = np.array([
     [0, 0, 0],
     [-1, -3.5887, -1]
 ])
-OptimSobel5x5 = np.array([
+OptimSobel5x5 = 10000 * np.array([
     [0.0007, 0.0052, 0.0370, 0.0052, 0.0007],
     [0.0037, 0.1187, 0.2589, 0.1187, 0.0037],
     [0, 0, 0, 0, 0],
@@ -78,7 +78,7 @@ class OrientByGradient(BaseOrientator):
         super().__init__(dimensionality)
         self.kernel_size = kernel_size
         self.method = method
-        self.angle_threshold = angle_threshold*np.pi/180
+        self.angle_threshold = angle_threshold * np.pi / 180
 
     def get_independent_axis(self, coords: CellCoords, average_values: np.ndarray, indexer: ArrayIndexerNd) -> List[
         int]:

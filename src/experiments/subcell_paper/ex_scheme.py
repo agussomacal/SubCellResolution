@@ -270,7 +270,7 @@ if __name__ == "__main__":
                  path=config.subcell_paper_figures_path,
                  x="times", y="scheme_error", label="method", plot_by=["num_cells_per_dim", "image"],
                  # models=["elvira", "quadratic"],
-                 times=lambda ntimes: np.arange(0, ntimes+1, SAVE_EACH),
+                 times=lambda ntimes: np.arange(0, ntimes, SAVE_EACH),
                  # times=lambda ntimes: new_times,
                  scheme_error=scheme_reconstruction_error,
                  plot_func=NamedPartial(
@@ -305,7 +305,7 @@ if __name__ == "__main__":
                     method=lambda models: names_dict[models],
                     numbers_on=True, error=True)
 
-    for i in range(0, ntimes + 1, SAVE_EACH):
+    for i in range(0, ntimes, SAVE_EACH):
         plot_reconstruction_time_i(
             data_manager,
             i=i // SAVE_EACH,
