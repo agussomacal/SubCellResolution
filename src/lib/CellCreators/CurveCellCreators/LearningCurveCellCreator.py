@@ -1,21 +1,22 @@
-from typing import Generator, List, Tuple, Dict, Callable
+from typing import Generator, Tuple, Dict, Callable
 
 import numpy as np
 
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords, ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import CellBase
-from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CurveCellCreatorBase, CellCurveBase, \
-    prepare_stencil4one_dimensionalization, get_values_up_down
-from lib.CellOrientators import BaseOrientator
+from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CurveCellCreatorBase, \
+    prepare_stencil4one_dimensionalization, get_values_up_down_regcell_eval
 from lib.Curves.Curves import Curve
 from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import CURVE_PROBLEM
 from lib.DataManagers.LearningMethodManager import LearningMethodManager
-from lib.StencilCreators import StencilCreatorFixedShape, Stencil
+from lib.StencilCreators import Stencil
 
 
 class LearningCurveCellCreator(CurveCellCreatorBase):
-    def __init__(self, learning_manager: LearningMethodManager, regular_opposite_cell_searcher: Callable):
-        super().__init__(regular_opposite_cell_searcher=regular_opposite_cell_searcher)
+    def __init__(self, learning_manager: LearningMethodManager, regular_opposite_cell_searcher: Callable,
+                 updown_value_getter: Callable = get_values_up_down_regcell_eval):
+        super().__init__(regular_opposite_cell_searcher=regular_opposite_cell_searcher,
+                         updown_value_getter=updown_value_getter)
         assert isinstance(learning_manager, LearningMethodManager), \
             "learning method should be a FluxLearning method"
         assert learning_manager.type_of_problem == CURVE_PROBLEM, "Should be {}".format(CURVE_PROBLEM)
@@ -24,7 +25,7 @@ class LearningCurveCellCreator(CurveCellCreatorBase):
     def create_curves(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
                       stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
-        value_up, value_down = get_values_up_down(coords, regular_opposite_cells)
+        value_up, value_down = self.updown_value_getter(coords, regular_opposite_cells)
         stencil_values = prepare_stencil4one_dimensionalization(independent_axis, value_up, value_down, stencil,
                                                                 smoothness_index, indexer)
         curve_params = self.learning_manager.predict_curve_params(kernel=stencil_values)

@@ -2,13 +2,12 @@ from typing import Dict, Tuple, Callable
 
 import numpy as np
 
-from lib.AuxiliaryStructures.Constants import NEIGHBOURHOOD_8_MANHATTAN, REGULAR_CELL, CURVE_CELL
+from lib.AuxiliaryStructures.Constants import NEIGHBOURHOOD_8_MANHATTAN, REGULAR_CELL
+from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.CellCreators.CellCreatorBase import CellBase, REGULAR_CELL_TYPE
-from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import get_values_up_down
 from lib.CellOrientators import approximate_gradient_by
 from lib.StencilCreators import get_fixed_stencil_values, StencilCreatorFixedShape
-from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 
 
 def get_opposite_regular_cells_by_stencil(coords: CellCoords, cells: Dict[Tuple[int], CellBase],

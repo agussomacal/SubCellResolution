@@ -1,5 +1,5 @@
 import os
-from typing import List, Generator, Union, Tuple, Dict
+from typing import Generator, Tuple, Dict
 
 import numpy as np
 
@@ -7,7 +7,7 @@ from PerplexityLab.miscellaneous import timeit
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords, ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import CellBase
 from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CurveCellCreatorBase, \
-    prepare_stencil4one_dimensionalization, get_values_up_down
+    prepare_stencil4one_dimensionalization
 from lib.Curves.CurveVertex import CurveVertexPolynomial
 from lib.Curves.Curves import Curve
 from lib.StencilCreators import Stencil
@@ -98,7 +98,7 @@ class LinearVertexCellCurveCellCreator(CurveCellCreatorBase):
     def create_curves(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
                       stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
-        value_up, value_down = get_values_up_down(coords, regular_opposite_cells)
+        value_up, value_down = self.updown_value_getter(coords, regular_opposite_cells)
         stencil_values = prepare_stencil4one_dimensionalization(independent_axis, value_up, value_down, stencil,
                                                                 smoothness_index, indexer)
         stencil_values = stencil_values.sum(axis=1)

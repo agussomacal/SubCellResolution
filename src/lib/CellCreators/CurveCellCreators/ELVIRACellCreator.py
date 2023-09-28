@@ -3,21 +3,21 @@ from typing import Dict, Generator, Tuple
 import numpy as np
 from numpy.polynomial import Polynomial
 
+from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.CellCreators.CellCreatorBase import CellBase
-from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CurveCellCreatorBase, get_values_up_down, \
+from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CurveCellCreatorBase, \
     prepare_stencil4one_dimensionalization
-from lib.Curves.Curves import Curve
 from lib.Curves.CurvePolynomial import CurvePolynomial
+from lib.Curves.Curves import Curve
 from lib.StencilCreators import Stencil
-from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
 
 
 class ELVIRACurveCellCreator(CurveCellCreatorBase):
     def create_curves(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
                       stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
-        value_up, value_down = get_values_up_down(coords, regular_opposite_cells)
+        value_up, value_down = self.updown_value_getter(coords, regular_opposite_cells)
         stencil_values = prepare_stencil4one_dimensionalization(independent_axis, value_up, value_down, stencil,
                                                                 smoothness_index, indexer)
         stencil_values = stencil_values.sum(axis=1)

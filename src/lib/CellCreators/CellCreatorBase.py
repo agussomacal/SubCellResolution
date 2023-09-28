@@ -44,6 +44,11 @@ class CellBase:
                 zip(*get_rectangles_and_coords_to_calculate_flux(np.array(self.coords.coords), velocity))}
 
     def integrate_rectangle(self, rectangle) -> float:
+        """
+
+        :param rectangle: the opposite vertices, ex: np.array([coords, coords + 1])
+        :return:
+        """
         raise Exception("Not implemented.")
 
     def evaluate(self, query_points: np.ndarray) -> np.ndarray:

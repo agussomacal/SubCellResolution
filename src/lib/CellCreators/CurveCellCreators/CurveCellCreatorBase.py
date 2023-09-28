@@ -16,41 +16,31 @@ def get_x_points(stencil, independent_axis):
                            np.max(stencil.coords, axis=0)[independent_axis] + 1)
 
 
-def map2unidimensional(value_up, value_down, independent_axis: int, stencil: Stencil) -> [np.ndarray, np.ndarray]:
-    dependent_axis = 1 - independent_axis
-    # if the values are not 0 or 1
-    min_value = np.min((value_up, value_down))
-    shape = np.max(stencil.coords, axis=0) - np.min(stencil.coords, axis=0) + 1
-    stencil_values = stencil.values.reshape(shape).sum(axis=dependent_axis) - shape[dependent_axis] * min_value
-
-    # which side the integral has to be done, is 0 below the curve or is 1?
-    jump = value_up - value_down
-    if jump > 0:
-        stencil_values = shape[dependent_axis] * jump - stencil_values
-    stencil_values += np.min(stencil.coords, axis=0)[dependent_axis]
-    x_points = get_x_points(stencil, independent_axis)
-    return x_points, stencil_values
-
-
-def get_values_up_down(coords, regular_opposite_cells):
+def get_values_up_down_eval(coords, regular_opposite_cells):
     value_up = regular_opposite_cells[1].evaluate(coords.coords + 0.5)
     value_down = regular_opposite_cells[0].evaluate(coords.coords + 0.5)
     return value_up, value_down
 
 
-# def get_coords_up_down(coords, regular_opposite_cells: Tuple[CellBase, CellBase], stencil, smoothness_index):
-#     """Regular opposite cell may not be in stencil. """
-#     cells_on_each_side = []
-#     for cells2visit in [[regular_opposite_cells[0].coords], [regular_opposite_cells[1].coords]]:
-#         cells_on_each_side.append([])
-#         while len(cells2visit) > 0:
-#             next_cell = cells2visit.pop()
-#             cells_on_each_side.append(next_cell.tuple)
-#
-#
-#     value_up = regular_opposite_cells[1].evaluate(coords.coords + 0.5)
-#     value_down = regular_opposite_cells[0].evaluate(coords.coords + 0.5)
-#     return value_up, value_down
+def get_values_up_down_avg(coords, regular_opposite_cells: Tuple[CellBase, CellBase]):
+    rectangle = np.array([coords, coords + 1])
+    value_up = regular_opposite_cells[1].integrate_rectangle(rectangle)
+    value_down = regular_opposite_cells[0].integrate_rectangle(rectangle)
+    return value_up, value_down
+
+
+def get_values_up_down_regcell_eval(coords, regular_opposite_cells):
+    value_up = regular_opposite_cells[1].evaluate(regular_opposite_cells[1].coords.coords + 0.5)
+    value_down = regular_opposite_cells[0].evaluate(regular_opposite_cells[0].coords.coords + 0.5)
+    return value_up, value_down
+
+
+def get_values_up_down_regcell_avg(coords, regular_opposite_cells: Tuple[CellBase, CellBase]):
+    value_up = regular_opposite_cells[1].integrate_rectangle(
+        np.array([regular_opposite_cells[1].coords.coords, regular_opposite_cells[1].coords.coords + 1]))
+    value_down = regular_opposite_cells[0].integrate_rectangle(
+        np.array([regular_opposite_cells[0].coords.coords, regular_opposite_cells[0].coords.coords + 1]))
+    return value_up, value_down
 
 
 def prepare_stencil4one_dimensionalization(independent_axis: int, value_up: Union[int, float],
@@ -65,8 +55,10 @@ def prepare_stencil4one_dimensionalization(independent_axis: int, value_up: Unio
     # assumes that smoothness comes with 1 for
     stencil_smoothness = np.reshape([smoothness_index[indexer[coord]] for coord in stencil.coords], ks)
     stencil_smoothness = np.transpose(stencil_smoothness, [independent_axis, 1 - independent_axis])
-    stencil_values[(stencil_values < (value_up+value_down)/2) & ((1-stencil_smoothness) == 1)] = min(value_up, value_down)
-    stencil_values[(stencil_values > (value_up+value_down)/2) & ((1-stencil_smoothness) == 1)] = max(value_up, value_down)
+    stencil_values[(stencil_values < (value_up + value_down) / 2) & ((1 - stencil_smoothness) == 1)] = min(value_up,
+                                                                                                           value_down)
+    stencil_values[(stencil_values > (value_up + value_down) / 2) & ((1 - stencil_smoothness) == 1)] = max(value_up,
+                                                                                                           value_down)
 
     # if the values are not 0 or 1
     stencil_values = stencil_values - min(value_up, value_down)
@@ -130,10 +122,6 @@ class CellCurveBase(CellBase):
     def evaluate(self, query_points: np.ndarray) -> np.ndarray:
         return self.curve.evaluate(x=query_points[:, self.independent_axis],
                                    y=query_points[:, self.dependent_axis])
-        # return np.array([self.regular_opposite_cells[
-        #                      (get_zone(self.curve, point, self.independent_axis,
-        #                                self.dependent_axis) - self.zone_roc0) % 2].evaluate(point)
-        #                  for point in query_points])
 
 
 # ====================================================== #
@@ -143,8 +131,10 @@ CurveAlternative = namedtuple("CurveAlternative", ["cell", "stencil"])
 
 
 class CurveCellCreatorBase(CellCreatorBase):
-    def __init__(self, regular_opposite_cell_searcher: Callable):
+    def __init__(self, regular_opposite_cell_searcher: Callable,
+                 updown_value_getter: Callable = get_values_up_down_regcell_eval):
         self.regular_opposite_cell_searcher = regular_opposite_cell_searcher
+        self.updown_value_getter = updown_value_getter
 
     def create_cells(self, average_values: np.ndarray, indexer: ArrayIndexerNd, cells: Dict[str, CellBase],
                      coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
