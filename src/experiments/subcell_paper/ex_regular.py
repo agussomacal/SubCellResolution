@@ -545,7 +545,7 @@ if __name__ == "__main__":
         axes_by=[],
         plot_by=["amplitude", 'models', 'image', "num_cells_per_dim", "reconstruction_factor", "frequency",
                  "perturbation"],
-        models=["poly02h_qelvira"],
+        models=["poly2h_qelvira", "poly2h_quadratic"],
         frequency=[2],
         num_cells_per_dim=[20],
         # folder_by=['image', "num_cells_per_dim", "reconstruction_factor", "frequency", "perturbation"],
