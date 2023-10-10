@@ -12,7 +12,7 @@ import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
-from PerplexityLab.visualization import generic_plot, make_data_frames
+from PerplexityLab.visualization import generic_plot, make_data_frames, perplex_plot
 from experiments.LearningMethods import flatter
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, OBERA_ITERS, \
     CCExtraWeight, runsinfo, cblue, corange, cgreen, cred, cpurple, cbrown, cpink, cgray, cyellow, ccyan
@@ -355,12 +355,12 @@ if __name__ == "__main__":
         "elvira_w_oriented": "ELVIRA-W Oriented",
         "linear_obera": "OBERA Linear",
         "linear_obera_w": "OBERA-W Linear",
-        "linear_aero": "AERO Linear",
-        "linear_aero_w": "AERO-W Linear",
-        "linear_aero_consistent": "AERO Linear Column Consistent",
+        "linear_aero": "AEROS Linear",
+        "linear_aero_w": "AEROS-W Linear",
+        "linear_aero_consistent": "AEROS Linear Column Consistent",
         "quadratic_obera_non_adaptive": "OBERA Quadratic 3x3",
         "quadratic_obera": "OBERA Quadratic",
-        "quadratic_aero": "AERO Quadratic",
+        "quadratic_aero": "AEROS Quadratic",
         "obera_circle": "OBERA Circle",
         "obera_circle_vander": "OBERA Circle ReParam",
         # "elvira_go100_ref2",
@@ -417,17 +417,40 @@ if __name__ == "__main__":
             "obera_circle_vander"
         ]
     }
-    rateonly = ["piecewise_constant", "quadratic_aero", "linear_aero_w", "elvira", "elvira_w_oriented", "linear_obera"]
+    rateonly = list(names_dict.keys())[:-2]
 
-    error = lambda reconstruction, image4error: np.mean(
-        np.abs(reconstruction - image4error).ravel()) if reconstruction is not None else np.nan
+    error = lambda reconstruction, image4error: np.mean(np.abs(reconstruction - image4error).ravel()) \
+        if reconstruction is not None else np.nan
 
 
-    def plot_convergence(data, x, y, hue, ax, threshold=25, rateonly=rateonly, *args, **kwargs):
+    @perplex_plot(group_by="models")
+    def plot_h_convergence(fig, ax, num_cells_per_dim, reconstruction, image4error, models,
+                           threshold=1.0 / np.sqrt(1000), rateonly=None, *args, **kwargs):
+        er = np.array(list(map(lambda x: error(*x), zip(reconstruction, image4error))))
+        name = f"{names_dict[str(models)]}"
+        h = 1.0 / np.array(num_cells_per_dim)
+        if rateonly is None or models in rateonly:
+            valid_ix = h < threshold
+            rate, origin = np.ravel(np.linalg.lstsq(
+                np.vstack([np.log(h[valid_ix]), np.ones(np.sum(valid_ix))]).T,
+                np.log(er[valid_ix]).reshape((-1, 1)), rcond=None)[0])
+            # ax.plot(df[x].values[valid_ix], np.sqrt(df[x].values[valid_ix]) ** rate * np.exp(origin), "-",
+            #         c=model_color[method], linewidth=3, alpha=0.5)
+            name = name + f": O({abs(rate):.1f})"
+        sns.lineplot(x=h, y=er, color=model_color[models], label=name, ax=ax,
+                     marker="o", linestyle="--", alpha=1)
+        # ax.plot(df[x], df[y], marker=".", linestyle=":", c=model_color[method], label=name)
+        ax.set_xlabel(fr"$h$")
+        ax.set_ylabel(r"$||u-\tilde u ||_{L^1}$")
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+
+
+    def plot_convergence(data, x, y, hue, ax, threshold=np.sqrt(1000), rateonly=None, *args, **kwargs):
         # sns.scatterplot(data=data, x=x, y=y, hue=label, ax=ax)
         for method, df in data.groupby(hue):
             name = f"{names_dict[str(method)]}"
-            if method in rateonly:
+            if rateonly is None or method in rateonly:
                 hinv = np.sqrt(df[x].values)
                 valid_ix = hinv > threshold
                 rate, origin = np.ravel(np.linalg.lstsq(
@@ -440,13 +463,27 @@ if __name__ == "__main__":
                          marker="o", linestyle="--", alpha=1)
             # ax.plot(df[x], df[y], marker=".", linestyle=":", c=model_color[method], label=name)
         ax.set_xlabel(fr"${{{x}}}$")
-        ax.set_ylabel(r"$||u-\tilde u ||_{L_2}$")
+        ax.set_ylabel(r"$||u-\tilde u ||_{L^1}$")
 
         # n = np.sort(np.unique(data[x]))
         # ax.plot(n, 1 / n, ":", c=cgray, linewidth=2, alpha=0.5, label=r"$O(h^{-1})$")
         # ax.plot(n, 1 / n ** 2, ":", c=cgray, linewidth=2, alpha=0.5, label=r"$O(h^{-2})$")
         # ax.plot(n, 1 / n ** 3, ":", c=cgray, linewidth=2, alpha=0.5, label=r"$O(h^{-3})$")
 
+
+    def myround(n):
+        # https://stackoverflow.com/questions/32812255/round-floats-down-in-python-to-keep-one-non-zero-decimal-only
+        if n == 0:
+            return 0
+        sgn = -1 if n < 0 else 1
+        scale = int(-np.floor(np.log10(abs(n))))
+        if scale <= 0:
+            scale = 1
+        factor = 10 ** scale
+        return sgn * np.floor(abs(n) * factor) / factor
+
+
+    # times to fit cell
     df = next(make_data_frames(
         data_manager,
         var_names=["models", "time"],
@@ -455,11 +492,55 @@ if __name__ == "__main__":
         time=curve_cells_fitting_times,
     ))[1].groupby("models").apply(lambda x: np.nanmean(list(chain(*x["time"].values.tolist()))))
     runsinfo.append_info(
-        **{k.replace("_", "-")+"-time": np.round(v, decimals=4) for k, v in df.items()}
+        **{k.replace("_", "-") + "-time": np.round(v, decimals=4) for k, v in df.items()}
+    )
+
+    # times to fit cell std
+    dfstd = next(make_data_frames(
+        data_manager,
+        var_names=["models", "time"],
+        group_by=[],
+        # models=models2plot,
+        time=curve_cells_fitting_times,
+    ))[1].groupby("models").apply(lambda x: np.nanstd(list(chain(*x["time"].values.tolist()))))
+    runsinfo.append_info(
+        **{"std-" + k.replace("_", "-") + "-time": np.round(v, decimals=4) for k, v in dfstd.items()}
+    )
+
+    dfstd = next(make_data_frames(
+        data_manager,
+        var_names=["models", "time"],
+        group_by=[],
+        # models=models2plot,
+        time=curve_cells_fitting_times,
+    ))[1].groupby("models").apply(lambda x: np.nanquantile(list(chain(*x["time"].values.tolist())), 0.05))
+    runsinfo.append_info(
+        **{"qlow-" + k.replace("_", "-") + "-time": np.round(v, decimals=4) for k, v in dfstd.items()}
+    )
+
+    dfstd = next(make_data_frames(
+        data_manager,
+        var_names=["models", "time"],
+        group_by=[],
+        # models=models2plot,
+        time=curve_cells_fitting_times,
+    ))[1].groupby("models").apply(lambda x: np.nanquantile(list(chain(*x["time"].values.tolist())), 0.95))
+    runsinfo.append_info(
+        **{"qhigh-" + k.replace("_", "-") + "-time": np.round(v, decimals=4) for k, v in dfstd.items()}
+    )
+
+    dfstd = next(make_data_frames(
+        data_manager,
+        var_names=["models", "time"],
+        group_by=[],
+        # models=models2plot,
+        time=curve_cells_fitting_times,
+    ))[1].groupby("models").apply(lambda x: np.nanquantile(list(chain(*x["time"].values.tolist())), 0.5))
+    runsinfo.append_info(
+        **{"median-" + k.replace("_", "-") + "-time": np.round(v, decimals=4) for k, v in dfstd.items()}
     )
 
     for group, models2plot in accepted_models.items():
-
         generic_plot(data_manager,
                      name=f"TimeComplexityPerCellBar_{group}",
                      path=config.subcell_paper_figures_path,
@@ -483,7 +564,8 @@ if __name__ == "__main__":
                      x="N", y="error", label="models", num_cells_per_dim=num_cells_per_dim,
                      plot_func=plot_convergence,
                      # plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                     log="xy", N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                     log="xy",
+                     N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                      error=error,
                      models=models2plot,
                      sort_by=["models", "N"],
@@ -491,20 +573,18 @@ if __name__ == "__main__":
                      format=".pdf"
                      )
 
-        generic_plot(data_manager,
-                     name=f"HConvergence_{group}",
-                     folder=group,
-                     x="h", y="error", label="models", num_cells_per_dim=num_cells_per_dim,
-                     plot_func=NamedPartial(plot_convergence, threshold=1 / 25,
-                                            palette={names_dict[k]: v for k, v in model_color.items()}),
-                     # plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                     log="xy", h=lambda num_cells_per_dim: 1 / num_cells_per_dim,
-                     error=error,
-                     models=models2plot,
-                     sort_by=["models", "h"],
-                     method=lambda models: names_dict[str(models)],
-                     format=".pdf"
-                     )
+        plot_h_convergence(
+            data_manager,
+            path=config.subcell_paper_figures_path,
+            name=f"HConvergence_{group}",
+            folder=group,
+            log="xy",
+            models=models2plot,
+            sort_by=["models", "h"],
+            method=lambda models: names_dict[str(models)],
+            format=".pdf",
+            rateonly=rateonly
+        )
 
         generic_plot(data_manager,
                      name=f"TimeComplexity_{group}",
