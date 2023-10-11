@@ -16,31 +16,41 @@ def get_x_points(stencil, independent_axis):
                            np.max(stencil.coords, axis=0)[independent_axis] + 1)
 
 
-def get_values_up_down_eval(coords, regular_opposite_cells):
+def get_values_up_down_eval(coords, regular_opposite_cells: Tuple[CellBase, CellBase], **kwargs):
     value_up = regular_opposite_cells[1].evaluate(coords.coords + 0.5)
     value_down = regular_opposite_cells[0].evaluate(coords.coords + 0.5)
     return value_up, value_down
 
 
-def get_values_up_down_avg(coords, regular_opposite_cells: Tuple[CellBase, CellBase]):
+def get_values_up_down_avg(coords, regular_opposite_cells: Tuple[CellBase, CellBase], **kwargs):
     rectangle = np.array([coords, coords + 1])
     value_up = regular_opposite_cells[1].integrate_rectangle(rectangle)
     value_down = regular_opposite_cells[0].integrate_rectangle(rectangle)
     return value_up, value_down
 
 
-def get_values_up_down_regcell_eval(coords, regular_opposite_cells):
+def get_values_up_down_regcell_eval(coords, regular_opposite_cells: Tuple[CellBase, CellBase], **kwargs):
     value_up = regular_opposite_cells[1].evaluate(regular_opposite_cells[1].coords.coords + 0.5)
     value_down = regular_opposite_cells[0].evaluate(regular_opposite_cells[0].coords.coords + 0.5)
     return value_up, value_down
 
 
-def get_values_up_down_regcell_avg(coords, regular_opposite_cells: Tuple[CellBase, CellBase]):
+def get_values_up_down_regcell_avg(coords, regular_opposite_cells: Tuple[CellBase, CellBase], **kwargs):
     value_up = regular_opposite_cells[1].integrate_rectangle(
         np.array([regular_opposite_cells[1].coords.coords, regular_opposite_cells[1].coords.coords + 1]))
     value_down = regular_opposite_cells[0].integrate_rectangle(
         np.array([regular_opposite_cells[0].coords.coords, regular_opposite_cells[0].coords.coords + 1]))
     return value_up, value_down
+
+
+def get_values_up_down_maxmin(coords, regular_opposite_cells=None, **kwargs):
+    value_down = np.min(kwargs["stencil"].values)
+    value_up = np.max(kwargs["stencil"].values)
+    return value_up, value_down
+
+
+def get_values_up_down_01_harcoded(coords, regular_opposite_cells=None, **kwargs):
+    return 1, 0
 
 
 def prepare_stencil4one_dimensionalization(independent_axis: int, value_up: Union[int, float],

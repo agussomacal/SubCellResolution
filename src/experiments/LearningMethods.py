@@ -8,6 +8,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.tree import DecisionTreeRegressor
 
+from lib.MLutils.scikit_keras import MLPRegressorKeras
 from lib.MLutils.skkeras import SKKerasFNN
 from lib.MLutils.sktorch import SKTorchFNN
 
@@ -119,6 +120,19 @@ skkeras_20x20_relu = Pipeline(
                                        lr=None, lr_lower_limit=1e-12,
                                        lr_upper_limit=1, n_epochs_without_improvement=100,
                                        random_state=42))
+    ]
+)
+
+skpykeras_20x20_relu = Pipeline(
+    [
+        ("Flatter", FunctionTransformer(flatter)),
+        ("SKskKerasFNN20x20", MLPRegressorKeras(hidden_layer_sizes=(20, 20),
+                                              epochs=100000, activation='relu', validation_size=0.1,
+                                              restarts=1, max_time4fitting=np.Inf, workers=1,
+                                              batch_size=1000, criterion="mse", solver="adam",
+                                              lr=None, lr_lower_limit=1e-12,
+                                              lr_upper_limit=1, n_epochs_without_improvement=100,
+                                              random_state=42))
     ]
 )
 

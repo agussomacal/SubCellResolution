@@ -13,7 +13,7 @@ from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
 from PerplexityLab.visualization import generic_plot, make_data_frames, perplex_plot
-from experiments.LearningMethods import flatter
+from experiments.LearningMethods import flatter, skkeras_20x20_relu, skpykeras_20x20_relu
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, OBERA_ITERS, \
     CCExtraWeight, runsinfo, cblue, corange, cgreen, cred, cpurple, cbrown, cpink, cgray, cyellow, ccyan
 from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
@@ -59,14 +59,21 @@ nnlm = LearningMethodManager(
     training_noise=1e-5, train_percentage=0.9
 )
 
+nnlmkeras = LearningMethodManager(
+    dataset_manager=dataset_manager_3_8pi,
+    type_of_problem=CURVE_PROBLEM,
+    trainable_model=skkeras_20x20_relu,
+    refit=False, n2use=-1,
+    training_noise=1e-5, train_percentage=0.9
+)
 
-# nnlmkeras = LearningMethodManager(
-#     dataset_manager=dataset_manager_3_8pi,
-#     type_of_problem=CURVE_PROBLEM,
-#     trainable_model=skkeras_20x20_relu,
-#     refit=False, n2use=-1,
-#     training_noise=1e-5, train_percentage=0.9
-# )
+nnlmskkeras = LearningMethodManager(
+    dataset_manager=dataset_manager_3_8pi,
+    type_of_problem=CURVE_PROBLEM,
+    trainable_model=skpykeras_20x20_relu,
+    refit=False, n2use=-1,
+    training_noise=1e-5, train_percentage=0.9
+)
 
 
 # nnlmtorch = LearningMethodManager(
@@ -210,10 +217,16 @@ def nn_linear():
 #                               "LinearNN", 0, CCExtraWeight, 2)
 
 
-# @fit_model
-# def nn_linear_keras():
-#     return get_sub_cell_model(partial(LearningCurveCellCreator, nnlmkeras), 1,
-#                               "LinearNN", 0, CCExtraWeight, 2)
+@fit_model
+def nn_linear_keras():
+    return get_sub_cell_model(partial(LearningCurveCellCreator, nnlmkeras), 1,
+                              "LinearNN", 0, CCExtraWeight, 2)
+
+
+@fit_model
+def nn_linear_skkeras():
+    return get_sub_cell_model(partial(LearningCurveCellCreator, nnlmskkeras), 1,
+                              "LinearNN", 0, CCExtraWeight, 2)
 
 
 @fit_model
@@ -270,7 +283,9 @@ def obera_circle_vander():
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
-        name=f'AERO',
+        # name=f'AERO',
+        name=f'AERO_NN',
+        # name=f'AERO_NNsk',
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
@@ -314,7 +329,8 @@ if __name__ == "__main__":
         linear_aero_consistent,
         nn_linear,
         # nn_linear_torch,
-        # nn_linear_keras,
+        nn_linear_keras,
+        # nn_linear_skkeras,
 
         quadratic_obera_non_adaptive,
         quadratic_obera,
@@ -331,7 +347,7 @@ if __name__ == "__main__":
     num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=20, dtype=int).tolist()
     num_cells_per_dim = np.logspace(np.log10(10), np.log10(20), num=5, dtype=int,
                                     endpoint=False).tolist() + num_cells_per_dim
-    num_cores = 15
+    num_cores = 1
     lab.execute(
         data_manager,
         num_cores=num_cores,
@@ -350,6 +366,7 @@ if __name__ == "__main__":
         "nn_linear": "NN Linear",
         "nn_linear_torch": "NN Linear Torch",
         "nn_linear_keras": "NN Linear Keras",
+        "nn_linear_skkeras": "NN Linear SKKeras",
         "elvira": "ELVIRA",
         "elvira_w": "ELVIRA-W",
         "elvira_w_oriented": "ELVIRA-W Oriented",
@@ -371,8 +388,9 @@ if __name__ == "__main__":
     model_color = {
         "piecewise_constant": cpink,
         "nn_linear": cgreen,
-        "nn_linear_torch": "forestgreen",
+        # "nn_linear_torch": "forestgreen",
         "nn_linear_keras": "mediumseagreen",
+        "nn_linear_skkeras": "forestgreen",
         "elvira": cyellow,
         "elvira_w": None,
         "elvira_w_oriented": corange,
@@ -399,6 +417,7 @@ if __name__ == "__main__":
             "nn_linear",
             "nn_linear_torch",
             "nn_linear_keras",
+            "nn_linear_skkeras",
             "elvira",
             "elvira_w_oriented",
             "linear_obera",

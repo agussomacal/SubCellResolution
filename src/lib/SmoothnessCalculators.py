@@ -25,9 +25,9 @@ def by_gradient(average_values: np.ndarray, indexer: ArrayIndexerNd):
     x, y = get_coordinates(average_values)
     for coords in zip(x, y):
         gradient = approximate_gradient_by(
-            average_values=get_fixed_stencil_values(stencil_size=(3, 3), coords=coords, average_values=average_values,
+            average_values=get_fixed_stencil_values(stencil_size=(5, 5), coords=coords, average_values=average_values,
                                                     indexer=indexer),
-            method="scharr",
+            method="optim",
             normalize=False
         )
         si[coords] = np.sqrt(np.sum(gradient ** 2))

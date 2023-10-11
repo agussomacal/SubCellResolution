@@ -79,6 +79,44 @@ def ddf():
     return defaultdict(float)
 
 
+def reconstruct_arbitrary_size(cells: Dict[Tuple[int, ...], CellBase], resolution, size: Union[Tuple, np.ndarray],
+                               cells2reconstruct: List[Tuple] = None):
+    """
+    Uses evaluation to reconstruct.
+    :param size:
+    :return:
+    """
+    size = np.array(size)
+    values = np.zeros(size)
+    for ix in itertools.product(*list(map(range, size))):
+        cell_ix = tuple(map(int, np.array(ix) / size * resolution))
+        if cells2reconstruct is None or cell_ix in cells2reconstruct:
+            values[ix] = cells[cell_ix].evaluate(
+                (np.array(ix) / size * resolution)[np.newaxis, :])
+    return values
+
+
+def reconstruct_by_factor(cells: Dict[Tuple[int, ...], CellBase], resolution,
+                          resolution_factor: Union[int, Tuple, np.ndarray] = 1,
+                          cells2reconstruct: List[Tuple] = None):
+    """
+    Uses averages to reconstruct.
+    :param resolution_factor:
+    :return:
+    """
+    resolution_factor = np.array([resolution_factor] * len(resolution), dtype=int) \
+        if isinstance(resolution_factor, int) else np.array(resolution_factor)
+    average_values = np.zeros(resolution_factor * np.array(resolution, dtype=int))
+    for ix in mesh_iterator(resolution, out_type=np.array) if cells2reconstruct is None else cells2reconstruct:
+        for sub_ix in mesh_iterator(resolution_factor, out_type=np.array):
+            rectangle_upper_left_vertex = ix + sub_ix / resolution_factor
+            rectangle_down_right_vertex = rectangle_upper_left_vertex + 1.0 / resolution_factor
+            avg = cells[tuple(ix)].integrate_rectangle(
+                np.array([rectangle_upper_left_vertex, rectangle_down_right_vertex]))
+            average_values[tuple(ix * resolution_factor + sub_ix)] = avg
+    return average_values * np.prod(resolution_factor)
+
+
 class SubCellReconstruction:
     def __init__(self, name, smoothness_calculator, reconstruction_error_measure=ReconstructionErrorMeasureBase,
                  cell_creators: List[CellCreatorPipeline] = [], refinement: int = 1, obera_iterations=0):
@@ -204,39 +242,39 @@ class SubCellReconstruction:
         return reconstruct_arbitrary_size(cells=self.cells, resolution=self.resolution, size=size)
 
 
-def reconstruct_arbitrary_size(cells: Dict[Tuple[int, ...], CellBase], resolution, size: Union[Tuple, np.ndarray],
-                               cells2reconstruct: List[Tuple] = None):
-    """
-    Uses evaluation to reconstruct.
-    :param size:
-    :return:
-    """
-    size = np.array(size)
-    values = np.zeros(size)
-    for ix in itertools.product(*list(map(range, size))):
-        cell_ix = tuple(map(int, np.array(ix) / size * resolution))
-        if cells2reconstruct is None or cell_ix in cells2reconstruct:
-            values[ix] = cells[cell_ix].evaluate(
-                (np.array(ix) / size * resolution)[np.newaxis, :])
-    return values
+class SubCellFlux:
+    def __init__(self, name, smoothness_calculator, cell_creators: List[CellCreatorPipeline] = []):
+        self.name = name
+        self.smoothness_calculator = smoothness_calculator
+        self.cell_creators = cell_creators
+        self.cells = dict()
+        self.stencils = dict()
+        self.resolution = None
 
+        self.times = defaultdict(ddf)
 
-def reconstruct_by_factor(cells: Dict[Tuple[int, ...], CellBase], resolution,
-                          resolution_factor: Union[int, Tuple, np.ndarray] = 1,
-                          cells2reconstruct: List[Tuple] = None):
-    """
-    Uses averages to reconstruct.
-    :param resolution_factor:
-    :return:
-    """
-    resolution_factor = np.array([resolution_factor] * len(resolution), dtype=int) \
-        if isinstance(resolution_factor, int) else np.array(resolution_factor)
-    average_values = np.zeros(resolution_factor * np.array(resolution, dtype=int))
-    for ix in mesh_iterator(resolution, out_type=np.array) if cells2reconstruct is None else cells2reconstruct:
-        for sub_ix in mesh_iterator(resolution_factor, out_type=np.array):
-            rectangle_upper_left_vertex = ix + sub_ix / resolution_factor
-            rectangle_down_right_vertex = rectangle_upper_left_vertex + 1.0 / resolution_factor
-            avg = cells[tuple(ix)].integrate_rectangle(
-                np.array([rectangle_upper_left_vertex, rectangle_down_right_vertex]))
-            average_values[tuple(ix * resolution_factor + sub_ix)] = avg
-    return average_values * np.prod(resolution_factor)
+    def __str__(self):
+        return self.name
+
+    def fit(self, average_values: np.ndarray, indexer: ArrayIndexerNd):
+        self.cells = dict()
+        self.stencils = dict()
+        self.resolution = np.shape(average_values)
+        smoothness_index = self.smoothness_calculator(average_values, indexer)
+        for i, cell_creator in enumerate(self.cell_creators):
+            for coords in cell_creator.cell_iterator(smoothness_index=smoothness_index):
+                t0 = time.time()
+                independent_axis = cell_creator.orientator.get_independent_axis(coords, average_values, indexer).pop()
+                stencil = cell_creator.stencil_creator.get_stencil(
+                    average_values, smoothness_index, coords, independent_axis, indexer)
+                proposed_cells = list(cell_creator.cell_creator.create_cells(
+                    average_values=average_values, indexer=indexer, cells=self.cells, coords=coords,
+                    smoothness_index=smoothness_index, independent_axis=independent_axis, stencil=stencil,
+                    stencils=self.stencils))
+                assert len(proposed_cells) == 1, "Only one proposed cell is possible for flux calculations."
+                proposed_cell = proposed_cells.pop()
+                if isinstance(proposed_cell, tuple):
+                    proposed_cell, coords = proposed_cell
+                self.cells[coords.tuple] = proposed_cell
+                self.times[proposed_cell.CELL_TYPE][coords.tuple] += time.time() - t0
+        return self

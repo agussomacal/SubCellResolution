@@ -153,6 +153,7 @@ class SKKerasBase(BaseEstimator):
             del lrf
             # plt.savefig(config.LRFIND_PLOT_PATH)
             # self.find_lr(query, target)
+        return KerasClassifier(model=create_model, epochs=150, batch_size=10, verbose=0)
 
         def train_in_paralel(restart):
             from keras.callbacks import EarlyStopping  # , ModelCheckpoint

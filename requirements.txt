@@ -13,4 +13,5 @@ sympy
 tensorflow
 torch
 cma
+scikeras
 # python -m ipykernel install --user --name venv --display-name "SubCell-venv"

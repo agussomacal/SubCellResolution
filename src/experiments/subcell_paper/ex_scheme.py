@@ -2,6 +2,9 @@ import time
 
 import numpy as np
 import seaborn as sns
+from sklearn.neural_network import MLPRegressor
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import FunctionTransformer
 from tqdm import tqdm
 
 import config
@@ -9,16 +12,21 @@ from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import generic_plot, one_line_iterator, perplex_plot
+from experiments.LearningMethods import flatter
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, plot_cells_identity, \
     plot_cells_vh_classification_core, plot_cells_not_regular_classification_core, plot_curve_core
 from experiments.subcell_paper.global_params import cpink, corange, cyellow, \
     cblue, cgreen, runsinfo, EVALUATIONS, cpurple, cred, ccyan
 from experiments.subcell_paper.models2compare import upwind, elvira, aero_linear, quadratic, aero_qelvira_vertex, \
-    aero_lq, qelvira
+    aero_lq, qelvira, nn_flux
 from experiments.subcell_paper.tools import calculate_averages_from_image, load_image, \
     reconstruct, singular_cells_mask, get_reconstruction_error
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import REGULAR_CELL_TYPE
+from lib.CellCreators.LearningFluxRegularCellCreator import CellLearnedFlux
+from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import FLUX_PROBLEM
+from lib.DataManagers.DatasetsManagers.DatasetsManagerLinearCurves import DatasetsManagerLinearCurves, ANGLE_OBJECTIVE
+from lib.DataManagers.LearningMethodManager import LearningMethodManager
 from lib.SubCellScheme import SubCellScheme
 
 SAVE_EACH = 5
@@ -33,6 +41,7 @@ names_dict = {
     "qelvira": "ELVIRA AERO-Quadratic",
     "aero_qelvira_vertex": "AERO-Quadratic Vertex",
     "aero_qelvira_vertex45": "AERO-Quadratic Orient Vertex",
+    "sknn_fluxlines": "skNN Flux Lines",
 }
 model_color = {
     "upwind": cpink,
@@ -43,11 +52,34 @@ model_color = {
     "qelvira": cred,
     "aero_qelvira_vertex": cgreen,
     "aero_qelvira_vertex45": ccyan,
+    "sknn_fluxlines": "forestgreen"
 }
 names_dict = {k: names_dict[k] for k in model_color.keys()}
 
 runsinfo.append_info(
     **{k.replace("_", "-"): v for k, v in names_dict.items()}
+)
+
+# ========== ========== ML models ========== ========== #
+N = int(1e6)
+dataset_manager_3_8pi = DatasetsManagerLinearCurves(
+    velocity_range=((0, 0), (1/4, 1/4)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
+    workers=15, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
+    value_up_random=True
+)
+
+nnlm = LearningMethodManager(
+    dataset_manager=dataset_manager_3_8pi,
+    type_of_problem=FLUX_PROBLEM,
+    trainable_model=Pipeline(
+        [
+            ("Flatter", FunctionTransformer(flatter)),
+            ("NN", MLPRegressor(hidden_layer_sizes=(20, 20,), activation='relu', learning_rate_init=0.1,
+                                learning_rate="adaptive", solver="adam"))
+        ]
+    ),
+    refit=False, n2use=-1,
+    training_noise=1e-5, train_percentage=0.9
 )
 
 
@@ -97,12 +129,17 @@ def fit_model(subcell_reconstruction):
         t0 = time.time()
         reconstruction = []
         for i, cells in tqdm(enumerate(all_cells), desc="Reconstruction."):
+            if CellLearnedFlux in map(type, cells.values()):
+                print("Flux method, no reconstruction.")
+                reconstruction = None
+                all_cells = None  # otherwise it does not pickle
+                break
             reconstruction.append(reconstruct(image_array, cells, model.resolution, reconstruction_factor,
                                               do_evaluations=EVALUATIONS))
         t_reconstruct = time.time() - t0
 
         return {
-            "model": model,
+            "resolution": model.resolution,
             "time_to_fit": t_fit,
             "reconstruction": reconstruction,
             "cells": all_cells,
@@ -139,12 +176,12 @@ def plot_time_i(fig, ax, true_solution, solution, num_cells_per_dim, model, i=0,
 
 @perplex_plot()
 @one_line_iterator
-def plot_reconstruction_time_i(fig, ax, true_reconstruction, num_cells_per_dim, model, reconstruction, cells, i=0,
+def plot_reconstruction_time_i(fig, ax, true_reconstruction, num_cells_per_dim, resolution, reconstruction, cells, i=0,
                                alpha=0.5,
                                plot_original_image=True,
                                difference=False, plot_curve=True, plot_curve_winner=False, plot_vh_classification=True,
                                plot_singular_cells=True, cmap="magma", trim=((0, 0), (0, 0)), numbers_on=True):
-    model_resolution = np.array(model.resolution)
+    model_resolution = np.array(resolution)
     image = true_reconstruction[i]
 
     if plot_original_image:
@@ -154,19 +191,19 @@ def plot_reconstruction_time_i(fig, ax, true_reconstruction, num_cells_per_dim, 
     if difference:
         # TODO: should be the evaluations not the averages.
         image = calculate_averages_from_image(image, num_cells_per_dim=np.shape(reconstruction))
-        plot_cells(ax, colors=reconstruction[i] - image, mesh_shape=model.resolution, alpha=alpha, cmap=cmap, vmin=-1,
+        plot_cells(ax, colors=reconstruction[i] - image, mesh_shape=resolution, alpha=alpha, cmap=cmap, vmin=-1,
                    vmax=1)
     else:
-        plot_cells(ax, colors=reconstruction[i], mesh_shape=model.resolution, alpha=alpha, cmap=cmap, vmin=-1, vmax=1)
+        plot_cells(ax, colors=reconstruction[i], mesh_shape=resolution, alpha=alpha, cmap=cmap, vmin=-1, vmax=1)
 
     if plot_curve:
         if plot_curve_winner:
-            plot_cells_identity(ax, model.resolution, cells[i], alpha=0.8)
-            # plot_cells_type_of_curve_core(ax, model.resolution, model.cells, alpha=0.8)
+            plot_cells_identity(ax, resolution, cells[i], alpha=0.8)
+            # plot_cells_type_of_curve_core(ax, resolution, model.cells, alpha=0.8)
         elif plot_vh_classification:
-            plot_cells_vh_classification_core(ax, model.resolution, cells[i], alpha=0.8)
+            plot_cells_vh_classification_core(ax, resolution, cells[i], alpha=0.8)
         elif plot_singular_cells:
-            plot_cells_not_regular_classification_core(ax, model.resolution, cells[i], alpha=0.8)
+            plot_cells_not_regular_classification_core(ax, resolution, cells[i], alpha=0.8)
         plot_curve_core(ax, curve_cells=[cell for cell in cells[i].values() if
                                          cell.CELL_TYPE != REGULAR_CELL_TYPE])
 
@@ -176,8 +213,8 @@ def plot_reconstruction_time_i(fig, ax, true_reconstruction, num_cells_per_dim, 
         numbers_on=numbers_on,
         prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
     )
-    ax.set_xlim((-0.5 + trim[0][0], model.resolution[0] - trim[0][1] - 0.5))
-    ax.set_ylim((model.resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
+    ax.set_xlim((-0.5 + trim[0][0], resolution[0] - trim[0][1] - 0.5))
+    ax.set_ylim((resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
 
 
 # ========== ========== Error definitions ========== ========== #
@@ -190,7 +227,7 @@ scheme_reconstruction_error = lambda true_reconstruction, reconstruction, recons
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
-        name='Schemes',
+        name='Schemes_NN2',
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
@@ -208,17 +245,18 @@ if __name__ == "__main__":
         "models",
         *map(fit_model, [
             upwind,
-            # elvira_oriented,
-            elvira,
-            aero_linear,
-            # aero_linear_oriented,
-            quadratic,
-            qelvira,
-            # quadratic_oriented,
-            aero_lq,
-            aero_qelvira_vertex,
-            NamedPartial(aero_qelvira_vertex, angle_threshold=45).add_sufix_to_name(45),
-            # obera_aero_lq_vertex,
+            # # elvira_oriented,
+            # elvira,
+            # aero_linear,
+            # # aero_linear_oriented,
+            # quadratic,
+            # qelvira,
+            # # quadratic_oriented,
+            # aero_lq,
+            # aero_qelvira_vertex,
+            # NamedPartial(aero_qelvira_vertex, angle_threshold=45).add_sufix_to_name(45),
+            # # obera_aero_lq_vertex,
+            NamedPartial(nn_flux, learning_manager=nnlm).add_prefix_to_name("sk").add_sufix_to_name("lines"),
         ]),
         recalculate=False
     )
@@ -239,8 +277,8 @@ if __name__ == "__main__":
             # "DarthVader.jpeg",
             # "Ellipsoid_1680x1680.jpg",
             "ShapesVertex_1680x1680.jpg",
-            "HandVertex_1680x1680.jpg",
-            "Polygon_1680x1680.jpg",
+            # "HandVertex_1680x1680.jpg",
+            # "Polygon_1680x1680.jpg",
         ],
         reconstruction_factor=[5],
         # reconstruction_factor=[1],
@@ -248,8 +286,8 @@ if __name__ == "__main__":
 
     generic_plot(data_manager,
                  name="ErrorInTime",
-                 format=".pdf",
-                 path=config.subcell_paper_figures_path,
+                 format=".pdf",ntimes=ntimes,
+                 # path=config.subcell_paper_figures_path,
                  x="times", y="scheme_error", label="method", plot_by=["num_cells_per_dim", "image"],
                  # models=["elvira", "quadratic"],
                  times=lambda ntimes: np.arange(1, ntimes + 1),
@@ -267,7 +305,7 @@ if __name__ == "__main__":
     generic_plot(data_manager,
                  name="ReconstructionErrorInTime",
                  format=".pdf",
-                 path=config.subcell_paper_figures_path,
+                 # path=config.subcell_paper_figures_path,
                  x="times", y="scheme_error", label="method", plot_by=["num_cells_per_dim", "image"],
                  # models=["elvira", "quadratic"],
                  times=lambda ntimes: np.arange(0, ntimes, SAVE_EACH),
