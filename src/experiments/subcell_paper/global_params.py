@@ -7,6 +7,13 @@ from seaborn import color_palette
 
 cblue, corange, cgreen, cred, cpurple, cbrown, cpink, cgray, cyellow, ccyan = color_palette("tab10")
 
+bluish = (17, 110, 138)
+redish = (153, 0, 91)
+pinkish = (230, 0, 136)
+greenish = (6, 194, 88)
+cyanish = (82, 189, 236)
+
+
 EVALUATIONS = True
 
 SUB_CELL_DISCRETIZATION2BOUND_ERROR = 20

@@ -52,7 +52,6 @@ class DatasetsManagerVanderCurves(DatasetsBaseManager):
                  curve_position_radius: Union[float, Tuple] = 1, value_up_random=True, num_points: int = 3,
                  points_sampler: str = POINTS_SAMPLER_EQUISPACE, points_interval_size: float = 1):
         self.curve_position_radius = curve_position_radius
-        self.value_up_random = value_up_random
         self.num_points = num_points
         self.points_sampler = points_sampler
         self.points_interval_size = points_interval_size
@@ -62,11 +61,10 @@ class DatasetsManagerVanderCurves(DatasetsBaseManager):
 
         super().__init__(path2data=path2data, N=N, kernel_size=kernel_size, min_val=min_val, max_val=max_val,
                          recalculate=recalculate, workers=workers, curve_type=curve_type,
-                         velocity_range=velocity_range)
+                         velocity_range=velocity_range, value_up_random=value_up_random)
 
-    def get_curve(self, curve_data):
-        return self.curve_type(x_points=self.x_points, y_points=np.array(curve_data[:-2]), value_up=curve_data[-2],
-                               value_down=curve_data[-1])
+    def get_curve(self, curve_data, **kwargs):
+        return self.curve_type(x_points=self.x_points, y_points=np.array(curve_data), **kwargs)
 
     @property
     def base_name(self):
@@ -85,7 +83,7 @@ class DatasetsManagerVanderCurves(DatasetsBaseManager):
         elif self.learning_objective == PARAMS_OBJECTIVE:
 
             def par_func(y_points):
-                curve = self.curve_type(x_points=self.x_points, y_points=y_points, value_up=0, value_down=1)
+                curve = self.curve_type(x_points=self.x_points, y_points=y_points)
                 return super(CurveVander, curve.__class__).params.fget(curve)
 
             map_func = get_map_function(self.workers)
@@ -96,7 +94,6 @@ class DatasetsManagerVanderCurves(DatasetsBaseManager):
             raise Exception(f"Not implemented learning_objective {self.learning_objective}")
 
     def get_curve_data(self):
-        value_up = np.random.randint(0, 2) if self.value_up_random else 0
         # saves the polynomial coefficients
         if isinstance(self.curve_position_radius, tuple):
             # the x points are in -1.5, 0, 1.5 -> the full stencil.
@@ -105,7 +102,7 @@ class DatasetsManagerVanderCurves(DatasetsBaseManager):
             # default the x points are in -0.5, 0, 0.5 -> the central cell
             y_points = np.random.uniform(-self.curve_position_radius, self.curve_position_radius,
                                          size=len(self.x_points))
-        return *y_points, value_up, 1 - value_up
+        return y_points
 
     # --------- predict/find curve ---------- #
     def create_curve_from_params(self, curve_params, coords: CellCoords, independent_axis: int, value_up, value_down,

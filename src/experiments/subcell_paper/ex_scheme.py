@@ -62,9 +62,15 @@ runsinfo.append_info(
 
 # ========== ========== ML models ========== ========== #
 N = int(1e6)
+# dataset_manager_3_8pi = DatasetsManagerLinearCurves(
+#     velocity_range=((0, 0), (1/4, 1/4)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
+#     workers=15, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
+#     value_up_random=True
+# )
+
 dataset_manager_3_8pi = DatasetsManagerLinearCurves(
-    velocity_range=((0, 0), (1/4, 1/4)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
-    workers=15, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
+    velocity_range=[(0, 1/4), (1/4, 0)], path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
+    workers=15, recalculate=True, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
     value_up_random=True
 )
 
@@ -78,7 +84,7 @@ nnlm = LearningMethodManager(
                                 learning_rate="adaptive", solver="adam"))
         ]
     ),
-    refit=False, n2use=-1,
+    refit=True, n2use=-1,
     training_noise=1e-5, train_percentage=0.9
 )
 
@@ -244,7 +250,7 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "models",
         *map(fit_model, [
-            upwind,
+            # upwind,
             # # elvira_oriented,
             # elvira,
             # aero_linear,
@@ -258,7 +264,7 @@ if __name__ == "__main__":
             # # obera_aero_lq_vertex,
             NamedPartial(nn_flux, learning_manager=nnlm).add_prefix_to_name("sk").add_sufix_to_name("lines"),
         ]),
-        recalculate=False
+        recalculate=True
     )
 
     ntimes = 120

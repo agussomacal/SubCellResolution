@@ -59,6 +59,6 @@ class LearningFluxRegularCellCreator(CellCreatorBase):
                                                                 smoothness_index, indexer)
 
         def flux_calculator(velocity):
-            return self.learning_manager.predict_flux(stencil_values, velocity)
+            return self.learning_manager.predict_flux(stencil_values, velocity[[independent_axis, 1-independent_axis]])
 
         yield CellLearnedFlux(coords, flux_calculator=flux_calculator)

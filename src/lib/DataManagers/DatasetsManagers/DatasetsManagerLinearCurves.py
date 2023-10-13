@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, Tuple
+from typing import Union, Tuple, List
 
 import numpy as np
 
@@ -16,7 +16,8 @@ COS_SIN_OBJECTIVE = "cos_sin_objective"
 class DatasetsManagerLinearCurves(DatasetsBaseManager):
     def __init__(self, path2data: Union[str, Path], N: int, kernel_size: Tuple[int, int], min_val: float,
                  max_val: float, workers=np.Inf, recalculate=False, angle_limits=(0, 2),
-                 velocity_range: Tuple[Tuple, Tuple] = ((1e-10, 0), (1.0, 0)), curve_position_radius: float = 1,
+                 velocity_range: Union[Tuple[Tuple, Tuple], List] = ((1e-10, 0), (1.0, 0)),
+                 curve_position_radius: float = 1,
                  learning_objective=ANGLE_OBJECTIVE, value_up_random=True):
         """
         params:
@@ -25,10 +26,9 @@ class DatasetsManagerLinearCurves(DatasetsBaseManager):
         self.angle_limits = angle_limits
         self.learning_objective = learning_objective
         self.curve_position_radius = curve_position_radius
-        self.value_up_random = value_up_random
         super().__init__(path2data=path2data, N=N, kernel_size=kernel_size, min_val=min_val, max_val=max_val,
                          recalculate=recalculate, workers=workers, curve_type=CurveLinearAngle,
-                         velocity_range=velocity_range)
+                         velocity_range=velocity_range, value_up_random=value_up_random)
 
     @property
     def base_name(self):
@@ -53,8 +53,7 @@ class DatasetsManagerLinearCurves(DatasetsBaseManager):
     def get_curve_data(self):
         angle = np.random.uniform(*(np.array(self.angle_limits) * np.pi))
         r = np.random.uniform(-self.curve_position_radius, self.curve_position_radius)
-        value_up = np.random.randint(0, 2) if self.value_up_random else 0
-        return angle, r, value_up, 1 - value_up
+        return angle, r
 
     # --------- predict/find curve ---------- #
     def create_curve_from_params(self, curve_params, coords: CellCoords, independent_axis: int, value_up, value_down,

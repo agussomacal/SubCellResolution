@@ -1,6 +1,6 @@
 import copy
 from pathlib import Path
-from typing import Tuple, List
+from typing import Tuple, List, Union
 
 import numpy as np
 from sklearn.pipeline import Pipeline
@@ -9,7 +9,8 @@ from PerplexityLab.miscellaneous import clean_str4saving, timeit
 from lib.AuxiliaryStructures.Constants import neighbourhood_8_ix
 from lib.CellCreators.CellCreatorBase import velocity_8nei_direction, get_relative_next_coords_to_calculate_flux
 from lib.Curves.Curves import CurveBase
-from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import DatasetsBaseManager, load_joblib, save_joblib
+from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import DatasetsBaseManager, load_joblib, save_joblib, \
+    DatasetConcatenator
 from lib.StencilCreators import rotate_matrix_90deg
 
 
@@ -22,14 +23,14 @@ def linf_error(predictions, true_values):
 
 
 class LearningMethodManager:
-    def __init__(self, dataset_manager: DatasetsBaseManager, trainable_model: Pipeline, type_of_problem: str,
+    def __init__(self, dataset_manager: Union[DatasetsBaseManager, DatasetConcatenator], trainable_model: Pipeline, type_of_problem: str,
                  refit=False, n2use=-1, seed=42, training_noise: float = 0, train_percentage=1):
         self.dataset_manager = dataset_manager
         self.seed = seed
         self.refit = refit
         self.training_noise = training_noise
         self.type_of_problem = type_of_problem
-        self.n2use = self.dataset_manager.N if n2use == -1 else n2use
+        self.n2use = len(self.dataset_manager) if n2use == -1 else n2use
         self.train_percentage = train_percentage
         self.n_train = int(self.n2use * train_percentage)
 
@@ -81,10 +82,10 @@ class LearningMethodManager:
 
     # -------------- predict --------------- #
     def predict_flux(self, kernel: np.ndarray, velocity: np.ndarray) -> (List[Tuple[int]], np.ndarray):
-        number_of_90deg_rotations = neighbourhood_8_ix(velocity_8nei_direction(velocity)) // 2
-        kernel = rotate_matrix_90deg(kernel, times=number_of_90deg_rotations)
+        # number_of_90deg_rotations = neighbourhood_8_ix(velocity_8nei_direction(velocity)) // 2
+        # kernel = rotate_matrix_90deg(kernel, times=number_of_90deg_rotations)
         next_flux = self.trainable_model.predict([[kernel, velocity]])[0]
-        # # TODO: harcoded no velocity
+        # # TODO: hardcoded no velocity
         # next_flux = np.array([0.0] * 3)
         # next_flux[1] = self.trainable_model.predict([[kernel]])[0]
         next_coords = get_relative_next_coords_to_calculate_flux(velocity)
@@ -94,4 +95,7 @@ class LearningMethodManager:
         return self.trainable_model.predict([kernel])[0]
 
     def predict_classification(self, kernel: np.ndarray) -> int:
+        return np.ravel(self.trainable_model.predict([kernel])[0])[0]
+
+    def predict_cell_classification(self, kernel: np.ndarray) -> int:
         return np.ravel(self.trainable_model.predict([kernel])[0])[0]
