@@ -179,10 +179,12 @@ def get_regular_opposite_cell_coords(coords: CellCoords, dependent_axis: int, re
 
 
 class StencilCreatorAdaptive(StencilCreator):
-    def __init__(self, independent_dim_stencil_size: int, smoothness_threshold: float = 0, center_weight=2.1):
+    def __init__(self, independent_dim_stencil_size: int, smoothness_threshold: float = 0, center_weight=2.1,
+                 dependent_dim_size=None):
         self.smoothness_threshold = smoothness_threshold
         self.independent_dim_stencil_size = independent_dim_stencil_size
         self.center_weight = center_weight
+        self.dependent_dim_size = dependent_dim_size
 
     def get_stencil_boundaries(self, regularity_mask: np.ndarray,
                                # region_mask: np.ndarray,
@@ -211,23 +213,34 @@ class StencilCreatorAdaptive(StencilCreator):
 
         if len(ropcells) == 0:
             delta = self.independent_dim_stencil_size // 2
-            return np.transpose([(coords - np.array((delta, delta))).tuple, (coords + np.array((delta, delta))).tuple])
+            stencil_boundaries = np.transpose(
+                [(coords - np.array((delta, delta))).tuple, (coords + np.array((delta, delta))).tuple])
+        else:
+            heights = [np.max(ropcells[i:i + self.independent_dim_stencil_size, :, dependent_axis]) - np.min(
+                ropcells[i:i + self.independent_dim_stencil_size, :, dependent_axis]) +
+                       self.center_weight * abs(i - self.independent_dim_stencil_size // 2)
+                       for i in range(self.independent_dim_stencil_size)]
+            left_border = np.argmin(heights)
+            stencil_boundaries = [
+                np.min(ropcells[left_border:left_border + self.independent_dim_stencil_size], axis=(0, 1)),
+                np.max(ropcells[left_border:left_border + self.independent_dim_stencil_size], axis=(0, 1))]
+            stencil_boundaries = np.transpose(stencil_boundaries)
 
-        heights = [np.max(ropcells[i:i + self.independent_dim_stencil_size, :, dependent_axis]) - np.min(
-            ropcells[i:i + self.independent_dim_stencil_size, :, dependent_axis]) +
-                   self.center_weight * abs(i - self.independent_dim_stencil_size // 2)
-                   for i in range(self.independent_dim_stencil_size)]
-        left_border = np.argmin(heights)
-        stencil_boundaries = [
-            np.min(ropcells[left_border:left_border + self.independent_dim_stencil_size], axis=(0, 1)),
-            np.max(ropcells[left_border:left_border + self.independent_dim_stencil_size], axis=(0, 1))]
-        stencil_boundaries = np.transpose(stencil_boundaries)
+            # if it fails to give the right size of stencil (usually if used in wrong directions)
+            if stencil_boundaries[independent_axis][1] - stencil_boundaries[independent_axis][
+                0] + 1 != self.independent_dim_stencil_size:
+                delta = self.independent_dim_stencil_size // 2
+                stencil_boundaries = np.transpose(
+                    [(coords - np.array((delta, delta))).tuple, (coords + np.array((delta, delta))).tuple])
 
-        # if it fails to give the right size of stencil (usually if used in wrong directions)
-        if stencil_boundaries[independent_axis][1] - stencil_boundaries[independent_axis][
-            0] + 1 != self.independent_dim_stencil_size:
-            delta = self.independent_dim_stencil_size // 2
-            return np.transpose([(coords - np.array((delta, delta))).tuple, (coords + np.array((delta, delta))).tuple])
+        if self.dependent_dim_size is not None:
+            for i in range(self.dependent_dim_size):
+                d = stencil_boundaries[dependent_axis][1] - stencil_boundaries[dependent_axis][0] + 1
+                if d == self.dependent_dim_size:
+                    break
+
+                stencil_boundaries[dependent_axis][i % 2] += (
+                        (2 * (i % 2) - 1) * (2 * (d < self.dependent_dim_size) - 1))
 
         return stencil_boundaries
 
