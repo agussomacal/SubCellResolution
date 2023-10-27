@@ -2,34 +2,42 @@ from functools import partial
 
 import numpy as np
 import seaborn as sns
-from sklearn.neural_network import MLPRegressor
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import FunctionTransformer
 
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version, ClassPartialInit
 from PerplexityLab.visualization import generic_plot
-from experiments.LearningMethods import flatter
-from experiments.subcell_paper.ex_aero import fit_model, elvira_grad_oriented, elvira
-from experiments.subcell_paper.tools import calculate_averages_from_curve
+from experiments.LearningMethods import skkeras_20x20_relu
+from experiments.subcell_paper.ex_aero import fit_model, elvira_w_oriented
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, CCExtraWeight
 from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
+from experiments.subcell_paper.tools import calculate_averages_from_curve
 from lib.CellCreators.CurveCellCreators.LearningCurveCellCreator import LearningCurveCellCreator
 from lib.Curves.VanderCurves import CurveVandermondePolynomial, CurveVanderCircle
 from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import CURVE_PROBLEM
-from lib.DataManagers.DatasetsManagers.DatasetsManagerLinearCurves import DatasetsManagerLinearCurves, ANGLE_OBJECTIVE
+from lib.DataManagers.DatasetsManagers.DatasetsManagerLinearCurves import DatasetsManagerLinearCurves, ANGLE_OBJECTIVE, \
+    COS_SIN_OBJECTIVE
 from lib.DataManagers.DatasetsManagers.DatasetsManagerVanderCurves import DatasetsManagerVanderCurves, POINTS_OBJECTIVE, \
     POINTS_SAMPLER_EQUISPACE, PARAMS_OBJECTIVE
 from lib.DataManagers.LearningMethodManager import LearningMethodManager
 from lib.StencilCreators import StencilCreatorFixedShape
 
+# SUB_CELL_DISCRETIZATION2BOUND_ERROR = 20
+refit = True
 N = int(1e6)
-workers = 10
+workers = 15
+
 dataset_manager_3_8pi = DatasetsManagerLinearCurves(
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
-    workers=workers, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
+    workers=15, recalculate=refit, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
+    value_up_random=True
+)
+
+dataset_manager_cossin = DatasetsManagerLinearCurves(
+    velocity_range=((0, 0), (0, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
+    workers=15, recalculate=refit, learning_objective=COS_SIN_OBJECTIVE,
+    angle_limits=(-3 / 8, 3 / 8),
     value_up_random=False
 )
 
@@ -37,7 +45,7 @@ VanderQuadratic = ClassPartialInit(CurveVandermondePolynomial, class_name="Vande
 dataset_manager_vander = DatasetsManagerVanderCurves(
     curve_type=VanderQuadratic,
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
-    workers=workers, recalculate=False, learning_objective=POINTS_OBJECTIVE,
+    workers=workers, recalculate=refit, learning_objective=POINTS_OBJECTIVE,
     curve_position_radius=(0.5, 0.5, 0.5), points_interval_size=1, value_up_random=False, num_points=3,
     points_sampler=POINTS_SAMPLER_EQUISPACE,
 )
@@ -45,7 +53,7 @@ dataset_manager_vander = DatasetsManagerVanderCurves(
 dataset_manager_vander1 = DatasetsManagerVanderCurves(
     curve_type=VanderQuadratic,
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
-    workers=workers, recalculate=False, learning_objective=POINTS_OBJECTIVE,
+    workers=workers, recalculate=refit, learning_objective=POINTS_OBJECTIVE,
     curve_position_radius=(1, 1, 1), points_interval_size=1, value_up_random=False, num_points=3,
     points_sampler=POINTS_SAMPLER_EQUISPACE,
 )
@@ -53,7 +61,7 @@ dataset_manager_vander1 = DatasetsManagerVanderCurves(
 dataset_manager_vander7 = DatasetsManagerVanderCurves(
     curve_type=VanderQuadratic,
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
-    workers=workers, recalculate=False, learning_objective=POINTS_OBJECTIVE,
+    workers=workers, recalculate=refit, learning_objective=POINTS_OBJECTIVE,
     curve_position_radius=(3.5, 1.5, 3.5), points_interval_size=3, value_up_random=False, num_points=3,
     points_sampler=POINTS_SAMPLER_EQUISPACE,
 )
@@ -61,7 +69,7 @@ dataset_manager_vander7 = DatasetsManagerVanderCurves(
 dataset_manager_vander7params = DatasetsManagerVanderCurves(
     curve_type=VanderQuadratic,
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
-    workers=workers, recalculate=False, learning_objective=PARAMS_OBJECTIVE,
+    workers=workers, recalculate=refit, learning_objective=PARAMS_OBJECTIVE,
     curve_position_radius=(3.5, 1.5, 3.5), points_interval_size=3, value_up_random=False, num_points=3,
     points_sampler=POINTS_SAMPLER_EQUISPACE,
 )
@@ -69,155 +77,119 @@ dataset_manager_vander7params = DatasetsManagerVanderCurves(
 dataset_manager_vander7circle = DatasetsManagerVanderCurves(
     curve_type=CurveVanderCircle,
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
-    workers=workers, recalculate=False, learning_objective=POINTS_OBJECTIVE,
+    workers=workers, recalculate=refit, learning_objective=POINTS_OBJECTIVE,
     curve_position_radius=(3.5, 1.5, 3.5), points_interval_size=3, value_up_random=False, num_points=3,
     points_sampler=POINTS_SAMPLER_EQUISPACE,
+)
+
+nnlm_cs = LearningMethodManager(
+    dataset_manager=dataset_manager_cossin,
+    type_of_problem=CURVE_PROBLEM,
+    trainable_model=skkeras_20x20_relu,
+    refit=refit, n2use=-1,
+    training_noise=1e-5, train_percentage=0.9
 )
 
 nnlm = LearningMethodManager(
     dataset_manager=dataset_manager_3_8pi,
     type_of_problem=CURVE_PROBLEM,
-    trainable_model=Pipeline(
-        [
-            ("Flatter", FunctionTransformer(flatter)),
-            ("NN", MLPRegressor(hidden_layer_sizes=(20, 20,), activation='relu', learning_rate_init=0.1,
-                                learning_rate="adaptive", solver="lbfgs"))
-        ]
-    ),
-    refit=False, n2use=-1,
+    trainable_model=skkeras_20x20_relu,
+    refit=refit, n2use=-1,
     training_noise=1e-5, train_percentage=0.9
 )
 
 nnlm4 = LearningMethodManager(
     dataset_manager=dataset_manager_3_8pi,
     type_of_problem=CURVE_PROBLEM,
-    trainable_model=Pipeline(
-        [
-            ("Flatter", FunctionTransformer(flatter)),
-            ("NN", MLPRegressor(hidden_layer_sizes=(20, 20,), activation='relu', learning_rate_init=0.1,
-                                learning_rate="adaptive", solver="lbfgs"))
-        ]
-    ),
-    refit=False, n2use=1e4,
+    trainable_model=skkeras_20x20_relu,
+    refit=refit, n2use=1e4,
     training_noise=1e-5, train_percentage=0.9
 )
 
 nnlmq = LearningMethodManager(
     dataset_manager=dataset_manager_vander,
     type_of_problem=CURVE_PROBLEM,
-    trainable_model=Pipeline(
-        [
-            ("Flatter", FunctionTransformer(flatter)),
-            ("NN", MLPRegressor(hidden_layer_sizes=(20, 20,), activation='relu', learning_rate_init=0.1,
-                                learning_rate="adaptive", solver="lbfgs"))
-        ]
-    ), refit=False, n2use=-1,
+    trainable_model=skkeras_20x20_relu, refit=refit, n2use=-1,
     training_noise=1e-5, train_percentage=0.9
 )
 
 nnlmq1 = LearningMethodManager(
     dataset_manager=dataset_manager_vander1,
     type_of_problem=CURVE_PROBLEM,
-    trainable_model=Pipeline(
-        [
-            ("Flatter", FunctionTransformer(flatter)),
-            ("NN", MLPRegressor(hidden_layer_sizes=(20, 20,), activation='relu', learning_rate_init=0.1,
-                                learning_rate="adaptive", solver="lbfgs"))
-        ]
-    ), refit=False, n2use=-1,
+    trainable_model=skkeras_20x20_relu, refit=refit, n2use=-1,
     training_noise=1e-5, train_percentage=0.9
 )
 
 nnlmq7 = LearningMethodManager(
     dataset_manager=dataset_manager_vander7,
     type_of_problem=CURVE_PROBLEM,
-    trainable_model=Pipeline(
-        [
-            ("Flatter", FunctionTransformer(flatter)),
-            ("NN", MLPRegressor(hidden_layer_sizes=(20, 20,), activation='relu', learning_rate_init=0.1,
-                                learning_rate="adaptive", solver="lbfgs"))
-        ]
-    ), refit=False, n2use=-1,
+    trainable_model=skkeras_20x20_relu, refit=refit, n2use=-1,
     training_noise=1e-5, train_percentage=0.9
 )
 
 nnlmq7p = LearningMethodManager(
     dataset_manager=dataset_manager_vander7params,
     type_of_problem=CURVE_PROBLEM,
-    trainable_model=Pipeline(
-        [
-            ("Flatter", FunctionTransformer(flatter)),
-            ("NN", MLPRegressor(hidden_layer_sizes=(20, 20,), activation='relu', learning_rate_init=0.1,
-                                learning_rate="adaptive", solver="lbfgs"))
-        ]
-    ), refit=False, n2use=-1,
+    trainable_model=skkeras_20x20_relu, refit=refit, n2use=-1,
     training_noise=1e-5, train_percentage=0.9
 )
 
 nnlmc7 = LearningMethodManager(
     dataset_manager=dataset_manager_vander7circle,
     type_of_problem=CURVE_PROBLEM,
-    trainable_model=Pipeline(
-        [
-            ("Flatter", FunctionTransformer(flatter)),
-            ("NN", MLPRegressor(hidden_layer_sizes=(20, 20, 20), activation='relu', learning_rate_init=0.1,
-                                learning_rate="adaptive", solver="lbfgs"))
-        ]
-    ), refit=False, n2use=-1,
+    trainable_model=skkeras_20x20_relu, refit=refit, n2use=-1,
     training_noise=1e-5, train_percentage=0.9
 )
 
 
-@fit_model
-def nn_linear(metric):
+def nn_linear_cs():
     return get_sub_cell_model(
-        partial(LearningCurveCellCreator, learning_manager=nnlm), 1, "NN_linear", 0, CCExtraWeight, metric)
+        partial(LearningCurveCellCreator, learning_manager=nnlm_cs), 1, "NN_linear", 0, CCExtraWeight, 2)
 
 
-@fit_model
-def nn_linear4(metric):
+def nn_linear():
     return get_sub_cell_model(
-        partial(LearningCurveCellCreator, learning_manager=nnlm4), 1, "NN_linear4", 0, CCExtraWeight, metric)
+        partial(LearningCurveCellCreator, learning_manager=nnlm), 1, "NN_linear", 0, CCExtraWeight, 2)
 
 
-@fit_model
-def nn_quadratic(metric):
+def nn_linear4():
     return get_sub_cell_model(
-        partial(LearningCurveCellCreator, learning_manager=nnlmq), 1, "NN_quadratic", 0, CCExtraWeight, metric)
+        partial(LearningCurveCellCreator, learning_manager=nnlm4), 1, "NN_linear4", 0, CCExtraWeight, 2)
 
 
-@fit_model
-def nn_quadratic_1(metric):
+def nn_quadratic():
     return get_sub_cell_model(
-        partial(LearningCurveCellCreator, learning_manager=nnlmq1), 1, "NN_quadratic1", 0, CCExtraWeight, metric,
+        partial(LearningCurveCellCreator, learning_manager=nnlmq), 1, "NN_quadratic", 0, CCExtraWeight, 2)
+
+
+def nn_quadratic_1():
+    return get_sub_cell_model(
+        partial(LearningCurveCellCreator, learning_manager=nnlmq1), 1, "NN_quadratic1", 0, CCExtraWeight, 2,
         stencil_creator=StencilCreatorFixedShape(nnlmq1.dataset_manager.kernel_size))
 
 
-@fit_model
-def nn_quadratic3x7(metric):
+def nn_quadratic3x7():
     return get_sub_cell_model(
-        partial(LearningCurveCellCreator, learning_manager=nnlmq7), 1, "NN_quadratic3x7", 0, CCExtraWeight, metric,
+        partial(LearningCurveCellCreator, learning_manager=nnlmq7), 1, "NN_quadratic3x7", 0, CCExtraWeight, 2,
         stencil_creator=StencilCreatorFixedShape(nnlmq7.dataset_manager.kernel_size))
 
 
-@fit_model
-def nn_quadratic3x7params(metric):
+def nn_quadratic3x7params():
     return get_sub_cell_model(
-        partial(LearningCurveCellCreator, learning_manager=nnlmq7p), 1, "NN_quadratic3x7params", 0, CCExtraWeight, metric,
-        stencil_creator=StencilCreatorFixedShape(nnlmq7p.dataset_manager.kernel_size))
+        partial(LearningCurveCellCreator, learning_manager=nnlmq7p), 1, "NN_quadratic3x7params", 0, CCExtraWeight,
+        2, stencil_creator=StencilCreatorFixedShape(nnlmq7p.dataset_manager.kernel_size))
 
 
-@fit_model
-def nn_circle3x7(metric):
+def nn_circle3x7():
     return get_sub_cell_model(
-        partial(LearningCurveCellCreator, learning_manager=nnlmc7), 1, "NN_circle3x7", 0, CCExtraWeight, metric,
+        partial(LearningCurveCellCreator, learning_manager=nnlmc7), 1, "NN_circle3x7", 0, CCExtraWeight, 2,
         stencil_creator=StencilCreatorFixedShape(nnlmc7.dataset_manager.kernel_size))
 
 
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
-        name='AEROandNN',
+        name='NN_beyond_lines',
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
@@ -251,23 +223,27 @@ if __name__ == "__main__":
 
     lab.define_new_block_of_functions(
         "models",
-        # piecewise_constant,
-        # elvira,
-        # elvira_100,
-        # elvira_grad_oriented,
-        # linear_obera,
-        # linear_avg,
-        # linear_avg_100,
-        nn_linear,
-        # nn_linear4,
-        nn_quadratic,
-        nn_quadratic_1,
-        # nn_quadratic3x7,
-        nn_quadratic3x7params,
-        # nn_circle3x7,
+        *list(map(fit_model,
+                  [
+                      # piecewise_constant,
+                      # elvira,
+                      # elvira_100,
+                      elvira_w_oriented,
+                      # linear_obera,
+                      # linear_avg,
+                      # linear_avg_100,
+                      nn_linear,
+                      nn_linear_cs,
+                      nn_linear4,
+                      nn_quadratic,
+                      nn_quadratic_1,
+                      nn_quadratic3x7,
+                      nn_quadratic3x7params,
+                      nn_circle3x7,
+                  ])),
         recalculate=False
     )
-    num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()
+    num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=10, dtype=int).tolist()[:5]
     lab.execute(
         data_manager,
         num_cores=15,
@@ -279,7 +255,6 @@ if __name__ == "__main__":
             "Circle"
         ],
         sub_discretization2bound_error=[SUB_CELL_DISCRETIZATION2BOUND_ERROR],
-        metric=[2]
     )
 
     # color_dict = {

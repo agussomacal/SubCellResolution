@@ -34,9 +34,9 @@ class CellLearnedFlux(CellRegularBase):
     def flux(self, velocity: np.ndarray, indexer: ArrayIndexerNd) -> Dict[Tuple, float]:
         next_coords, next_fluxes = self.flux_calculator(velocity)
         # TODO: Harcoded velocities
-        return {tuple(indexer[next_coords[0]]): next_fluxes}
-        # return {tuple(indexer[nxt_coords]): next_flux for nxt_coords, next_flux in
-        #         zip(next_coords, next_fluxes)}
+        # return {tuple(indexer[next_coords[0]]): next_fluxes}
+        return {tuple(indexer[self.coords.array+nxt_coords]): next_flux for nxt_coords, next_flux in
+                zip(next_coords, next_fluxes)}
 
     def evaluate(self, query_points: np.ndarray):
         raise Exception("Not implemented.")
@@ -59,6 +59,9 @@ class LearningFluxRegularCellCreator(CellCreatorBase):
                                                                 smoothness_index, indexer)
 
         def flux_calculator(velocity):
-            return self.learning_manager.predict_flux(stencil_values, velocity[[independent_axis, 1-independent_axis]])
+            next_coords, next_flux = self.learning_manager.predict_flux(stencil_values, velocity[
+                [independent_axis, 1 - independent_axis]])
+            # TODO: assumes velocity has only one coordinate not zero
+            return next_coords, [f * value_down + (np.abs(np.sum(velocity)) - f) * value_up for f in next_flux]
 
         yield CellLearnedFlux(coords, flux_calculator=flux_calculator)

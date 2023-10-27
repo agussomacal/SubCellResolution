@@ -19,13 +19,6 @@ POINTS_OBJECTIVE = "points_objective"
 PARAMS_OBJECTIVE = "params_objective"
 QUADRATIC_PARAMS_OBJECTIVE = "quadratic_params_objective"
 
-# the vander points are in -1.5, 0, 1.5
-INV_VANDER_MAT_3x3_3 = np.array(
-    [[0, 1, 0],
-     [-1 / 3, 0, 1 / 3],
-     [2 / 9, -4 / 9, 2 / 9]]
-)
-
 POINTS_SAMPLER_EQUISPACE = "equispace"
 POINTS_SAMPLER_CHEBYCHEV = "chebychev"
 POINTS_SAMPLER_QUADRATIC = "quadratic"

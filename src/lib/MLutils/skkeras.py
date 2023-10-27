@@ -4,7 +4,6 @@ References:
     EarlyStopping: https://machinelearningmastery.com/how-to-stop-training-deep-neural-networks-at-the-right-time-using-early-stopping/
     Deep Learning tutorial: https://deeplizard.com/learn/playlist/PLZbbT5o_s2xq7LwI2y8_QtvuXZedL6tQU
 """
-import sys
 import tempfile
 
 import keras.models
@@ -12,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pathos.multiprocessing import cpu_count
 from sklearn.base import BaseEstimator
+from sklearn.neural_network import MLPRegressor
 from tqdm.keras import TqdmCallback
 
 from PerplexityLab.miscellaneous import get_map_function
@@ -84,7 +84,7 @@ make_keras_picklable()
 
 class SKKerasBase(BaseEstimator):
     def __init__(self, epochs=1000, restarts=1,
-                 max_time4fitting=np.Inf, validation_size=0.2, batch_size=None, criterion='mse', solver='adam', lr=None,
+                 max_time4fitting=np.Inf, validation_size=0.2, batch_size=None, criterion='mse', solver='Adam', lr=None,
                  lr_lower_limit=1e-12, lr_upper_limit=1, n_epochs_without_improvement=100, random_state=42, workers=1):
         super().__init__()
 
@@ -153,7 +153,8 @@ class SKKerasBase(BaseEstimator):
             del lrf
             # plt.savefig(config.LRFIND_PLOT_PATH)
             # self.find_lr(query, target)
-        return KerasClassifier(model=create_model, epochs=150, batch_size=10, verbose=0)
+
+        # return KerasClassifier(model=create_model, epochs=150, batch_size=10, verbose=0)
 
         def train_in_paralel(restart):
             from keras.callbacks import EarlyStopping  # , ModelCheckpoint
@@ -200,8 +201,9 @@ class SKKerasBase(BaseEstimator):
 
 class SKKerasFNN(SKKerasBase):
     def __init__(self, hidden_layer_sizes, activation="relu", epochs=1000, restarts=1,
-                 max_time4fitting=np.Inf, validation_size=0.2, batch_size=None, criterion='mse', solver='adam', lr=None,
-                 lr_lower_limit=1e-12, lr_upper_limit=1, n_epochs_without_improvement=100, random_state=42, workers=1):
+                 max_time4fitting=np.Inf, validation_size=0.2, batch_size=None, criterion='mse', solver='Adam', lr=None,
+                 lr_lower_limit=1e-12, lr_upper_limit=1, n_epochs_without_improvement=100, random_state=42, workers=1,
+                 train_noise=0):
         """
 
         :param hidden_layer_sizes:
@@ -222,6 +224,7 @@ class SKKerasFNN(SKKerasBase):
         """
         self.activation = activation
         self.hidden_layer_sizes = hidden_layer_sizes
+        self.train_noise = train_noise
         super().__init__(epochs=epochs, validation_size=validation_size,
                          batch_size=batch_size, workers=workers,
                          restarts=restarts, max_time4fitting=max_time4fitting,
@@ -232,15 +235,40 @@ class SKKerasFNN(SKKerasBase):
                          random_state=random_state)
 
     def define_architecture(self, query, target):
-        from keras.layers import Dense
+        from keras.layers import Dense, GaussianNoise
         from keras.models import Sequential
 
         model = Sequential()
+        if self.train_noise > 0:
+            model.add(GaussianNoise(self.train_noise, input_shape=np.shape(query)[1:]))
         model.add(Dense(self.hidden_layer_sizes[0], input_shape=np.shape(query)[1:], activation=self.activation))
         for hidden_layer_size in self.hidden_layer_sizes[1:]:
             model.add(Dense(hidden_layer_size, activation=self.activation))
         model.add(Dense(np.prod(target.shape[1:])))
         return model
+
+
+class Keras2MLPRegressor(MLPRegressor):
+    def __init__(
+            self,
+            skkeras_model: SKKerasFNN,
+    ):
+        self.skkeras_model = skkeras_model
+        super().__init__(
+            hidden_layer_sizes=self.skkeras_model.hidden_layer_sizes,
+            activation=self.skkeras_model.activation,
+            max_iter=1,
+        )
+
+    def fit(self, X, y):
+        super().fit(X, y)
+        self.skkeras_model.fit(X, y)
+        weights, biases = zip(
+            *[layer.get_weights() for layer in self.skkeras_model.architecture.layers if len(layer.get_weights()) == 2])
+        self.coefs_ = weights
+        self.intercepts_ = biases
+        del self.skkeras_model
+        return self
 
 
 class LearningRateFinder:
@@ -401,3 +429,11 @@ class LearningRateFinder:
         # if the title is not empty, add it to the plot
         if title != "":
             plt.title(title)
+
+
+# ================== ================== ================== ================== #
+#                                      Tests
+if __name__ == "__main__":
+    model = Keras2MLPRegressor(SKKerasFNN(hidden_layer_sizes=(5, 5)))
+    model.fit(np.ones((5, 2)), np.ones((5, 1)))
+    model.predict(np.ones((5, 2)))

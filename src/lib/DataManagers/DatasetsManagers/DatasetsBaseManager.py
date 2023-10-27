@@ -52,7 +52,8 @@ def get_flux_from_curve_and_velocity(curve, center_cell_coords, velocity):
 
 
 def is_central_cell_singular(kernel, center_cell_coords, minmax_val: Tuple):
-    return minmax_val[1] > kernel[center_cell_coords] > minmax_val[0]
+    return minmax_val[1] > kernel[tuple(center_cell_coords)] > minmax_val[0]
+
 
 
 def load_joblib(path: Union[str, Path]):
@@ -165,10 +166,10 @@ class DatasetsBaseManager:
                                  size=tuple([len(data["kernel"])] + list(self.kernel_size)))
         input_data = data["kernel"] + noise
         if type_of_problem == CLASSIFICATION_PROBLEM:
-            output_data = data["classification"]
+            output_data = np.array(data["classification"])
         elif type_of_problem == FLUX_PROBLEM:
             input_data = list(zip(input_data, data["velocity"]))
-            output_data = data["flux"]
+            output_data = np.array(data["flux"])
         elif type_of_problem == CURVE_PROBLEM:
             output_data = np.transpose(self.transform_curve_data(*np.transpose(data["curve"])))
         elif type_of_problem == CELL_CLASSIFICATION_PROBLEM:
@@ -215,34 +216,13 @@ class DatasetsBaseManager:
             # Calculate averages
             # The coordinates must be so the origin is in the center of the central cell
             kernel = get_averages_from_curve_kernel(self.kernel_size, curve, self.center_cell_coords)
-            # kernel = np.zeros(self.kernel_size)
-            # for coords in map(np.array, itertools.product(*list(map(range, self.kernel_size)))):
-            #     centered_coords = coords - self.center_cell_coords - 0.5
-            #     kernel[tuple(coords)] = curve.calculate_rectangle_average(
-            #         x_limits=(centered_coords[0], centered_coords[0] + 1.0),
-            #         y_limits=(centered_coords[1], centered_coords[1] + 1.0)
-            #     )
-
-            # is it a Regular cell or a curve cell?
-            # Assumes for non functions curves that functions to train are 0 to 1.
-            # classification = [(0 < kernel[self.kernel_size[0] // 2, self.kernel_size[1] // 2]) and
-            #                   (1 > kernel[self.kernel_size[0] // 2, self.kernel_size[1] // 2])]
             classification = [is_central_cell_singular(kernel, self.center_cell_coords, self.minmax_val)]
 
             # calculate flux
             flux = get_flux_from_curve_and_velocity(curve, self.center_cell_coords, velocity)
-            # next_coords, next_rectangles = get_rectangles_and_coords_to_calculate_flux(
-            #     coords=np.array(self.kernel_size) // 2,
-            #     velocity=velocity
-            # )
-            # flux = [curve.calculate_rectangle_average(
-            #     x_limits=(rectangle[0][0], rectangle[1][0]),
-            #     y_limits=(rectangle[0][1], rectangle[1][1])
-            # ) for rectangle in next_rectangles]
 
-            # curve_data[:-2] because the last two are the values of each side
-            # TODO: hardcoded only one direction
-            return kernel, velocity, classification, np.ravel(curve_data[:-2]), [flux[len(flux) == 3]]
+            # TODO: hardcoded only one direction of flux
+            return kernel, velocity, classification, np.ravel(curve_data), [flux[len(flux) == 3]]
 
         t0 = time()
         map_func = get_map_function(self.workers)

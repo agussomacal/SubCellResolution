@@ -12,7 +12,7 @@ from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import generic_plot, one_line_iterator, perplex_plot
-from experiments.LearningMethods import flatter
+from experiments.LearningMethods import flatter, skkeras_20x20_relu_noisy, skkeras_20x20_relu
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, plot_cells_identity, \
     plot_cells_vh_classification_core, plot_cells_not_regular_classification_core, plot_curve_core
 from experiments.subcell_paper.global_params import cpink, corange, cyellow, \
@@ -25,7 +25,8 @@ from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import REGULAR_CELL_TYPE
 from lib.CellCreators.LearningFluxRegularCellCreator import CellLearnedFlux
 from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import FLUX_PROBLEM
-from lib.DataManagers.DatasetsManagers.DatasetsManagerLinearCurves import DatasetsManagerLinearCurves, ANGLE_OBJECTIVE
+from lib.DataManagers.DatasetsManagers.DatasetsManagerLinearCurves import DatasetsManagerLinearCurves, ANGLE_OBJECTIVE, \
+    COS_SIN_OBJECTIVE
 from lib.DataManagers.LearningMethodManager import LearningMethodManager
 from lib.SubCellScheme import SubCellScheme
 
@@ -62,31 +63,52 @@ runsinfo.append_info(
 
 # ========== ========== ML models ========== ========== #
 N = int(1e6)
-# dataset_manager_3_8pi = DatasetsManagerLinearCurves(
-#     velocity_range=((0, 0), (1/4, 1/4)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
-#     workers=15, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
-#     value_up_random=True
-# )
-
 dataset_manager_3_8pi = DatasetsManagerLinearCurves(
-    velocity_range=[(0, 1/4), (1/4, 0)], path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
-    workers=15, recalculate=True, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
+    velocity_range=[(0, 1 / 4), (1 / 4, 0), (0, -1 / 4), (-1 / 4, 0)], path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
+    workers=15, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
     value_up_random=True
 )
 
+
+dataset_manager_cossin = DatasetsManagerLinearCurves(
+    velocity_range=((0, 0), (0, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
+    workers=15, recalculate=False, learning_objective=COS_SIN_OBJECTIVE,
+    # angle_limits=(-3 / 8, 3 / 8),
+    value_up_random=False
+)
+
+
+# nnlm = LearningMethodManager(
+#     dataset_manager=dataset_manager_3_8pi,
+#     type_of_problem=FLUX_PROBLEM,
+#     trainable_model=Pipeline(
+#         [
+#             ("Flatter", FunctionTransformer(flatter)),
+#             ("NN", MLPRegressor(hidden_layer_sizes=(20, 20,), activation='relu', learning_rate_init=0.1,
+#                                 learning_rate="adaptive", solver="adam"))
+#         ]
+#     ),
+#     refit=False, n2use=-1,
+#     training_noise=1e-5, train_percentage=0.9
+# )
+
 nnlm = LearningMethodManager(
+    name="noisy_",
     dataset_manager=dataset_manager_3_8pi,
     type_of_problem=FLUX_PROBLEM,
-    trainable_model=Pipeline(
-        [
-            ("Flatter", FunctionTransformer(flatter)),
-            ("NN", MLPRegressor(hidden_layer_sizes=(20, 20,), activation='relu', learning_rate_init=0.1,
-                                learning_rate="adaptive", solver="adam"))
-        ]
-    ),
-    refit=True, n2use=-1,
-    training_noise=1e-5, train_percentage=0.9
+    trainable_model=skkeras_20x20_relu_noisy,
+    refit=False, n2use=-1,
+    training_noise=0, train_percentage=0.9
 )
+
+# nnlm = LearningMethodManager(
+#     # name="noisy_",
+#     dataset_manager=dataset_manager_cossin,
+#     type_of_problem=FLUX_PROBLEM,
+#     trainable_model=skkeras_20x20_relu,
+#     refit=False, n2use=-1,
+#     training_noise=0, train_percentage=0.9
+# )
 
 
 # ========== ========== Experiment definitions ========== ========== #
@@ -162,10 +184,10 @@ def fit_model(subcell_reconstruction):
 # ========== ========== Plots definitions ========== ========== #
 @perplex_plot()
 @one_line_iterator
-def plot_time_i(fig, ax, true_solution, solution, num_cells_per_dim, model, i=0, alpha=0.5, cmap="Greys_r",
+def plot_time_i(fig, ax, true_solution, solution, num_cells_per_dim, i=0, alpha=0.5, cmap="Greys_r",
                 trim=((0, 0), (0, 0)),
                 numbers_on=True, error=False):
-    model_resolution = np.array(model.resolution)
+    model_resolution = np.array([num_cells_per_dim, num_cells_per_dim])
     colors = (solution[i] - true_solution[i]) if error else solution[i]
     plot_cells(ax, colors=colors, mesh_shape=model_resolution, alpha=alpha, cmap=cmap,
                vmin=np.min(true_solution), vmax=np.max(true_solution))
@@ -228,7 +250,7 @@ scheme_error = lambda image, true_solution, solution: np.mean(
     np.abs((np.array(solution[1:]) - np.array(true_solution[1:]))), axis=(1, 2))
 scheme_reconstruction_error = lambda true_reconstruction, reconstruction, reconstruction_factor: np.array([
     get_reconstruction_error(tr_i, reconstruction=r_i, reconstruction_factor=reconstruction_factor)
-    for r_i, tr_i in zip(reconstruction, true_reconstruction)])
+    for r_i, tr_i in zip(reconstruction, true_reconstruction)]) if reconstruction is not None else None
 
 if __name__ == "__main__":
     data_manager = DataManager(
@@ -281,8 +303,8 @@ if __name__ == "__main__":
         image=[
             # "yoda.jpg",
             # "DarthVader.jpeg",
-            # "Ellipsoid_1680x1680.jpg",
-            "ShapesVertex_1680x1680.jpg",
+            "Ellipsoid_1680x1680.jpg",
+            # "ShapesVertex_1680x1680.jpg",
             # "HandVertex_1680x1680.jpg",
             # "Polygon_1680x1680.jpg",
         ],
@@ -292,7 +314,7 @@ if __name__ == "__main__":
 
     generic_plot(data_manager,
                  name="ErrorInTime",
-                 format=".pdf",ntimes=ntimes,
+                 format=".pdf", ntimes=ntimes,
                  # path=config.subcell_paper_figures_path,
                  x="times", y="scheme_error", label="method", plot_by=["num_cells_per_dim", "image"],
                  # models=["elvira", "quadratic"],

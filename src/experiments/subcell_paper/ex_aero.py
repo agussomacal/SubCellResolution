@@ -13,7 +13,7 @@ from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
 from PerplexityLab.visualization import generic_plot, make_data_frames, perplex_plot
-from experiments.LearningMethods import flatter, skkeras_20x20_relu, skpykeras_20x20_relu
+from experiments.LearningMethods import flatter, skkeras_20x20_relu, skpykeras_20x20_relu, skkeras_20x20_relu_noisy
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, OBERA_ITERS, \
     CCExtraWeight, runsinfo, cblue, corange, cgreen, cred, cpurple, cbrown, cpink, cgray, cyellow, ccyan
 from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
@@ -32,57 +32,12 @@ from lib.CellOrientators import BaseOrientator, OrientByGradient
 from lib.Curves.AverageCurves import CurveAveragePolynomial
 from lib.Curves.VanderCurves import CurveVandermondePolynomial
 from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import CURVE_PROBLEM
-from lib.DataManagers.DatasetsManagers.DatasetsManagerLinearCurves import DatasetsManagerLinearCurves, ANGLE_OBJECTIVE
+from lib.DataManagers.DatasetsManagers.DatasetsManagerLinearCurves import DatasetsManagerLinearCurves, ANGLE_OBJECTIVE, \
+    COS_SIN_OBJECTIVE
 from lib.DataManagers.LearningMethodManager import LearningMethodManager
 from lib.SmoothnessCalculators import indifferent
 from lib.StencilCreators import StencilCreatorFixedShape, StencilCreatorAdaptive
 from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasureBase, CellCreatorPipeline
-
-N = int(1e6)
-dataset_manager_3_8pi = DatasetsManagerLinearCurves(
-    velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
-    workers=15, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
-    value_up_random=True
-)
-
-nnlm = LearningMethodManager(
-    dataset_manager=dataset_manager_3_8pi,
-    type_of_problem=CURVE_PROBLEM,
-    trainable_model=Pipeline(
-        [
-            ("Flatter", FunctionTransformer(flatter)),
-            ("NN", MLPRegressor(hidden_layer_sizes=(20, 20,), activation='relu', learning_rate_init=0.1,
-                                learning_rate="adaptive", solver="lbfgs"))
-        ]
-    ),
-    refit=False, n2use=-1,
-    training_noise=1e-5, train_percentage=0.9
-)
-
-nnlmkeras = LearningMethodManager(
-    dataset_manager=dataset_manager_3_8pi,
-    type_of_problem=CURVE_PROBLEM,
-    trainable_model=skkeras_20x20_relu,
-    refit=False, n2use=-1,
-    training_noise=1e-5, train_percentage=0.9
-)
-
-nnlmskkeras = LearningMethodManager(
-    dataset_manager=dataset_manager_3_8pi,
-    type_of_problem=CURVE_PROBLEM,
-    trainable_model=skpykeras_20x20_relu,
-    refit=False, n2use=-1,
-    training_noise=1e-5, train_percentage=0.9
-)
-
-
-# nnlmtorch = LearningMethodManager(
-#     dataset_manager=dataset_manager_3_8pi,
-#     type_of_problem=CURVE_PROBLEM,
-#     trainable_model=sktorch_20x20_relu,
-#     refit=False, n2use=-1,
-#     training_noise=1e-5, train_percentage=0.9
-# )
 
 
 def fit_model(sub_cell_model):
@@ -119,7 +74,53 @@ def fit_model(sub_cell_model):
     return decorated_func
 
 
-@fit_model
+if __name__ == "__main__":
+    N = int(1e6)
+    dataset_manager_3_8pi = DatasetsManagerLinearCurves(
+        velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
+        workers=15, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
+        value_up_random=True
+    )
+
+    N = int(1e6)
+    dataset_manager_cossin = DatasetsManagerLinearCurves(
+        velocity_range=((0, 0), (0, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
+        workers=15, recalculate=True, learning_objective=COS_SIN_OBJECTIVE,
+        # angle_limits=(-3 / 8, 3 / 8),
+        value_up_random=False
+    )
+
+    nnlm = LearningMethodManager(
+        dataset_manager=dataset_manager_3_8pi,
+        type_of_problem=CURVE_PROBLEM,
+        trainable_model=Pipeline(
+            [
+                ("Flatter", FunctionTransformer(flatter)),
+                ("NN", MLPRegressor(hidden_layer_sizes=(20, 20,), activation='relu', learning_rate_init=0.1,
+                                    learning_rate="adaptive", solver="lbfgs"))
+            ]
+        ),
+        refit=False, n2use=-1,
+        training_noise=1e-5, train_percentage=0.9
+    )
+
+    nnlmkeras = LearningMethodManager(
+        dataset_manager=dataset_manager_3_8pi,
+        type_of_problem=CURVE_PROBLEM,
+        trainable_model=skkeras_20x20_relu_noisy,
+        refit=False, n2use=-1,
+        training_noise=0, train_percentage=0.9
+    )
+
+    nnlmkeras_cossin = LearningMethodManager(
+        dataset_manager=dataset_manager_cossin,
+        type_of_problem=CURVE_PROBLEM,
+        trainable_model=skkeras_20x20_relu_noisy,
+        refit=False, n2use=-1,
+        training_noise=0, train_percentage=0.9
+    )
+
+
 def piecewise_constant(*args):
     return SubCellReconstruction(
         name="PiecewiseConstant",
@@ -138,30 +139,26 @@ def piecewise_constant(*args):
     )
 
 
-@fit_model
 def elvira():
     return get_sub_cell_model(ELVIRACurveCellCreator, 1, "ELVIRA", 0, 0, 2,
                               orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, angle_threshold=0))
 
 
-@fit_model
 def elvira_w():
     return get_sub_cell_model(ELVIRACurveCellCreator, 1, "ELVIRA-W", 0, CCExtraWeight, 2,
                               orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, angle_threshold=0))
 
 
-@fit_model
 def elvira_w_oriented():
     return get_sub_cell_model(ELVIRACurveCellCreator, 1, "ELVIRAGRAD", 0, CCExtraWeight, 2)
 
 
-@fit_model
 def elvira_go100_ref2():
     return get_sub_cell_model(ELVIRACurveCellCreator, 2, "ELVIRAGRAD", 0, CCExtraWeight, 2)
 
 
 # It is key for OBERA Linear to use L1
-@fit_model
+
 def linear_obera():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=1, ccew=0),
@@ -170,7 +167,7 @@ def linear_obera():
 
 
 # It is key for OBERA Linear to use L1
-@fit_model
+
 def linear_obera_w():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=1, ccew=0),
@@ -178,7 +175,6 @@ def linear_obera_w():
         "LinearOpt", OBERA_ITERS, CCExtraWeight, 1)
 
 
-@fit_model
 def linear_aero():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=0)), 1,
@@ -187,7 +183,6 @@ def linear_aero():
                                                center_weight=2.1))
 
 
-@fit_model
 def linear_aero_w():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=CCExtraWeight)), 1,
@@ -196,7 +191,6 @@ def linear_aero_w():
                                                center_weight=2.1))
 
 
-@fit_model
 def linear_aero_consistent():
     return get_sub_cell_model(partial(ValuesLineConsistentCurveCellCreator, ccew=CCExtraWeight), 1,
                               "LinearAvgConsistent", 0, CCExtraWeight, 1,
@@ -205,31 +199,33 @@ def linear_aero_consistent():
                                                                      center_weight=2.1))
 
 
-@fit_model
 def nn_linear():
     return get_sub_cell_model(partial(LearningCurveCellCreator, nnlm), 1,
                               "LinearNN", 0, CCExtraWeight, 2)
 
 
-# @fit_model
+#
 # def nn_linear_torch():
 #     return get_sub_cell_model(partial(LearningCurveCellCreator, nnlmtorch), 1,
 #                               "LinearNN", 0, CCExtraWeight, 2)
 
 
-@fit_model
 def nn_linear_keras():
     return get_sub_cell_model(partial(LearningCurveCellCreator, nnlmkeras), 1,
                               "LinearNN", 0, CCExtraWeight, 2)
 
 
-@fit_model
-def nn_linear_skkeras():
-    return get_sub_cell_model(partial(LearningCurveCellCreator, nnlmskkeras), 1,
+def nn_linear_keras_cs():
+    return get_sub_cell_model(partial(LearningCurveCellCreator, nnlmkeras_cossin), 1,
                               "LinearNN", 0, CCExtraWeight, 2)
 
 
-@fit_model
+#
+# def nn_linear_skkeras():
+#     return get_sub_cell_model(partial(LearningCurveCellCreator, nnlmskkeras), 1,
+#                               "LinearNN", 0, CCExtraWeight, 2)
+
+
 def quadratic_obera_non_adaptive():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator,
@@ -237,7 +233,6 @@ def quadratic_obera_non_adaptive():
         "QuadraticOptNonAdaptive", OBERA_ITERS, CCExtraWeight, 2)
 
 
-@fit_model
 def quadratic_obera():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator,
@@ -246,7 +241,6 @@ def quadratic_obera():
         stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3))
 
 
-@fit_model
 def quadratic_aero():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator,
@@ -255,7 +249,6 @@ def quadratic_aero():
         stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
 
 
-@fit_model
 def quadratic_aero_ref2():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator,
@@ -264,7 +257,6 @@ def quadratic_aero_ref2():
         stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
 
 
-@fit_model
 def obera_circle():
     return get_sub_cell_model(
         partial(TaylorCircleCurveCellCreator, ccew=CCExtraWeight, natural_params=False), 1,
@@ -272,7 +264,6 @@ def obera_circle():
         stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
 
 
-@fit_model
 def obera_circle_vander():
     return get_sub_cell_model(ValuesCircleCellCreator, 1,
                               "CircleAvg", OBERA_ITERS, CCExtraWeight, 2,
@@ -319,35 +310,39 @@ if __name__ == "__main__":
 
     lab.define_new_block_of_functions(
         "models",
-        piecewise_constant,
-        elvira,
-        elvira_w_oriented,
-        linear_obera,
-        linear_obera_w,
-        linear_aero,
-        linear_aero_w,
-        linear_aero_consistent,
-        nn_linear,
-        # nn_linear_torch,
-        nn_linear_keras,
-        # nn_linear_skkeras,
+        *list(map(fit_model,
+                  [
+                      piecewise_constant,
+                      elvira,
+                      elvira_w_oriented,
+                      linear_obera,
+                      linear_obera_w,
+                      linear_aero,
+                      linear_aero_w,
+                      linear_aero_consistent,
+                      nn_linear,
+                      # nn_linear_torch,
+                      nn_linear_keras,
+                      nn_linear_keras_cs,
+                      # nn_linear_skkeras,
 
-        quadratic_obera_non_adaptive,
-        quadratic_obera,
-        quadratic_aero,
+                      quadratic_obera_non_adaptive,
+                      quadratic_obera,
+                      quadratic_aero,
 
-        # elvira_go100_ref2,
-        # quadratic_aero_ref2,
+                      # elvira_go100_ref2,
+                      # quadratic_aero_ref2,
 
-        obera_circle,
-        obera_circle_vander,
+                      obera_circle,
+                      obera_circle_vander]
+                  )),
         recalculate=False
     )
     # num_cells_per_dim = np.logspace(np.log10(10), np.log10(100), num=20, dtype=int).tolist()[:5]
     num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=20, dtype=int).tolist()
     num_cells_per_dim = np.logspace(np.log10(10), np.log10(20), num=5, dtype=int,
                                     endpoint=False).tolist() + num_cells_per_dim
-    num_cores = 1
+    num_cores = 15
     lab.execute(
         data_manager,
         num_cores=num_cores,

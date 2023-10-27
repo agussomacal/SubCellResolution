@@ -23,8 +23,10 @@ def linf_error(predictions, true_values):
 
 
 class LearningMethodManager:
-    def __init__(self, dataset_manager: Union[DatasetsBaseManager, DatasetConcatenator], trainable_model: Pipeline, type_of_problem: str,
-                 refit=False, n2use=-1, seed=42, training_noise: float = 0, train_percentage=1):
+    def __init__(self, dataset_manager: Union[DatasetsBaseManager, DatasetConcatenator], trainable_model: Pipeline,
+                 type_of_problem: str, refit=False, n2use=-1, seed=42, training_noise: float = 0, train_percentage=1,
+                 name=""):
+        self.name = name
         self.dataset_manager = dataset_manager
         self.seed = seed
         self.refit = refit
@@ -45,7 +47,7 @@ class LearningMethodManager:
     def model_filename(self):
         # each step of the Pipeline composing the trainable model constitute the name to be saved
         trained_model_name = "_".join(list(zip(*self.trainable_model.steps))[0])
-        return f"{self.type_of_problem}_{trained_model_name}_{self.dataset_manager.base_name}{self.dataset_manager.name4learning}" \
+        return f"{self.name}{self.type_of_problem}_{trained_model_name}_{self.dataset_manager.base_name}{self.dataset_manager.name4learning}" \
                f"_n_train{self.n_train}_noise{self.training_noise}"
 
     @property
@@ -89,7 +91,7 @@ class LearningMethodManager:
         # next_flux = np.array([0.0] * 3)
         # next_flux[1] = self.trainable_model.predict([[kernel]])[0]
         next_coords = get_relative_next_coords_to_calculate_flux(velocity)
-        return next_coords, next_flux
+        return next_coords, [next_flux] if isinstance(next_flux, float) else next_flux
 
     def predict_curve_params(self, kernel: np.ndarray) -> CurveBase:
         return self.trainable_model.predict([kernel])[0]
