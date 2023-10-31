@@ -5,6 +5,8 @@ from lib.Curves.AverageCurves import CurveAveragePolynomial
 
 from seaborn import color_palette
 
+from lib.Curves.VanderCurves import CurveVandermondePolynomial
+
 cblue, corange, cgreen, cred, cpurple, cbrown, cpink, cgray, cyellow, ccyan = color_palette("tab10")
 
 bluish = (17, 110, 138)
@@ -22,6 +24,7 @@ CCExtraWeight = 100  # central cell extra weight 100
 
 CurveAverageQuadraticCC = ClassPartialInit(CurveAveragePolynomial, class_name="CurveAverageQuadraticCC",
                                            degree=2, ccew=CCExtraWeight)
+VanderQuadratic = ClassPartialInit(CurveVandermondePolynomial, class_name="VanderQuadratic", degree=2)
 
 runsinfo = RunsInfo2Latex(path2latex=f"{subcell_paper_folder_path}/main.tex")
 runsinfo.insert_preamble_in_latex_file()

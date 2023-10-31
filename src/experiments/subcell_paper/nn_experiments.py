@@ -10,7 +10,7 @@ from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version, 
 from PerplexityLab.visualization import generic_plot
 from experiments.LearningMethods import skkeras_20x20_relu, skkeras_20x20_relu_noisy
 from experiments.subcell_paper.ex_aero import fit_model, elvira_w_oriented, quadratic_aero
-from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, CCExtraWeight
+from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, CCExtraWeight, VanderQuadratic
 from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
 from experiments.subcell_paper.tools import calculate_averages_from_curve
 from lib.CellCreators.CurveCellCreators.LearningCurveCellCreator import LearningCurveCellCreator
@@ -45,7 +45,6 @@ dataset_manager_cossin = DatasetsManagerLinearCurves(
 )
 
 print("dataset 3")
-VanderQuadratic = ClassPartialInit(CurveVandermondePolynomial, class_name="VanderQuadratic", degree=2)
 dataset_manager_vander = DatasetsManagerVanderCurves(
     curve_type=VanderQuadratic,
     velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
@@ -95,7 +94,7 @@ nnlm_cs = LearningMethodManager(
     type_of_problem=CURVE_PROBLEM,
     trainable_model=skkeras_20x20_relu_noisy,
     refit=refit, n2use=-1,
-    training_noise=0, train_percentage=0.9
+    train_percentage=0.9
 )
 
 nnlm = LearningMethodManager(

@@ -23,7 +23,7 @@ from lib.StencilCreators import Stencil
 CLASSIFICATION_PROBLEM = "Classification"
 CURVE_PROBLEM = "Curve"
 FLUX_PROBLEM = "Flux"
-CELL_CLASSIFICATION_PROBLEM = "Classification"
+CURVE_CLASSIFICATION_PROBLEM = "Curve_classification"
 
 
 def get_averages_from_curve_kernel(kernel_size: Tuple[int, ...], curve: CurveBase, center_cell_coords=None):
@@ -53,7 +53,6 @@ def get_flux_from_curve_and_velocity(curve, center_cell_coords, velocity):
 
 def is_central_cell_singular(kernel, center_cell_coords, minmax_val: Tuple):
     return minmax_val[1] > kernel[tuple(center_cell_coords)] > minmax_val[0]
-
 
 
 def load_joblib(path: Union[str, Path]):
@@ -115,6 +114,10 @@ class DatasetsBaseManager:
     def get_center(kernel_size):
         return np.array(kernel_size) // 2 + 0.5
 
+    @property
+    def curve_types(self):
+        return [self.curve_type]
+
     # --------- file properties ---------- #
     @property
     def base_name(self):
@@ -159,12 +162,10 @@ class DatasetsBaseManager:
         """
         return args
 
-    def get_dataset4problem(self, type_of_problem, n=None, training_noise=0, n_train=None):
+    def get_dataset4problem(self, type_of_problem, n=None, n_train=None):
         n = self.N if n is None else n
         data = self.load_dataset(n)
-        noise = np.random.normal(loc=0, scale=training_noise,
-                                 size=tuple([len(data["kernel"])] + list(self.kernel_size)))
-        input_data = data["kernel"] + noise
+        input_data = data["kernel"]
         if type_of_problem == CLASSIFICATION_PROBLEM:
             output_data = np.array(data["classification"])
         elif type_of_problem == FLUX_PROBLEM:
@@ -172,9 +173,8 @@ class DatasetsBaseManager:
             output_data = np.array(data["flux"])
         elif type_of_problem == CURVE_PROBLEM:
             output_data = np.transpose(self.transform_curve_data(*np.transpose(data["curve"])))
-        elif type_of_problem == CELL_CLASSIFICATION_PROBLEM:
-            raise Exception("Not implemented.")
-            output_data = str(self.curve_type)
+        elif type_of_problem == CURVE_CLASSIFICATION_PROBLEM:
+            output_data = len(input_data) * [str(self.curve_type)]
         else:
             raise Exception("Type of problem {} not implemented.".format(type_of_problem))
         n_train = n if n_train is None else n_train
@@ -252,6 +252,10 @@ class DatasetConcatenator:
         self.path2datafolder.mkdir(parents=True, exist_ok=True)
         self.datasets = datasets
 
+    @property
+    def curve_types(self):
+        return [dataset.curve_type for dataset in self.datasets]
+
     def __len__(self):
         return sum(map(len, self.datasets))
 
@@ -283,27 +287,15 @@ class DatasetConcatenator:
         """In case special data about the transformations has to be added."""
         return ""
 
-    # # --------- load ---------- #
-    # def load_dataset(self, n: Union[int, float, List, np.ndarray]):
-    #     n = [n] * len(self.datasets) if isinstance(n, (int, float)) else n
-    #     data = defaultdict(list)
-    #     for ni, dataset in zip(n, self.datasets):
-    #         ni = ni if isinstance(ni, int) else int(dataset.N * ni)
-    #         data_i = dataset.load_dataset(min(ni, dataset.N))
-    #         for k, v in data_i.items():
-    #             if isinstance(v, List):
-    #                 data[k] += v
-    #     return data
-
-    def get_dataset4problem(self, type_of_problem, n=None, training_noise=0, n_train=None):
+    def get_dataset4problem(self, type_of_problem, n=None, n_train=None):
         # test:
         # tuple(map(lambda x: list(itertools.chain(*x)), zip(*[([i]*(i+3), [-i]*(i+3)) for i in [1, 2]])))
         input_train, output_train, input_test, output_test = tuple(map(lambda x: list(itertools.chain(*x)), zip(*[
-            dataset.get_dataset4problem(type_of_problem, n=n, training_noise=training_noise, n_train=n_train) for
+            dataset.get_dataset4problem(type_of_problem, n=n, n_train=n_train) for
             dataset in self.datasets])))
 
-        if type_of_problem == CELL_CLASSIFICATION_PROBLEM:
-            raise Exception("Not implemented.")
-            # set(output_train)
-            # output_test
+        if type_of_problem == CURVE_CLASSIFICATION_PROBLEM:
+            one_hot_encoding = dict(zip(map(str, self.curve_types), np.eye(len(self.datasets))))
+            output_train = np.array([one_hot_encoding[v] for v in output_train])
+            output_test = np.array([one_hot_encoding[v] for v in output_test])
         return input_train, output_train, input_test, output_test

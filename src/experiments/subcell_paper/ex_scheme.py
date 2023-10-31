@@ -89,7 +89,7 @@ dataset_manager_cossin = DatasetsManagerLinearCurves(
 #         ]
 #     ),
 #     refit=False, n2use=-1,
-#     training_noise=1e-5, train_percentage=0.9
+#     train_percentage=0.9
 # )
 
 nnlm = LearningMethodManager(
@@ -98,7 +98,7 @@ nnlm = LearningMethodManager(
     type_of_problem=FLUX_PROBLEM,
     trainable_model=skkeras_20x20_relu_noisy,
     refit=False, n2use=-1,
-    training_noise=0, train_percentage=0.9
+    train_percentage=0.9
 )
 
 # nnlm = LearningMethodManager(
@@ -107,7 +107,7 @@ nnlm = LearningMethodManager(
 #     type_of_problem=FLUX_PROBLEM,
 #     trainable_model=skkeras_20x20_relu,
 #     refit=False, n2use=-1,
-#     training_noise=0, train_percentage=0.9
+#     train_percentage=0.9
 # )
 
 

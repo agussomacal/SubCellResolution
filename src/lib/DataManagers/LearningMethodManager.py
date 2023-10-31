@@ -6,12 +6,10 @@ import numpy as np
 from sklearn.pipeline import Pipeline
 
 from PerplexityLab.miscellaneous import clean_str4saving, timeit
-from lib.AuxiliaryStructures.Constants import neighbourhood_8_ix
-from lib.CellCreators.CellCreatorBase import velocity_8nei_direction, get_relative_next_coords_to_calculate_flux
+from lib.CellCreators.CellCreatorBase import get_relative_next_coords_to_calculate_flux
 from lib.Curves.Curves import CurveBase
 from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import DatasetsBaseManager, load_joblib, save_joblib, \
     DatasetConcatenator
-from lib.StencilCreators import rotate_matrix_90deg
 
 
 def l1_error(predictions, true_values):
@@ -24,13 +22,12 @@ def linf_error(predictions, true_values):
 
 class LearningMethodManager:
     def __init__(self, dataset_manager: Union[DatasetsBaseManager, DatasetConcatenator], trainable_model: Pipeline,
-                 type_of_problem: str, refit=False, n2use=-1, seed=42, training_noise: float = 0, train_percentage=1,
+                 type_of_problem: str, refit=False, n2use=-1, seed=42, train_percentage=1,
                  name=""):
         self.name = name
         self.dataset_manager = dataset_manager
         self.seed = seed
         self.refit = refit
-        self.training_noise = training_noise
         self.type_of_problem = type_of_problem
         self.n2use = len(self.dataset_manager) if n2use == -1 else n2use
         self.train_percentage = train_percentage
@@ -48,7 +45,7 @@ class LearningMethodManager:
         # each step of the Pipeline composing the trainable model constitute the name to be saved
         trained_model_name = "_".join(list(zip(*self.trainable_model.steps))[0])
         return f"{self.name}{self.type_of_problem}_{trained_model_name}_{self.dataset_manager.base_name}{self.dataset_manager.name4learning}" \
-               f"_n_train{self.n_train}_noise{self.training_noise}"
+               f"_n_train{self.n_train}"
 
     @property
     def path2model(self):
@@ -65,7 +62,6 @@ class LearningMethodManager:
             train_x, train_y, test_x, test_y = self.dataset_manager.get_dataset4problem(
                 type_of_problem=self.type_of_problem,
                 n=self.n2use,
-                training_noise=self.training_noise,
                 n_train=self.n_train
             )
             with timeit("Training model: {}".format(self.model_filename)):
@@ -84,8 +80,6 @@ class LearningMethodManager:
 
     # -------------- predict --------------- #
     def predict_flux(self, kernel: np.ndarray, velocity: np.ndarray) -> (List[Tuple[int]], np.ndarray):
-        # number_of_90deg_rotations = neighbourhood_8_ix(velocity_8nei_direction(velocity)) // 2
-        # kernel = rotate_matrix_90deg(kernel, times=number_of_90deg_rotations)
         next_flux = self.trainable_model.predict([[kernel, velocity]])[0]
         # # TODO: hardcoded no velocity
         # next_flux = np.array([0.0] * 3)
@@ -99,5 +93,5 @@ class LearningMethodManager:
     def predict_classification(self, kernel: np.ndarray) -> int:
         return np.ravel(self.trainable_model.predict([kernel])[0])[0]
 
-    def predict_cell_classification(self, kernel: np.ndarray) -> int:
-        return np.ravel(self.trainable_model.predict([kernel])[0])[0]
+    def predict_curve_type(self, kernel: np.ndarray) -> int:
+        return self.dataset_manager.curve_types[np.where(np.ravel(self.trainable_model.predict([kernel])) != 0)[0][0]]

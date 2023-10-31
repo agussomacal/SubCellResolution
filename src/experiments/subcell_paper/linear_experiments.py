@@ -58,7 +58,7 @@ from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionError
 #         ]
 #     ),
 #     refit=False, n2use=-1,
-#     training_noise=1e-5, train_percentage=0.9
+#     train_percentage=0.9
 # )
 
 

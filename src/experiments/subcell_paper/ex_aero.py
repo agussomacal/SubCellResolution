@@ -13,7 +13,7 @@ from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
 from PerplexityLab.visualization import generic_plot, make_data_frames, perplex_plot
-from experiments.LearningMethods import flatter, skkeras_20x20_relu, skpykeras_20x20_relu, skkeras_20x20_relu_noisy
+from experiments.LearningMethods import flatter, skkeras_20x20_relu_noisy
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, OBERA_ITERS, \
     CCExtraWeight, runsinfo, cblue, corange, cgreen, cred, cpurple, cbrown, cpink, cgray, cyellow, ccyan
 from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
@@ -101,7 +101,7 @@ if __name__ == "__main__":
             ]
         ),
         refit=False, n2use=-1,
-        training_noise=1e-5, train_percentage=0.9
+        train_percentage=0.9
     )
 
     nnlmkeras = LearningMethodManager(
@@ -109,7 +109,7 @@ if __name__ == "__main__":
         type_of_problem=CURVE_PROBLEM,
         trainable_model=skkeras_20x20_relu_noisy,
         refit=False, n2use=-1,
-        training_noise=0, train_percentage=0.9
+        train_percentage=0.9
     )
 
     nnlmkeras_cossin = LearningMethodManager(
@@ -117,7 +117,7 @@ if __name__ == "__main__":
         type_of_problem=CURVE_PROBLEM,
         trainable_model=skkeras_20x20_relu_noisy,
         refit=False, n2use=-1,
-        training_noise=0, train_percentage=0.9
+        train_percentage=0.9
     )
 
 
