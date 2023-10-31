@@ -174,7 +174,7 @@ class DatasetsBaseManager:
         elif type_of_problem == CURVE_PROBLEM:
             output_data = np.transpose(self.transform_curve_data(*np.transpose(data["curve"])))
         elif type_of_problem == CURVE_CLASSIFICATION_PROBLEM:
-            output_data = len(input_data) * [str(self.curve_type)]
+            output_data = np.array(len(input_data) * [str(self.curve_type)])
         else:
             raise Exception("Type of problem {} not implemented.".format(type_of_problem))
         n_train = n if n_train is None else n_train
@@ -272,7 +272,7 @@ class DatasetConcatenator:
         curves_names = "_".join(set([dataset.curve_type.__name__ for dataset in self.datasets]))
         min_val = min([dataset.minmax_val[0] for dataset in self.datasets])
         max_val = min([dataset.minmax_val[1] for dataset in self.datasets])
-        velocity_range = list(set([dataset.velocity_range for dataset in self.datasets]))
+        velocity_range = list(set(itertools.chain(*[dataset.velocity_range for dataset in self.datasets])))
 
         return (f"N{len(self.datasets)}_"
                 f"{curves_names}_"
@@ -296,6 +296,6 @@ class DatasetConcatenator:
 
         if type_of_problem == CURVE_CLASSIFICATION_PROBLEM:
             one_hot_encoding = dict(zip(map(str, self.curve_types), np.eye(len(self.datasets))))
-            output_train = np.array([one_hot_encoding[v] for v in output_train])
-            output_test = np.array([one_hot_encoding[v] for v in output_test])
-        return input_train, output_train, input_test, output_test
+            output_train = [one_hot_encoding[v] for v in output_train]
+            output_test = [one_hot_encoding[v] for v in output_test]
+        return input_train, np.array(output_train), input_test, np.array(output_test)

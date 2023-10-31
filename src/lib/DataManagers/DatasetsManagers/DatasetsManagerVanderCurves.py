@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, Tuple, Type
+from typing import Union, Tuple, Type, List
 
 import numpy as np
 from numpy.linalg import lstsq
@@ -41,7 +41,8 @@ def get_evaluation_points(amplitude, num_points, sampling):
 class DatasetsManagerVanderCurves(DatasetsBaseManager):
     def __init__(self, path2data: Union[str, Path], N: int, kernel_size: Tuple[int, int], min_val: float,
                  max_val: float, curve_type: Type[CurveVander], workers=np.Inf, recalculate=False,
-                 velocity_range: Tuple[Tuple, Tuple] = ((1e-10, 0), (1.0, 0)), learning_objective=POINTS_OBJECTIVE,
+                 velocity_range: Union[Tuple[Tuple, Tuple], List] = ((1e-10, 0), (1.0, 0)),
+                 learning_objective=POINTS_OBJECTIVE,
                  curve_position_radius: Union[float, Tuple] = 1, value_up_random=True, num_points: int = 3,
                  points_sampler: str = POINTS_SAMPLER_EQUISPACE, points_interval_size: float = 1):
         self.curve_position_radius = curve_position_radius
@@ -62,7 +63,7 @@ class DatasetsManagerVanderCurves(DatasetsBaseManager):
     @property
     def base_name(self):
         return f"{super(DatasetsManagerVanderCurves, self).base_name}" + \
-            f"_radius{clean_str4saving(str(self.curve_position_radius))}{'' if self.value_up_random else '_value_up_fixed'}"
+               f"_radius{clean_str4saving(str(self.curve_position_radius))}{'' if self.value_up_random else '_value_up_fixed'}"
 
     @property
     def name4learning(self):

@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 import config
 from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
-from lib.Curves.Curves import Curve
+from lib.Curves.Curves import Curve, CurveBase
 from lib.SubCellReconstruction import reconstruct_arbitrary_size, reconstruct_by_factor
 
 
@@ -93,3 +93,12 @@ def singular_cells_mask(avg_values):
 
 def curve_cells_fitting_times(model):
     return list(model.times[CURVE_CELL_TYPE].values())
+
+
+def get_evaluations2test_curve(curve: CurveBase, kernel_size, refinement=5, center_cell_coords=None) -> np.ndarray:
+    center_cell_coords = np.array(kernel_size) // 2 if center_cell_coords is None else center_cell_coords
+    evaluations = np.array([curve(i - center_cell_coords[0] - 0.5, j - center_cell_coords[1] - 0.5) for i, j in
+                            itertools.product(*list(map(lambda s: np.linspace(0, s, num=s * refinement, endpoint=False),
+                                                        kernel_size)))]).reshape(
+        tuple(np.array(kernel_size) * refinement))
+    return evaluations
