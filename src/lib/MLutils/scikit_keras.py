@@ -1,19 +1,10 @@
 import copy
-
-from sklearn.neural_network import MLPRegressor, MLPClassifier
-import numpy as np
 import tempfile
 
-import keras.models
 import matplotlib.pyplot as plt
 import numpy as np
-from pathos.multiprocessing import cpu_count
-from sklearn.base import BaseEstimator, RegressorMixin, ClassifierMixin
-from sklearn.neural_network import MLPRegressor
-from sklearn.neural_network._multilayer_perceptron import BaseMultilayerPerceptron
+from sklearn.neural_network import MLPRegressor, MLPClassifier
 from tqdm.keras import TqdmCallback
-
-from PerplexityLab.miscellaneous import get_map_function
 
 
 class LearningRateFinder:
@@ -374,3 +365,4 @@ class SkKerasRegressor(SkKerasMLP, MLPRegressor):
         self.coefs_ = weights
         self.intercepts_ = biases
         return self
+

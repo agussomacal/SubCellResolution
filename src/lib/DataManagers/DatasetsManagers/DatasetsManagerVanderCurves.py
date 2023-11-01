@@ -42,7 +42,7 @@ class DatasetsManagerVanderCurves(DatasetsBaseManager):
     def __init__(self, path2data: Union[str, Path], N: int, kernel_size: Tuple[int, int], min_val: float,
                  max_val: float, curve_type: Type[CurveVander], workers=np.Inf, recalculate=False,
                  velocity_range: Union[Tuple[Tuple, Tuple], List] = ((1e-10, 0), (1.0, 0)),
-                 learning_objective=POINTS_OBJECTIVE,
+                 learning_objective=POINTS_OBJECTIVE, transpose=False,
                  curve_position_radius: Union[float, Tuple] = 1, value_up_random=True, num_points: int = 3,
                  points_sampler: str = POINTS_SAMPLER_EQUISPACE, points_interval_size: float = 1):
         self.curve_position_radius = curve_position_radius
@@ -55,7 +55,7 @@ class DatasetsManagerVanderCurves(DatasetsBaseManager):
 
         super().__init__(path2data=path2data, N=N, kernel_size=kernel_size, min_val=min_val, max_val=max_val,
                          recalculate=recalculate, workers=workers, curve_type=curve_type,
-                         velocity_range=velocity_range, value_up_random=value_up_random)
+                         velocity_range=velocity_range, value_up_random=value_up_random, transpose=transpose)
 
     def get_curve(self, curve_data, **kwargs):
         return self.curve_type(x_points=self.x_points, y_points=np.array(curve_data), **kwargs)

@@ -97,3 +97,16 @@ class CurveVertexLinearAngle(CurveVertexPolynomial):
         super().__init__(polynomials=([y0, slope1], [y0, slope2]),
                          x0=0, value_up=value_up, value_down=value_down, x_shift=x0,
                          directions=(int(np.sign(np.cos(angle1))), int(np.sign(np.cos(angle1 + angle2)))))
+
+
+class CurveVertexLinearAngleAngle(CurveVertexPolynomial):
+    def __init__(self, angle1, angle2, x0: float, y0: float, value_up, value_down):
+        """
+        angle1: first line angle
+        angle2: second line angle
+        """
+        slope1 = np.tan(angle1)
+        slope2 = np.tan(angle2)
+        super().__init__(polynomials=([y0, slope1], [y0, slope2]),
+                         x0=0, value_up=value_up, value_down=value_down, x_shift=x0,
+                         directions=(int(np.sign(np.cos(angle1))), int(np.sign(np.cos(angle2)))))

@@ -2,9 +2,6 @@ import time
 
 import numpy as np
 import seaborn as sns
-from sklearn.neural_network import MLPRegressor
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import FunctionTransformer
 from tqdm import tqdm
 
 import config
@@ -12,25 +9,21 @@ from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import generic_plot, one_line_iterator, perplex_plot
-from experiments.LearningMethods import flatter, skkeras_20x20_relu_noisy, skkeras_20x20_relu
+from experiments.MLTraining.ml_flux import flux_lines_ml_model, flux_quadratics_ml_model, \
+    flux_lines_and_quadratics_ml_model
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, plot_cells_identity, \
     plot_cells_vh_classification_core, plot_cells_not_regular_classification_core, plot_curve_core
 from experiments.subcell_paper.global_params import cpink, corange, cyellow, \
-    cblue, cgreen, runsinfo, EVALUATIONS, cpurple, cred, ccyan
-from experiments.subcell_paper.models2compare import upwind, elvira, aero_linear, quadratic, aero_qelvira_vertex, \
-    aero_lq, qelvira, nn_flux
+    cblue, cgreen, runsinfo, EVALUATIONS, cpurple, cred, ccyan, cgray
+from experiments.subcell_paper.models2compare import nn_flux, ml_vql, qelvira, upwind
 from experiments.subcell_paper.tools import calculate_averages_from_image, load_image, \
     reconstruct, singular_cells_mask, get_reconstruction_error
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import REGULAR_CELL_TYPE
 from lib.CellCreators.LearningFluxRegularCellCreator import CellLearnedFlux
-from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import FLUX_PROBLEM
-from lib.DataManagers.DatasetsManagers.DatasetsManagerLinearCurves import DatasetsManagerLinearCurves, ANGLE_OBJECTIVE, \
-    COS_SIN_OBJECTIVE
-from lib.DataManagers.LearningMethodManager import LearningMethodManager
 from lib.SubCellScheme import SubCellScheme
 
-SAVE_EACH = 5
+SAVE_EACH = 1
 
 # ========== ========== Names and colors to present ========== ========== #
 names_dict = {
@@ -42,7 +35,11 @@ names_dict = {
     "qelvira": "ELVIRA AERO-Quadratic",
     "aero_qelvira_vertex": "AERO-Quadratic Vertex",
     "aero_qelvira_vertex45": "AERO-Quadratic Orient Vertex",
-    "sknn_fluxlines": "skNN Flux Lines",
+    "nn_fluxlines": "NN Flux Lines",
+    "nn_fluxquadratics": "NN Flux Quadratics",
+    "nn_fluxlinesquadratics": "NN Flux Lines-Quadratics",
+    "ml_qelvira": "ML ELVIRA AERO-Quadratic",
+    "ml_vql": "ML ELVIRA AERO-Quadratic Vertex",
 }
 model_color = {
     "upwind": cpink,
@@ -53,62 +50,17 @@ model_color = {
     "qelvira": cred,
     "aero_qelvira_vertex": cgreen,
     "aero_qelvira_vertex45": ccyan,
-    "sknn_fluxlines": "forestgreen"
+    "ml_qelvira": cgray,
+    "nn_fluxlines": "forestgreen",
+    "nn_fluxquadratics": corange,
+    "nn_fluxlinesquadratics": ccyan,
+    "ml_vql": cblue,
 }
 names_dict = {k: names_dict[k] for k in model_color.keys()}
 
 runsinfo.append_info(
     **{k.replace("_", "-"): v for k, v in names_dict.items()}
 )
-
-# ========== ========== ML models ========== ========== #
-N = int(1e6)
-dataset_manager_3_8pi = DatasetsManagerLinearCurves(
-    velocity_range=[(0, 1 / 4), (1 / 4, 0), (0, -1 / 4), (-1 / 4, 0)], path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
-    workers=15, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
-    value_up_random=True
-)
-
-
-dataset_manager_cossin = DatasetsManagerLinearCurves(
-    velocity_range=((0, 0), (0, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
-    workers=15, recalculate=False, learning_objective=COS_SIN_OBJECTIVE,
-    # angle_limits=(-3 / 8, 3 / 8),
-    value_up_random=False
-)
-
-
-# nnlm = LearningMethodManager(
-#     dataset_manager=dataset_manager_3_8pi,
-#     type_of_problem=FLUX_PROBLEM,
-#     trainable_model=Pipeline(
-#         [
-#             ("Flatter", FunctionTransformer(flatter)),
-#             ("NN", MLPRegressor(hidden_layer_sizes=(20, 20,), activation='relu', learning_rate_init=0.1,
-#                                 learning_rate="adaptive", solver="adam"))
-#         ]
-#     ),
-#     refit=False, n2use=-1,
-#     train_percentage=0.9
-# )
-
-nnlm = LearningMethodManager(
-    name="noisy_",
-    dataset_manager=dataset_manager_3_8pi,
-    type_of_problem=FLUX_PROBLEM,
-    trainable_model=skkeras_20x20_relu_noisy,
-    refit=False, n2use=-1,
-    train_percentage=0.9
-)
-
-# nnlm = LearningMethodManager(
-#     # name="noisy_",
-#     dataset_manager=dataset_manager_cossin,
-#     type_of_problem=FLUX_PROBLEM,
-#     trainable_model=skkeras_20x20_relu,
-#     refit=False, n2use=-1,
-#     train_percentage=0.9
-# )
 
 
 # ========== ========== Experiment definitions ========== ========== #
@@ -273,23 +225,26 @@ if __name__ == "__main__":
         "models",
         *map(fit_model, [
             # upwind,
-            # # elvira_oriented,
-            # elvira,
-            # aero_linear,
-            # # aero_linear_oriented,
-            # quadratic,
+            # # # elvira_oriented,
+            # # elvira,
+            # # aero_linear,
+            # # # aero_linear_oriented,
+            # # quadratic,
             # qelvira,
-            # # quadratic_oriented,
-            # aero_lq,
-            # aero_qelvira_vertex,
-            # NamedPartial(aero_qelvira_vertex, angle_threshold=45).add_sufix_to_name(45),
-            # # obera_aero_lq_vertex,
-            NamedPartial(nn_flux, learning_manager=nnlm).add_prefix_to_name("sk").add_sufix_to_name("lines"),
+            # # # quadratic_oriented,
+            # # aero_lq,
+            # # aero_qelvira_vertex,
+            # # NamedPartial(aero_qelvira_vertex, angle_threshold=45).add_sufix_to_name(45),
+            # # # obera_aero_lq_vertex,
+            # NamedPartial(nn_flux, learning_manager=flux_lines_ml_model).add_sufix_to_name("lines"),
+            # NamedPartial(nn_flux, learning_manager=flux_quadratics_ml_model).add_sufix_to_name("quadratics"),
+            # NamedPartial(nn_flux, learning_manager=flux_lines_and_quadratics_ml_model).add_sufix_to_name("linesquadratics"),
+            ml_vql,
         ]),
-        recalculate=True
+        recalculate=False
     )
 
-    ntimes = 120
+    ntimes = 20
     lab.execute(
         data_manager,
         num_cores=15,
@@ -306,11 +261,12 @@ if __name__ == "__main__":
             "Ellipsoid_1680x1680.jpg",
             # "ShapesVertex_1680x1680.jpg",
             # "HandVertex_1680x1680.jpg",
-            # "Polygon_1680x1680.jpg",
+            "Polygon_1680x1680.jpg",
         ],
         reconstruction_factor=[5],
         # reconstruction_factor=[1],
     )
+    print(set(data_manager["models"]))
 
     generic_plot(data_manager,
                  name="ErrorInTime",
@@ -362,15 +318,6 @@ if __name__ == "__main__":
                  method=lambda models: names_dict[models],
                  )
 
-    for i in range(ntimes):
-        plot_time_i(data_manager, folder="Solution", name=f"Time{i}", i=i, alpha=0.8, cmap="viridis",
-                    trim=((0, 0), (0, 0)), folder_by=['image', 'num_cells_per_dim'],
-                    plot_by=[],
-                    axes_by=["method"],
-                    models=list(model_color.keys()),
-                    method=lambda models: names_dict[models],
-                    numbers_on=True, error=True)
-
     for i in range(0, ntimes, SAVE_EACH):
         plot_reconstruction_time_i(
             data_manager,
@@ -380,7 +327,7 @@ if __name__ == "__main__":
             folder_by=['image', 'num_cells_per_dim'],
             plot_by=[],
             axes_by=["method"],
-            models=list(model_color.keys()),
+            models=[model for model in model_color.keys() if "flux" not in model],
             method=lambda models: names_dict[models],
             axes_xy_proportions=(15, 15),
             difference=False,
@@ -393,3 +340,12 @@ if __name__ == "__main__":
             plot_again=True,
             num_cores=1,
         )
+
+    for i in range(ntimes):
+        plot_time_i(data_manager, folder="Solution", name=f"Time{i}", i=i, alpha=0.8, cmap="viridis",
+                    trim=((0, 0), (0, 0)), folder_by=['image', 'num_cells_per_dim'],
+                    plot_by=[],
+                    axes_by=["method"],
+                    models=list(model_color.keys()),
+                    method=lambda models: names_dict[models],
+                    numbers_on=True, error=True)

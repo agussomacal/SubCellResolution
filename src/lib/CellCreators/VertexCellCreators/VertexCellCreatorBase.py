@@ -41,7 +41,7 @@ def get_neighbouring_singular_coords_under_condition(coords: CellCoords, indexer
     # look in the 2 distance neighborhood.
     visited_nodes = [
         indexer[new_coords.coords] for new_coords in coords + NEIGHBOURHOOD_16_MANHATTAN
-        if cells[indexer[new_coords.tuple]].CELL_TYPE == CURVE_CELL_TYPE
+        if indexer[new_coords.tuple] in cells and cells[indexer[new_coords.tuple]].CELL_TYPE == CURVE_CELL_TYPE
     ]
 
     singular_cells = []
@@ -52,7 +52,8 @@ def get_neighbouring_singular_coords_under_condition(coords: CellCoords, indexer
         # add as visited the nodes neighbouring the cell
         visited_nodes = visited_nodes + [
             indexer[new_coords.coords] for new_coords in coords + NEIGHBOURHOOD_8_MANHATTAN
-            if cells[indexer[new_coords.tuple]].CELL_TYPE == CURVE_CELL_TYPE
+            if indexer[new_coords.tuple] in cells and
+                                                         cells[indexer[new_coords.tuple]].CELL_TYPE == CURVE_CELL_TYPE
         ] + [coords.tuple]
         stop = [False, False]
         for ix in range(max_num_nodes):
@@ -67,7 +68,8 @@ def get_neighbouring_singular_coords_under_condition(coords: CellCoords, indexer
                         new_node_candidates = {
                             indexer[new_coords.tuple] for new_coords in
                             CellCoords(visiting_coords) + NEIGHBOURHOOD_8_MANHATTAN
-                            if cells[indexer[new_coords.tuple]].CELL_TYPE == CURVE_CELL_TYPE
+                            if indexer[new_coords.tuple] in cells and
+                            cells[indexer[new_coords.tuple]].CELL_TYPE == CURVE_CELL_TYPE
                         }
                         # only adds new coordinates that havent been seen before neither in the others surfer list.
                         nodes2visit[direction] += list(
@@ -88,8 +90,9 @@ def get_neighbouring_singular_cells(coords: CellCoords, cell_mask: np.ndarray, i
         get_neighbouring_singular_coords_under_condition(
             coords, indexer, max_num_nodes=10, cells=cells,
             condition=lambda coordinates: coords.tuple not in stencils[coordinates] and
+                                          coordinates in cells and
                                           cells[coordinates].CELL_TYPE == CURVE_CELL_TYPE)
-        if cells[cell_coords.tuple].CELL_TYPE == CURVE_CELL_TYPE]
+        if cell_coords.tuple in cells and cells[cell_coords.tuple].CELL_TYPE == CURVE_CELL_TYPE]
     # if len(singular_neighbours_stencil) >= 5:
     if len(singular_neighbours_stencil) == 2:
         return tuple([cells[c.tuple] for c in singular_neighbours_stencil[-2:]])
@@ -129,7 +132,8 @@ class VertexCellCreatorUsingNeighbours(CurveCellCreatorBase):
                 if not isinstance(curve, CurvePolynomial):
                     new_coords = [coords.tuple] + [
                         indexer[new_coords.coords] for new_coords in coords + NEIGHBOURHOOD_8_MANHATTAN
-                        if cells[indexer[new_coords.tuple]].CELL_TYPE == CURVE_CELL_TYPE
+                        if indexer[new_coords.tuple] in cells and cells[indexer[
+                            new_coords.tuple]].CELL_TYPE == CURVE_CELL_TYPE
                     ]
                     for c in new_coords:
                         cell = CellCurveBase(
@@ -169,7 +173,7 @@ def eval_neighbour_in_border(coords: CellCoords, singular_neighbour: CellCurveBa
 
     same_independent_axis = int(independent_axis == singular_neighbour.independent_axis)
     return np.array(point)[[1 - same_independent_axis, same_independent_axis]], \
-        np.array(versor)[[1 - same_independent_axis, same_independent_axis]]
+           np.array(versor)[[1 - same_independent_axis, same_independent_axis]]
 
 
 def vector2angle(vector):

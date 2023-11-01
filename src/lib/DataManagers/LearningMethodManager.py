@@ -93,5 +93,6 @@ class LearningMethodManager:
     def predict_classification(self, kernel: np.ndarray) -> int:
         return np.ravel(self.trainable_model.predict([kernel])[0])[0]
 
-    def predict_curve_type(self, kernel: np.ndarray) -> int:
-        return self.dataset_manager.curve_types[np.where(np.ravel(self.trainable_model.predict([kernel])) != 0)[0][0]]
+    def predict_curve_type_index(self, kernel: np.ndarray, damping=None) -> int:
+        proba = self.trainable_model.predict_proba([kernel])
+        return np.argmax(proba) if damping is None else np.argmax(proba * damping)

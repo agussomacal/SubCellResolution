@@ -5,7 +5,7 @@ from collections import defaultdict, namedtuple
 from contextlib import contextmanager
 from dataclasses import dataclass
 from logging import warning
-from typing import Tuple, Union, List, Dict
+from typing import Tuple, Union, List, Dict, Callable
 
 import numpy as np
 from scipy.optimize import minimize
@@ -13,7 +13,9 @@ from scipy.optimize import minimize
 from lib.AuxiliaryStructures.Constants import CURVE_CELL
 from lib.AuxiliaryStructures.GraphAuxiliaryFunctions import mesh_iterator
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import ArrayIndexerNd
+from lib.CellClassifiers import cell_classifier_by_smoothness
 from lib.CellCreators.CellCreatorBase import CellBase, REGULAR_CELL_TYPE
+from lib.CellIterators import iterate_all
 from lib.StencilCreators import StencilCreator, Stencil
 
 CellCreatorPipeline = namedtuple("CellCreatorPipeline",
@@ -278,3 +280,157 @@ class SubCellFlux:
                 self.cells[coords.tuple] = proposed_cell
                 self.times[proposed_cell.CELL_TYPE][coords.tuple] += time.time() - t0
         return self
+
+
+class SubCellReconstructionWithCellClassifier:
+    def __init__(self, name, smoothness_calculator, cell_classifier: Callable = cell_classifier_by_smoothness,
+                 reconstruction_error_measure=ReconstructionErrorMeasureBase,
+                 cell_creators: List[CellCreatorPipeline] = [], refinement: int = 1, obera_iterations=0):
+        self.name = name
+        self.smoothness_calculator = smoothness_calculator
+        self.cell_classifier = cell_classifier
+        self.reconstruction_error_measure = reconstruction_error_measure
+        self.refinement = refinement
+        self.cell_creators = cell_creators
+        self.cells = dict()
+        self.stencils = dict()
+        self.resolution = None
+        self.obera_iterations = obera_iterations
+
+        self.times = defaultdict(ddf)
+        self.obera_fevals = defaultdict(ddf)
+
+    def __str__(self):
+        return self.name
+
+    @contextmanager
+    def cell_timer(self, coords, cell_creator):
+        if self.refinement > 1: warning("Time calculations won't be correct if refinement > 1")
+        t0 = time.time()
+        yield
+        self.times[str(cell_creator)][coords.tuple] = time.time() - t0
+
+    def fit(self, average_values: np.ndarray, indexer: ArrayIndexerNd):
+        for r in range(self.refinement):
+            self.cells = dict()
+            self.stencils = dict()
+            self.resolution = np.shape(average_values)
+            smoothness_index = self.smoothness_calculator(average_values, indexer)
+            reconstruction_error = np.inf * np.ones(np.shape(smoothness_index))  # everything to be improved
+
+            # thr = [0] + np.logspace(-5, 0, num=5).tolist()
+            # num = [np.sum(np.array(list({coords.tuple: self.cell_classifier(
+            #         coords=coords, average_values=average_values,
+            #         smoothness_index=smoothness_index,
+            #         indexer=indexer,
+            #         cell_creators=self.cell_creators,
+            #         damping=np.array([1, 1, v])) for coords in iterate_all(smoothness_index)}.values())) == 3) for v in thr]
+            # # for debug
+            # c = np.zeros((30, 30))
+            # for k, v in cell_classification.items():
+            #     c[k] = v[0]
+
+            # TODO: harcoded damping 1e-4 to penalize vertex classification
+            # To penalize if models tend to to predict vertex too much
+            cell_classification = {coords.tuple: self.cell_classifier(
+                coords=coords, average_values=average_values,
+                smoothness_index=smoothness_index,
+                indexer=indexer,
+                cell_creators=self.cell_creators,
+                damping=np.array([1, 1, 1e-4])) for coords in iterate_all(smoothness_index)}
+
+            for i, cell_creator in enumerate(self.cell_creators):
+                for coords in cell_creator.cell_iterator(smoothness_index=smoothness_index,
+                                                         reconstruction_error=reconstruction_error):
+                    if i not in cell_classification[coords.tuple]:
+                        continue
+
+                    if self.refinement > 1: warning("Time calculations won't be correct if refinement > 1")
+                    t0 = time.time()
+
+                    axis3try = cell_creator.orientator.get_independent_axis(coords, average_values, indexer)
+                    for independent_axis in axis3try:
+                        stencil = cell_creator.stencil_creator.get_stencil(
+                            average_values, smoothness_index, coords, independent_axis, indexer)
+                        proposed_cells = list(cell_creator.cell_creator.create_cells(
+                            average_values=average_values, indexer=indexer, cells=self.cells, coords=coords,
+                            smoothness_index=smoothness_index, independent_axis=independent_axis, stencil=stencil,
+                            stencils=self.stencils))
+
+                        if len(proposed_cells) > 0:
+                            for proposed_cell in proposed_cells:
+                                if isinstance(proposed_cell, tuple):
+                                    proposed_cell, coords = proposed_cell
+
+                                # ---------- Doing OBERA ---------- #
+                                if proposed_cell.CELL_TYPE != REGULAR_CELL_TYPE and self.obera_iterations > 0:
+                                    def optim_func(params):
+                                        proposed_cell.curve.params = params
+                                        loss = self.reconstruction_error_measure.calculate_error(
+                                            proposed_cell, average_values, indexer, smoothness_index, independent_axis)
+                                        return loss
+
+                                    # number of function evaluation without gradient is twice the number of parameters
+                                    x0 = np.ravel(proposed_cell.curve.params)
+                                    res = minimize(optim_func, x0=x0, method="L-BFGS-B", tol=1e-10,
+                                                   options={'maxiter': self.obera_iterations * 2 * (1 + len(x0))})
+                                    proposed_cell.curve.params = res.x
+                                    self.obera_fevals[proposed_cell.CELL_TYPE][coords.tuple] += res.nfev
+
+                                # only calculate error if more than one proposition is done otherwise just keep the only one
+                                if len(axis3try) > 1 or len(proposed_cells) > 1 or len(
+                                        cell_classification[coords.tuple]) > 1:
+                                    # ---------- Deciding which cell to keep ---------- #
+                                    # if some other cell has been put there then compare
+                                    if coords.tuple in self.stencils:
+                                        if cell_creator.reconstruction_error_measure is None:
+                                            reconstruction_error_measure = copy.copy(self.reconstruction_error_measure)
+                                        else:
+                                            reconstruction_error_measure = copy.copy(
+                                                cell_creator.reconstruction_error_measure)
+                                        proposed_cell_reconstruction_error = reconstruction_error_measure.calculate_error(
+                                            proposed_cell, average_values, indexer, smoothness_index, independent_axis,
+                                            stencil)
+
+                                        # if it has never been calculated or the stencil used is different from the current
+                                        if np.isinf(reconstruction_error[coords.tuple]) or set(
+                                                list(map(tuple, stencil.coords.tolist()))) != set(
+                                            self.stencils[coords.tuple]):
+                                            old_cell_reconstruction_error = reconstruction_error_measure.calculate_error(
+                                                self.cells[coords.tuple], average_values, indexer, smoothness_index,
+                                                independent_axis, stencil)
+                                        else:
+                                            old_cell_reconstruction_error = reconstruction_error[coords.tuple]
+
+                                        if proposed_cell_reconstruction_error < old_cell_reconstruction_error:
+                                            reconstruction_error[coords.tuple] = proposed_cell_reconstruction_error
+                                            self.cells[coords.tuple] = proposed_cell
+                                            self.stencils[coords.tuple] = list(map(tuple, stencil.coords.tolist()))
+                                    else:
+                                        self.cells[coords.tuple] = proposed_cell
+                                        self.stencils[coords.tuple] = list(map(tuple, stencil.coords.tolist()))
+                                else:
+                                    self.cells[coords.tuple] = proposed_cell
+                                    self.stencils[coords.tuple] = list(map(tuple, stencil.coords.tolist()))
+                            self.times[proposed_cell.CELL_TYPE][coords.tuple] += time.time() - t0
+
+            if r < self.refinement - 1:
+                average_values = self.reconstruct_by_factor(resolution_factor=2)
+                indexer = ArrayIndexerNd(average_values, indexer.modes)
+        return self
+
+    def reconstruct_by_factor(self, resolution_factor: Union[int, Tuple, np.ndarray] = 1):
+        """
+        Uses averages to reconstruct.
+        :param resolution_factor:
+        :return:
+        """
+        return reconstruct_by_factor(cells=self.cells, resolution=self.resolution, resolution_factor=resolution_factor)
+
+    def reconstruct_arbitrary_size(self, size: Union[Tuple, np.ndarray]):
+        """
+        Uses evaluation to reconstruct.
+        :param size:
+        :return:
+        """
+        return reconstruct_arbitrary_size(cells=self.cells, resolution=self.resolution, size=size)

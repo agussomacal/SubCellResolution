@@ -1,3 +1,4 @@
+import copy
 import itertools
 from pathlib import Path
 from time import time
@@ -68,7 +69,7 @@ def save_joblib(path: Union[str, Path], variable):
 class DatasetsBaseManager:
     def __init__(self, path2data: Union[str, Path], curve_type: Type[CurveBase], N: int, kernel_size: Tuple[int, int],
                  min_val: float, max_val: float, velocity_range: Union[Tuple[Tuple, Tuple], List], recalculate=False,
-                 workers=-1,
+                 workers=-1, transpose=False,
                  seed=42, reload_data=True, value_up_random=True):
         self.path2datafolder = Path(path2data)
         self.path2datafolder.mkdir(parents=True, exist_ok=True)
@@ -77,6 +78,7 @@ class DatasetsBaseManager:
         self.curve_type = curve_type
         self.N = N
         self.kernel_size = kernel_size
+        self.transpose = transpose
 
         self.value_up_random = value_up_random
 
@@ -117,6 +119,12 @@ class DatasetsBaseManager:
     @property
     def curve_types(self):
         return [self.curve_type]
+
+    @property
+    def T(self):
+        new_self = copy.deepcopy(self)
+        new_self.transpose = True
+        return new_self
 
     # --------- file properties ---------- #
     @property
@@ -166,10 +174,13 @@ class DatasetsBaseManager:
         n = self.N if n is None else n
         data = self.load_dataset(n)
         input_data = data["kernel"]
+        if self.transpose:
+            input_data = np.swapaxes(input_data, -1, -2)
         if type_of_problem == CLASSIFICATION_PROBLEM:
             output_data = np.array(data["classification"])
         elif type_of_problem == FLUX_PROBLEM:
-            input_data = list(zip(input_data, data["velocity"]))
+            velocity = np.array(data["velocity"])[:, ::-1] if self.transpose else np.array(data["velocity"])
+            input_data = list(zip(input_data, velocity))
             output_data = np.array(data["flux"])
         elif type_of_problem == CURVE_PROBLEM:
             output_data = np.transpose(self.transform_curve_data(*np.transpose(data["curve"])))
@@ -241,9 +252,13 @@ class DatasetsBaseManager:
 
 
 class DatasetConcatenator:
-    def __init__(self, path2data: Union[str, Path], *datasets: DatasetsBaseManager):
+    def __init__(self, path2data: Union[str, Path], datasets: Union[DatasetsBaseManager, List[DatasetsBaseManager]],
+                 curve_classification=None,
+                 name=None):
+        datasets = [datasets] if isinstance(datasets, DatasetsBaseManager) else datasets
         kernel_sizes = {dataset.kernel_size for dataset in datasets}
         assert len(kernel_sizes) == 1, f"Only concatenation between same kernel_size datasets but found {kernel_sizes}"
+        self.name = name
         self.kernel_size = list(kernel_sizes).pop()
         self.center_cell_coords = np.array(self.kernel_size) // 2
         self.center = DatasetsBaseManager.get_center(self.kernel_size)
@@ -251,10 +266,23 @@ class DatasetConcatenator:
         self.path2datafolder = Path(path2data)
         self.path2datafolder.mkdir(parents=True, exist_ok=True)
         self.datasets = datasets
+        self.curve_classification = curve_classification
 
     @property
     def curve_types(self):
-        return [dataset.curve_type for dataset in self.datasets]
+        ct = []
+        for dataset in self.datasets:
+            if dataset.curve_type not in ct:
+                ct.append(dataset.curve_type)
+        return ct
+
+    @property
+    def curve_types_names(self):
+        ct = []
+        for dataset in self.datasets:
+            if dataset.curve_type not in ct:
+                ct.append(dataset.curve_type.__name__)
+        return ct
 
     def __len__(self):
         return sum(map(len, self.datasets))
@@ -268,19 +296,22 @@ class DatasetConcatenator:
     # --------- file properties ---------- #
     @property
     def base_name(self):
-        kernel_name = "_".join(map(str, self.kernel_size))
-        curves_names = "_".join(set([dataset.curve_type.__name__ for dataset in self.datasets]))
-        min_val = min([dataset.minmax_val[0] for dataset in self.datasets])
-        max_val = min([dataset.minmax_val[1] for dataset in self.datasets])
-        velocity_range = list(set(itertools.chain(*[dataset.velocity_range for dataset in self.datasets])))
+        if self.name is None:
+            kernel_name = "_".join(map(str, self.kernel_size))
+            curves_names = "_".join(self.curve_types_names)
+            min_val = min([dataset.minmax_val[0] for dataset in self.datasets])
+            max_val = min([dataset.minmax_val[1] for dataset in self.datasets])
+            velocity_range = sorted(list(set(itertools.chain(*[dataset.velocity_range for dataset in self.datasets]))))
 
-        return (f"N{len(self.datasets)}_"
-                f"{curves_names}_"
-                f"k{kernel_name}_"
-                f"n{len(self)}_"
-                f"min{min_val}_"
-                f"max{max_val}_"
-                f"v{clean_str4saving(str(velocity_range))}")
+            return (f"N{len(self.datasets)}_"
+                    f"{curves_names}_"
+                    f"k{kernel_name}_"
+                    f"n{len(self)}_"
+                    f"min{min_val}_"
+                    f"max{max_val}_"
+                    f"v{clean_str4saving(str(velocity_range))}")
+        else:
+            return self.name
 
     @property
     def name4learning(self):
@@ -295,7 +326,12 @@ class DatasetConcatenator:
             dataset in self.datasets])))
 
         if type_of_problem == CURVE_CLASSIFICATION_PROBLEM:
-            one_hot_encoding = dict(zip(map(str, self.curve_types), np.eye(len(self.datasets))))
+            if self.curve_classification is not None:
+                one_hot_encoding = np.eye(len(set(self.curve_classification)))
+                one_hot_encoding = {str(dataset.curve_type): one_hot_encoding[membership] for dataset, membership in
+                                    zip(self.datasets, self.curve_classification)}
+            else:
+                one_hot_encoding = dict(zip(map(str, self.curve_types), np.eye(len(self.curve_types))))
             output_train = [one_hot_encoding[v] for v in output_train]
             output_test = [one_hot_encoding[v] for v in output_test]
         return input_train, np.array(output_train), input_test, np.array(output_test)
