@@ -241,7 +241,7 @@ if __name__ == "__main__":
             # NamedPartial(nn_flux, learning_manager=flux_lines_and_quadratics_ml_model).add_sufix_to_name("linesquadratics"),
             ml_vql,
         ]),
-        recalculate=False
+        recalculate=True
     )
 
     ntimes = 20

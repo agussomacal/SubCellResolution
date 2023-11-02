@@ -188,7 +188,7 @@ class SkKerasBase:
     def define_architecture(self, X, y):
         raise Exception("Not implemented.")
 
-    def fit_model(self, X, y):
+    def fit_model(self, X, y, class_weight=None):
         self.batch_size = 1 if self.batch_size is None else self.batch_size
         self.batch_size = int(np.ceil(X.shape[0] * self.batch_size)) if self.batch_size <= 1 else self.batch_size
 
@@ -238,7 +238,9 @@ class SkKerasBase:
                                                   patience=self.n_epochs_without_improvement),
                                     TqdmCallback(verbose=0)
                                 ],
-                                verbose=0)
+                                verbose=0,
+                                class_weight=class_weight
+                                )
 
             # with tempfile.NamedTemporaryFile(suffix='.hdf5', delete=True) as fd:
             #     # for other callbacks: https://keras.io/api/callbacks/#earlystopping
@@ -284,8 +286,8 @@ class SkKerasMLP(SkKerasBase):
         # model.add(Dense(np.prod(target.shape[1:]), activation='softmax'))
         return model
 
-    def fit_model(self, X, y):
-        model = super().fit_model(X, y)
+    def fit_model(self, X, y, class_weight=None):
+        model = super().fit_model(X, y, class_weight=class_weight)
         weights, biases = zip(
             *[layer.get_weights() for layer in model.layers if len(layer.get_weights()) == 2])
         return weights, biases
@@ -293,7 +295,7 @@ class SkKerasMLP(SkKerasBase):
 
 class SkKerasClassifier(SkKerasMLP, MLPClassifier):
     def __init__(self, hidden_layer_sizes, activation, epochs=1000, restarts=1, validation_size=0.2, batch_size=None,
-                 criterion='binary_crossentropy', optimizer='Adam', train_noise=0,
+                 criterion='binary_crossentropy', optimizer='Adam', train_noise=0, class_weight=None,
                  lr=None, lr_lower_limit=1e-12, lr_upper_limit=1, n_epochs_without_improvement=100):
         super(MLPClassifier, self).__init__(
             hidden_layer_sizes=hidden_layer_sizes,
@@ -314,6 +316,7 @@ class SkKerasClassifier(SkKerasMLP, MLPClassifier):
                             batch_size=batch_size, criterion=criterion, optimizer=optimizer, lr=lr,
                             lr_lower_limit=lr_lower_limit, lr_upper_limit=lr_upper_limit,
                             n_epochs_without_improvement=n_epochs_without_improvement)
+        self.class_weight = class_weight
 
     def define_architecture(self, query, target):
         from keras.layers import Dense
@@ -322,7 +325,7 @@ class SkKerasClassifier(SkKerasMLP, MLPClassifier):
         return model
 
     def fit(self, X, y):
-        weights, biases = self.fit_model(X, y)
+        weights, biases = self.fit_model(X, y, class_weight=self.class_weight)
         super().fit(X, y)
         self.coefs_ = weights
         self.intercepts_ = biases

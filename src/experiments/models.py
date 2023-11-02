@@ -5,7 +5,7 @@ from typing import Union, Tuple
 
 import numpy as np
 
-from experiments.subcell_paper.tools import load_image
+from experiments.subcell_paper.tools import load_image, calculate_averages_from_image
 
 import config
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
@@ -21,14 +21,6 @@ from lib.StencilCreators import StencilCreatorSameRegionAdaptive, StencilCreator
     StencilCreatorSmoothnessDistTradeOff
 from lib.SubCellReconstruction import CellCreatorPipeline, SubCellReconstruction, ReconstructionErrorMeasureBase, \
     ReconstructionErrorMeasure
-
-
-def calculate_averages_from_image(image, num_cells_per_dim: Union[int, Tuple[int, int]]):
-    # Example of how to calculate the averages in a single pass:
-    # np.arange(6 * 10).reshape((6, 10)).reshape((2, 3, 5, 2)).mean(-1).mean(-2)
-    img_x, img_y = np.shape(image)
-    ncx, ncy = (num_cells_per_dim, num_cells_per_dim) if isinstance(num_cells_per_dim, int) else num_cells_per_dim
-    return image.reshape((ncx, img_x // ncx, ncy, img_y // ncy)).mean(-1).mean(-2)
 
 
 def fit_model_decorator(function):

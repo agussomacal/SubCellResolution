@@ -1,3 +1,5 @@
+from collections import Counter
+
 import numpy as np
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
@@ -5,6 +7,10 @@ from sklearn.preprocessing import FunctionTransformer
 import config
 from experiments.LearningMethods import flatter
 from experiments.subcell_paper.global_params import VanderQuadratic
+from experiments.subcell_paper.tools import load_image, calculate_averages_from_image, singular_cells_mask
+from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
+from lib.CellClassifiers import cell_classifier_ml
+from lib.CellIterators import iterate_all
 from lib.Curves.CurvePolynomial import CurveLinearAngle
 from lib.Curves.CurveVertex import CurveVertexLinearAngleAngle
 from lib.Curves.VanderCurves import CurveVanderCircle
@@ -63,9 +69,22 @@ classiffication_skkeras_20x20_relu_noisy = Pipeline(
                                           batch_size=0.1, criterion="binary_crossentropy", optimizer="Adam",
                                           lr=None, lr_lower_limit=1e-12,
                                           lr_upper_limit=1, n_epochs_without_improvement=100,
-                                          train_noise=1e-5))
+                                          train_noise=1e-5,
+                                          class_weight={0: 1, 1: 1, 2: 0.056324005126953125}))
     ]
 )
+# 0.05632 781982421875 > h > 0.05632 01904296875
+# h = 0.05632 4005126953125
+# [54, 49, 44, 32, 24, 27, 21, 30, 22, 22]
+# [0, 0, 0, 0, 0, 0, 0, 0]
+# Polygon_1680x1680.jpg
+# Counter({0.0: 804, 2.0: 50, 1.0: 29, 3.0: 17})
+# Ellipsoid_1680x1680.jpg
+# Counter({0.0: 832, 2.0: 46, 3.0: 14, 1.0: 8})
+# ShapesVertex_1680x1680.jpg
+# Counter({0.0: 799, 2.0: 57, 3.0: 22, 1.0: 22})
+# HandVertex_1680x1680.jpg
+# Counter({0.0: 799, 2.0: 70, 3.0: 21, 1.0: 10})
 
 curve_classification_ml_model = LearningMethodManager(
     dataset_manager=DatasetConcatenator(config.data_path,
@@ -84,6 +103,72 @@ curve_classification_ml_model = LearningMethodManager(
 )
 
 if __name__ == "__main__":
+    s = 0
+    h = 1
+    hm = [0]
+    sm = []
+    hp = [1]
+    sp = []
+    up_threshold = 20
+    low_threshold = 10
+    for i in range(100):
+        classiffication_skkeras_20x20_relu_noisy = Pipeline(
+            [
+                ("Flatter", FunctionTransformer(flatter)),
+                ("SKKeras2020", SkKerasClassifier(hidden_layer_sizes=(20, 20),
+                                                  epochs=100000, activation='relu', validation_size=0.1,
+                                                  restarts=1,
+                                                  batch_size=0.1, criterion="binary_crossentropy", optimizer="Adam",
+                                                  lr=None, lr_lower_limit=1e-12,
+                                                  lr_upper_limit=1, n_epochs_without_improvement=100,
+                                                  train_noise=1e-5,
+                                                  class_weight={0: 1, 1: 1, 2: h}))
+            ]
+        )
+
+        curve_classification_ml_model = LearningMethodManager(
+            dataset_manager=DatasetConcatenator(config.data_path,
+                                                datasets=[dataset_manager_lines, dataset_manager_lines.T,
+                                                          dataset_manager_quadratics,
+                                                          dataset_manager_quadratics.T,
+                                                          dataset_manager_circles, dataset_manager_circles.T,
+                                                          dataset_manager_vertex, dataset_manager_vertex.T],
+                                                curve_classification=[0, 0, 1, 1, 1, 1, 2, 2],
+                                                name="SauronDataset"
+                                                ),
+            type_of_problem=CURVE_CLASSIFICATION_PROBLEM,
+            trainable_model=classiffication_skkeras_20x20_relu_noisy,
+            refit=True, n2use=-1,
+            train_percentage=0.9
+        )
+
+        num_cells_per_dim = 30
+        image_name = "Polygon_1680x1680.jpg"
+        print(image_name)
+        image = load_image(image_name)
+        avg_values = calculate_averages_from_image(image, num_cells_per_dim=num_cells_per_dim)
+        smoothness_index = singular_cells_mask(avg_values)
+        indexer = ArrayIndexerNd(avg_values, "cyclic")
+        classification = np.zeros((num_cells_per_dim, num_cells_per_dim))
+        for coords in iterate_all(smoothness_index):
+            classification[coords.tuple] = \
+                max(cell_classifier_ml(coords, avg_values, smoothness_index, indexer,
+                                       cell_creators=None, ml_model=curve_classification_ml_model,
+                                       regular_cell_creators_indexes=[0], damping=None))
+        c = Counter(classification.ravel().tolist())
+        s = c[3] if 3 in c else 0
+        if s < low_threshold:
+            hm.append(h)
+            sm.append(s)
+        elif s > up_threshold:
+            hp.append(h)
+            sp.append(s)
+        else:
+            break
+
+        h = (hp[-1] + hm[-1]) / 2
+        print(h)
+
     kernel_size = (5, 5)
     angle = 0.15
     y0 = 0.5
@@ -122,3 +207,20 @@ if __name__ == "__main__":
     print(curve_classification_ml_model.trainable_model.predict([kernel]))
     print(curve_classification_ml_model.trainable_model.predict_proba([kernel]))
     print(curve_classification_ml_model.predict_curve_type_index(kernel))
+
+    num_cells_per_dim = 30
+    for image_name in ["Polygon_1680x1680.jpg", "Ellipsoid_1680x1680.jpg",
+                       "ShapesVertex_1680x1680.jpg", "HandVertex_1680x1680.jpg", ]:
+        print(image_name)
+        image = load_image(image_name)
+        avg_values = calculate_averages_from_image(image, num_cells_per_dim=num_cells_per_dim)
+        smoothness_index = singular_cells_mask(avg_values)
+        indexer = ArrayIndexerNd(avg_values, "cyclic")
+        classification = np.zeros((num_cells_per_dim, num_cells_per_dim))
+        for coords in iterate_all(smoothness_index):
+            classification[coords.tuple] = \
+                max(cell_classifier_ml(coords, avg_values, smoothness_index, indexer,
+                                       cell_creators=None, ml_model=curve_classification_ml_model,
+                                       regular_cell_creators_indexes=[0], damping=None))
+        c = Counter(classification.ravel().tolist())
+        print(c)
