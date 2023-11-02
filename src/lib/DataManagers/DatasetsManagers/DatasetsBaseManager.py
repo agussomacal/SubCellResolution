@@ -23,6 +23,7 @@ from lib.StencilCreators import Stencil
 
 CLASSIFICATION_PROBLEM = "Classification"
 CURVE_PROBLEM = "Curve"
+CELL_AVERAGES_PROBLEM = "CellAverages"
 FLUX_PROBLEM = "Flux"
 CURVE_CLASSIFICATION_PROBLEM = "Curve_classification"
 
@@ -176,14 +177,18 @@ class DatasetsBaseManager:
         input_data = data["kernel"]
         if self.transpose:
             input_data = np.swapaxes(input_data, -1, -2)
+
         if type_of_problem == CLASSIFICATION_PROBLEM:
             output_data = np.array(data["classification"])
         elif type_of_problem == FLUX_PROBLEM:
             velocity = np.array(data["velocity"])[:, ::-1] if self.transpose else np.array(data["velocity"])
             input_data = list(zip(input_data, velocity))
             output_data = np.array(data["flux"])
-        elif type_of_problem == CURVE_PROBLEM:
+        elif type_of_problem in [CURVE_PROBLEM, CELL_AVERAGES_PROBLEM]:
             output_data = np.transpose(self.transform_curve_data(*np.transpose(data["curve"])))
+            if type_of_problem == CELL_AVERAGES_PROBLEM:
+                # invert input and output data
+                input_data, output_data = output_data, np.reshape(input_data, (len(input_data), -1))
         elif type_of_problem == CURVE_CLASSIFICATION_PROBLEM:
             output_data = np.array(len(input_data) * [str(self.curve_type)])
         else:
