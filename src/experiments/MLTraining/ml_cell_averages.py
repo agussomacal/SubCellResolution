@@ -2,43 +2,51 @@ import matplotlib.pylab as plt
 import numpy as np
 import seaborn as sns
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import FunctionTransformer
 
 import config
-from experiments.LearningMethods import flatter
+from experiments.MLTraining.ml_global_params import workers, N, recalculate
 from experiments.VizReconstructionUtils import plot_cells
 from experiments.subcell_paper.global_params import VanderQuadratic
 from experiments.subcell_paper.tools import get_evaluations2test_curve
-from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
-from lib.Curves.CurvePolynomial import CurveLinearAngle
-from lib.Curves.CurveVertex import CurveVertexLinearAngleAngle
-from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import DatasetConcatenator, get_averages_from_curve_kernel, \
-    FLUX_PROBLEM, get_flux_from_curve_and_velocity, CURVE_PROBLEM, CELL_AVERAGES_PROBLEM
+from lib.Curves.VanderCurves import CurveVanderCircle
+from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import get_averages_from_curve_kernel, \
+    CELL_AVERAGES_PROBLEM
 from lib.DataManagers.DatasetsManagers.DatasetsManagerLinearCurves import DatasetsManagerLinearCurves, ANGLE_OBJECTIVE
 from lib.DataManagers.DatasetsManagers.DatasetsManagerVanderCurves import DatasetsManagerVanderCurves, POINTS_OBJECTIVE, \
-    POINTS_SAMPLER_EQUISPACE
-from lib.DataManagers.DatasetsManagers.DatasetsManagerVertex import DatasetsManagerVertex, \
-    DatasetsManagerVertexAngleAngle
+    POINTS_SAMPLER_EQUISPACE, PARAMS_OBJECTIVE
 from lib.DataManagers.LearningMethodManager import LearningMethodManager
 from lib.MLutils.scikit_keras import SkKerasRegressor
 
-N = int(1e5)
-recalculate = False
-workers = 15
+value_up_random = True
 
-# ------------------- Flux PROBLEM ------------------- #
 dataset_manager_lines = DatasetsManagerLinearCurves(
     velocity_range=[(0, 1 / 4), (1 / 4, 0), (0, -1 / 4), (-1 / 4, 0)],
     path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
-    workers=15, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
-    value_up_random=False, curve_position_radius=1
+    workers=workers, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
+    value_up_random=value_up_random, curve_position_radius=1
 )
 dataset_manager_quadratics = DatasetsManagerVanderCurves(
     curve_type=VanderQuadratic,
     velocity_range=[(0, 1 / 4), (1 / 4, 0), (0, -1 / 4), (-1 / 4, 0)],
     path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
+    workers=workers, recalculate=recalculate, learning_objective=PARAMS_OBJECTIVE,
+    curve_position_radius=(1.5, 0.5, 1.5), points_interval_size=1, value_up_random=value_up_random, num_points=3,
+    points_sampler=POINTS_SAMPLER_EQUISPACE,
+)
+dataset_manager_circle_3x7params = DatasetsManagerVanderCurves(
+    curve_type=VanderQuadratic,
+    velocity_range=[(0, 1 / 4), (1 / 4, 0), (0, -1 / 4), (-1 / 4, 0)],
+    path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
+    workers=workers, recalculate=recalculate, learning_objective=PARAMS_OBJECTIVE,
+    curve_position_radius=(1.5, 0.5, 1.5), points_interval_size=1, value_up_random=value_up_random, num_points=3,
+    points_sampler=POINTS_SAMPLER_EQUISPACE,
+)
+dataset_manager_circle_3x7points = DatasetsManagerVanderCurves(
+    curve_type=VanderQuadratic,
+    velocity_range=[(0, 1 / 4), (1 / 4, 0), (0, -1 / 4), (-1 / 4, 0)],
+    path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
     workers=workers, recalculate=recalculate, learning_objective=POINTS_OBJECTIVE,
-    curve_position_radius=(1.5, 0.5, 1.5), points_interval_size=1, value_up_random=False, num_points=3,
+    curve_position_radius=(1.5, 0.5, 1.5), points_interval_size=1, value_up_random=value_up_random, num_points=3,
     points_sampler=POINTS_SAMPLER_EQUISPACE,
 )
 
@@ -68,7 +76,20 @@ kernel_quadratics_ml_model = LearningMethodManager(
     refit=False, n2use=-1,
     train_percentage=0.9
 )
-
+kernel_circles_ml_model_params = LearningMethodManager(
+    dataset_manager=dataset_manager_circle_3x7params,
+    type_of_problem=CELL_AVERAGES_PROBLEM,
+    trainable_model=regression_skkeras_20x20_relu_noisy,
+    refit=False, n2use=-1,
+    train_percentage=0.9
+)
+kernel_circles_ml_model_points = LearningMethodManager(
+    dataset_manager=dataset_manager_circle_3x7points,
+    type_of_problem=CELL_AVERAGES_PROBLEM,
+    trainable_model=regression_skkeras_20x20_relu_noisy,
+    refit=False, n2use=-1,
+    train_percentage=0.9
+)
 # vertex_ml_model = LearningMethodManager(
 #     dataset_manager=dataset_manager_vertex,
 #     type_of_problem=CURVE_PROBLEM,
@@ -89,9 +110,16 @@ if __name__ == "__main__":
     # curve = CurveVertexLinearAngleAngle(angle1=3 / 8 * np.pi, angle2=-3 / 8 * np.pi - np.pi, x0=0, y0=y0,
     #                                     value_up=value_up, value_down=value_down)
 
-    curve = VanderQuadratic(x_points=np.array([-1, 0, 1]), y_points=np.array([0.02, 0, -0.01]), value_up=value_up,
-                            value_down=value_down)
-    kernel_pred = kernel_quadratics_ml_model.predict_kernel(curve.params)
+    # curve = CurveSemiCircle(params=CircleParams(x0=0, y0=-5, radius=10), value_up=value_up, value_down=value_down)
+    # kernel_pred = kernel_circles_ml_model_points.predict_kernel(curve.params)
+
+    curve = CurveVanderCircle(x_points=np.array([-1, 0, 1]), y_points=np.array([0.02, 0, -0.01]), value_up=value_up,
+                              value_down=value_down)
+    kernel_pred = kernel_circles_ml_model_points.predict_kernel(curve.params)
+
+    # curve = VanderQuadratic(x_points=np.array([-1, 0, 1]), y_points=np.array([0.02, 0, -0.01]), value_up=value_up,
+    #                         value_down=value_down)
+    # kernel_pred = kernel_quadratics_ml_model.predict_kernel(curve.params)
 
     # curve = CurveLinearAngle(angle, y0, value_up, value_down, x_shift=0)
     # kernel_pred = kernel_lines_ml_model.predict_kernel(curve.params[::-1])

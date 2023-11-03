@@ -1,8 +1,8 @@
 import numpy as np
 
-from lib.Curves.Curves import CurveReparametrized
 from lib.Curves.CurveCircle import CurveSemiCircle, get_concavity
 from lib.Curves.CurvePolynomial import CurvePolynomial
+from lib.Curves.Curves import CurveReparametrized
 
 
 class CurveVander(CurveReparametrized):

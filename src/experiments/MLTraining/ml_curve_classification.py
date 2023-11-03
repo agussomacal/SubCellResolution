@@ -6,6 +6,7 @@ from sklearn.preprocessing import FunctionTransformer
 
 import config
 from experiments.LearningMethods import flatter
+from experiments.MLTraining.ml_global_params import N, recalculate, workers
 from experiments.subcell_paper.global_params import VanderQuadratic
 from experiments.subcell_paper.tools import load_image, calculate_averages_from_image, singular_cells_mask
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
@@ -23,15 +24,11 @@ from lib.DataManagers.DatasetsManagers.DatasetsManagerVertex import DatasetsMana
 from lib.DataManagers.LearningMethodManager import LearningMethodManager
 from lib.MLutils.scikit_keras import SkKerasClassifier
 
-N = int(1e4)
-recalculate = False
-workers = 15
-
 dataset_manager_lines = DatasetsManagerLinearCurves(
     # velocity_range=((0, 0), (1, 1)),
     velocity_range=[(0, 0.25), (0.25, 0)],
     path2data=config.data_path, N=N, kernel_size=(5, 5), min_val=0, max_val=1,
-    workers=15, recalculate=recalculate, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
+    workers=workers, recalculate=recalculate, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
     curve_position_radius=0.5,
     value_up_random=True
 )

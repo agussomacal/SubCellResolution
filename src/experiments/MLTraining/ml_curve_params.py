@@ -6,38 +6,59 @@ from sklearn.preprocessing import FunctionTransformer
 
 import config
 from experiments.LearningMethods import flatter
+from experiments.MLTraining.ml_global_params import workers, recalculate, N
 from experiments.VizReconstructionUtils import plot_cells
 from experiments.subcell_paper.global_params import VanderQuadratic
 from experiments.subcell_paper.tools import get_evaluations2test_curve
 from lib.AuxiliaryStructures.IndexingAuxiliaryFunctions import CellCoords
 from lib.Curves.CurveVertex import CurveVertexLinearAngleAngle
+from lib.Curves.VanderCurves import CurveVanderCircle
 from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import DatasetConcatenator, get_averages_from_curve_kernel, \
     FLUX_PROBLEM, get_flux_from_curve_and_velocity, CURVE_PROBLEM
 from lib.DataManagers.DatasetsManagers.DatasetsManagerLinearCurves import DatasetsManagerLinearCurves, ANGLE_OBJECTIVE
 from lib.DataManagers.DatasetsManagers.DatasetsManagerVanderCurves import DatasetsManagerVanderCurves, POINTS_OBJECTIVE, \
-    POINTS_SAMPLER_EQUISPACE
+    POINTS_SAMPLER_EQUISPACE, PARAMS_OBJECTIVE
 from lib.DataManagers.DatasetsManagers.DatasetsManagerVertex import DatasetsManagerVertex, \
     DatasetsManagerVertexAngleAngle
 from lib.DataManagers.LearningMethodManager import LearningMethodManager
 from lib.MLutils.scikit_keras import SkKerasRegressor
 
-N = int(1e5)
-recalculate = False
-workers = 15
+# False because there is the unidimensional mapping that makes 1 below 0 above
+value_up_random = False
 
-# ------------------- Flux PROBLEM ------------------- #
 dataset_manager_lines = DatasetsManagerLinearCurves(
     velocity_range=[(0, 1 / 4), (1 / 4, 0), (0, -1 / 4), (-1 / 4, 0)],
     path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
-    workers=15, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
-    value_up_random=False, curve_position_radius=1
+    workers=workers, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
+    value_up_random=value_up_random, curve_position_radius=1
 )
 dataset_manager_quadratics = DatasetsManagerVanderCurves(
     curve_type=VanderQuadratic,
     velocity_range=[(0, 1 / 4), (1 / 4, 0), (0, -1 / 4), (-1 / 4, 0)],
     path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
     workers=workers, recalculate=recalculate, learning_objective=POINTS_OBJECTIVE,
-    curve_position_radius=(1.5, 0.5, 1.5), points_interval_size=1, value_up_random=False, num_points=3,
+    curve_position_radius=(1.5, 0.5, 1.5), points_interval_size=1, value_up_random=value_up_random, num_points=3,
+    points_sampler=POINTS_SAMPLER_EQUISPACE,
+)
+dataset_manager_quadratics_7 = DatasetsManagerVanderCurves(
+    curve_type=VanderQuadratic,
+    velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
+    workers=workers, recalculate=recalculate, learning_objective=POINTS_OBJECTIVE,
+    curve_position_radius=(3.5, 1.5, 3.5), points_interval_size=3, value_up_random=value_up_random, num_points=3,
+    points_sampler=POINTS_SAMPLER_EQUISPACE,
+)
+dataset_manager_quadratics_7params = DatasetsManagerVanderCurves(
+    curve_type=VanderQuadratic,
+    velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
+    workers=workers, recalculate=recalculate, learning_objective=PARAMS_OBJECTIVE,
+    curve_position_radius=(3.5, 1.5, 3.5), points_interval_size=3, value_up_random=value_up_random, num_points=3,
+    points_sampler=POINTS_SAMPLER_EQUISPACE,
+)
+dataset_manager_circle_7 = DatasetsManagerVanderCurves(
+    curve_type=CurveVanderCircle,
+    velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
+    workers=workers, recalculate=recalculate, learning_objective=POINTS_OBJECTIVE,
+    curve_position_radius=(3.5, 1.5, 3.5), points_interval_size=3, value_up_random=value_up_random, num_points=3,
     points_sampler=POINTS_SAMPLER_EQUISPACE,
 )
 
@@ -63,6 +84,27 @@ lines_ml_model = LearningMethodManager(
 )
 quadratics_ml_model = LearningMethodManager(
     dataset_manager=dataset_manager_quadratics,
+    type_of_problem=CURVE_PROBLEM,
+    trainable_model=regression_skkeras_20x20_relu_noisy,
+    refit=False, n2use=-1,
+    train_percentage=0.9
+)
+quadratics7_points_ml_model = LearningMethodManager(
+    dataset_manager=dataset_manager_quadratics_7,
+    type_of_problem=CURVE_PROBLEM,
+    trainable_model=regression_skkeras_20x20_relu_noisy,
+    refit=False, n2use=-1,
+    train_percentage=0.9
+)
+quadratics7_params_ml_model = LearningMethodManager(
+    dataset_manager=dataset_manager_quadratics_7params,
+    type_of_problem=CURVE_PROBLEM,
+    trainable_model=regression_skkeras_20x20_relu_noisy,
+    refit=False, n2use=-1,
+    train_percentage=0.9
+)
+circles7_ml_model = LearningMethodManager(
+    dataset_manager=dataset_manager_circle_7,
     type_of_problem=CURVE_PROBLEM,
     trainable_model=regression_skkeras_20x20_relu_noisy,
     refit=False, n2use=-1,
