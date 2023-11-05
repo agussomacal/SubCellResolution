@@ -22,7 +22,7 @@ from lib.SmoothnessCalculators import naive_piece_wise
 from lib.StencilCreators import StencilCreatorFixedShape, StencilCreatorAdaptive
 from lib.SubCellReconstruction import ReconstructionErrorMeasure, keep_cells_on_condition, curve_condition, \
     ReconstructionErrorMeasureDefaultStencil, CellCreatorPipeline, SubCellReconstruction, SubCellFlux, \
-    SubCellReconstructionWithCellClassifier
+    SubCellReconstruction
 
 # ========== ========== Reconstruction error ========== ========== #
 reconstruction_error_measure_default = ReconstructionErrorMeasure(
@@ -224,7 +224,7 @@ def aero_linear(smoothness_calculator=naive_piece_wise, refinement=1, angle_thre
 
 
 def quadratic(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=0, *args, **kwargs):
-    return SubCellReconstructionWithCellClassifier(
+    return SubCellReconstruction(
         name="All",
         smoothness_calculator=smoothness_calculator,
         reconstruction_error_measure=reconstruction_error_measure_default,
@@ -239,7 +239,7 @@ def quadratic(smoothness_calculator=naive_piece_wise, refinement=1, angle_thresh
 
 
 def qelvira(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=0):
-    return SubCellReconstructionWithCellClassifier(
+    return SubCellReconstruction(
         name="All",
         smoothness_calculator=smoothness_calculator,
         reconstruction_error_measure=reconstruction_error_measure_default,
@@ -299,7 +299,7 @@ def aero_qelvira_vertex(smoothness_calculator=naive_piece_wise, refinement=1, an
 
 
 def ml_vql(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=0, *args, **kwargs):
-    return SubCellReconstructionWithCellClassifier(
+    return SubCellReconstruction(
         name="All",
         smoothness_calculator=smoothness_calculator,
         cell_classifier=partial(cell_classifier_ml, ml_model=curve_classification_ml_model,

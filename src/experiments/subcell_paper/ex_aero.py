@@ -14,6 +14,9 @@ from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
 from PerplexityLab.visualization import generic_plot, make_data_frames, perplex_plot
 from experiments.LearningMethods import flatter, skkeras_20x20_relu_noisy
+from experiments.MLTraining.ml_cell_averages import kernel_circles_ml_model_points, kernel_quadratics_avg_ml_model
+from experiments.MLTraining.ml_curve_params import lines_ml_model, quadratics7_points_ml_model, \
+    quadratics7_params_ml_model, quadratics_ml_model
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, OBERA_ITERS, \
     CCExtraWeight, runsinfo, cblue, corange, cgreen, cred, cpurple, cbrown, cpink, cgray, cyellow, ccyan
 from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
@@ -37,7 +40,8 @@ from lib.DataManagers.DatasetsManagers.DatasetsManagerLinearCurves import Datase
 from lib.DataManagers.LearningMethodManager import LearningMethodManager
 from lib.SmoothnessCalculators import indifferent
 from lib.StencilCreators import StencilCreatorFixedShape, StencilCreatorAdaptive
-from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasureBase, CellCreatorPipeline
+from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasureBase, CellCreatorPipeline, \
+    ReconstructionErrorMeasureML
 
 
 def fit_model(sub_cell_model):
@@ -72,53 +76,6 @@ def fit_model(sub_cell_model):
     # the other option is to pass to the block the name we wish to associate to the function.
     decorated_func.__name__ = sub_cell_model.__name__
     return decorated_func
-
-
-if __name__ == "__main__":
-    N = int(1e6)
-    dataset_manager_3_8pi = DatasetsManagerLinearCurves(
-        velocity_range=((0, 0), (1, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
-        workers=15, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
-        value_up_random=True
-    )
-
-    N = int(1e6)
-    dataset_manager_cossin = DatasetsManagerLinearCurves(
-        velocity_range=((0, 0), (0, 1)), path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
-        workers=15, recalculate=True, learning_objective=COS_SIN_OBJECTIVE,
-        # angle_limits=(-3 / 8, 3 / 8),
-        value_up_random=False
-    )
-
-    nnlm = LearningMethodManager(
-        dataset_manager=dataset_manager_3_8pi,
-        type_of_problem=CURVE_PROBLEM,
-        trainable_model=Pipeline(
-            [
-                ("Flatter", FunctionTransformer(flatter)),
-                ("NN", MLPRegressor(hidden_layer_sizes=(20, 20,), activation='relu', learning_rate_init=0.1,
-                                    learning_rate="adaptive", solver="lbfgs"))
-            ]
-        ),
-        refit=False, n2use=-1,
-        train_percentage=0.9
-    )
-
-    nnlmkeras = LearningMethodManager(
-        dataset_manager=dataset_manager_3_8pi,
-        type_of_problem=CURVE_PROBLEM,
-        trainable_model=skkeras_20x20_relu_noisy,
-        refit=False, n2use=-1,
-        train_percentage=0.9
-    )
-
-    nnlmkeras_cossin = LearningMethodManager(
-        dataset_manager=dataset_manager_cossin,
-        type_of_problem=CURVE_PROBLEM,
-        trainable_model=skkeras_20x20_relu_noisy,
-        refit=False, n2use=-1,
-        train_percentage=0.9
-    )
 
 
 def piecewise_constant(*args):
@@ -200,30 +157,37 @@ def linear_aero_consistent():
 
 
 def nn_linear():
-    return get_sub_cell_model(partial(LearningCurveCellCreator, nnlm), 1,
+    return get_sub_cell_model(partial(LearningCurveCellCreator, lines_ml_model), 1,
                               "LinearNN", 0, CCExtraWeight, 2)
 
 
-#
-# def nn_linear_torch():
-#     return get_sub_cell_model(partial(LearningCurveCellCreator, nnlmtorch), 1,
-#                               "LinearNN", 0, CCExtraWeight, 2)
+def nn_quadratic_3x3():
+    return get_sub_cell_model(partial(LearningCurveCellCreator, quadratics_ml_model), 1,
+                              "QuadraticNN", 0, CCExtraWeight, 2,
+                              # stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0,
+                              #                                        independent_dim_stencil_size=3,
+                              #                                        dependent_dim_size=7),
+                              )
 
 
-def nn_linear_keras():
-    return get_sub_cell_model(partial(LearningCurveCellCreator, nnlmkeras), 1,
-                              "LinearNN", 0, CCExtraWeight, 2)
+def nn_quadratic_3x7():
+    return get_sub_cell_model(partial(LearningCurveCellCreator, quadratics7_points_ml_model), 1,
+                              "QuadraticNN", 0, CCExtraWeight, 2,
+                              stencil_creator=StencilCreatorFixedShape(stencil_shape=(3, 7))
+                              # stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0,
+                              #                                        independent_dim_stencil_size=3,
+                              #                                        dependent_dim_size=7)
+                              )
 
 
-def nn_linear_keras_cs():
-    return get_sub_cell_model(partial(LearningCurveCellCreator, nnlmkeras_cossin), 1,
-                              "LinearNN", 0, CCExtraWeight, 2)
-
-
-#
-# def nn_linear_skkeras():
-#     return get_sub_cell_model(partial(LearningCurveCellCreator, nnlmskkeras), 1,
-#                               "LinearNN", 0, CCExtraWeight, 2)
+def nn_quadratic_3x7_params():
+    return get_sub_cell_model(partial(LearningCurveCellCreator, quadratics7_params_ml_model), 1,
+                              "QuadraticNN", 0, CCExtraWeight, 2,
+                              stencil_creator=StencilCreatorFixedShape(stencil_shape=(3, 7))
+                              # stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0,
+                              #                                        independent_dim_stencil_size=3,
+                              #                                        dependent_dim_size=7)
+                              )
 
 
 def quadratic_obera_non_adaptive():
@@ -239,6 +203,21 @@ def quadratic_obera():
                 vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=CCExtraWeight)), 1,
         "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 2,
         stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3))
+
+
+def quadratic_obera_ml():
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=CCExtraWeight)), 1,
+        "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 2,
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3),
+        reconstruction_error_measure=ReconstructionErrorMeasureML(
+            ml_model=kernel_quadratics_avg_ml_model,
+            stencil_creator=StencilCreatorFixedShape(
+                kernel_circles_ml_model_points.dataset_manager.kernel_size),
+            metric=2,
+            central_cell_extra_weight=CCExtraWeight
+        ))
 
 
 def quadratic_aero():
@@ -271,12 +250,25 @@ def obera_circle_vander():
                                                                      independent_dim_stencil_size=3))
 
 
+def obera_circle_vander_ml():
+    return get_sub_cell_model(ValuesCircleCellCreator, 1,
+                              "CircleAvg", OBERA_ITERS, CCExtraWeight, 2,
+                              stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0,
+                                                                     independent_dim_stencil_size=3),
+                              reconstruction_error_measure=ReconstructionErrorMeasureML(
+                                  ml_model=kernel_circles_ml_model_points,
+                                  stencil_creator=StencilCreatorFixedShape(
+                                      kernel_circles_ml_model_points.dataset_manager.kernel_size),
+                                  metric=2,
+                                  central_cell_extra_weight=CCExtraWeight
+                              ))
+
+
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
         # name=f'AERO',
-        name=f'AERO_NN',
-        # name=f'AERO_NNsk',
+        name=f'AERO_NN2',
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
@@ -321,28 +313,31 @@ if __name__ == "__main__":
                       linear_aero_w,
                       linear_aero_consistent,
                       nn_linear,
-                      # nn_linear_torch,
-                      nn_linear_keras,
-                      nn_linear_keras_cs,
-                      # nn_linear_skkeras,
+                      nn_quadratic_3x3,
+                      nn_quadratic_3x7,
+                      nn_quadratic_3x7_params,
 
                       quadratic_obera_non_adaptive,
                       quadratic_obera,
+                      quadratic_obera_ml,
                       quadratic_aero,
 
                       # elvira_go100_ref2,
                       # quadratic_aero_ref2,
 
                       obera_circle,
-                      obera_circle_vander]
+                      obera_circle_vander,
+                      obera_circle_vander_ml
+                  ]
                   )),
         recalculate=False
     )
     # num_cells_per_dim = np.logspace(np.log10(10), np.log10(100), num=20, dtype=int).tolist()[:5]
-    num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=20, dtype=int).tolist()
+    # num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=20, dtype=int).tolist()
+    num_cells_per_dim = np.logspace(np.log10(20), np.log10(500), num=30, dtype=int).tolist()
     num_cells_per_dim = np.logspace(np.log10(10), np.log10(20), num=5, dtype=int,
                                     endpoint=False).tolist() + num_cells_per_dim
-    num_cores = 15
+    num_cores = 50
     lab.execute(
         data_manager,
         num_cores=num_cores,
@@ -359,9 +354,9 @@ if __name__ == "__main__":
     names_dict = {
         "piecewise_constant": "Piecewise Constant",
         "nn_linear": "NN Linear",
-        "nn_linear_torch": "NN Linear Torch",
-        "nn_linear_keras": "NN Linear Keras",
-        "nn_linear_skkeras": "NN Linear SKKeras",
+        "nn_quadratic_3x3": "NN Quadratic 3x3",
+        "nn_quadratic_3x7": "NN Quadratic 3x7",
+        "nn_quadratic_3x7_params": "NN Quadratic 3x7 params",
         "elvira": "ELVIRA",
         "elvira_w": "ELVIRA-W",
         "elvira_w_oriented": "ELVIRA-W Oriented",
@@ -372,9 +367,11 @@ if __name__ == "__main__":
         "linear_aero_consistent": "AEROS Linear Column Consistent",
         "quadratic_obera_non_adaptive": "OBERA Quadratic 3x3",
         "quadratic_obera": "OBERA Quadratic",
+        "quadratic_obera_ml": "OBERA Quadratic ML",
         "quadratic_aero": "AEROS Quadratic",
         "obera_circle": "OBERA Circle",
         "obera_circle_vander": "OBERA Circle ReParam",
+        "obera_circle_vander_ml": "OBERA Circle ReParam ML",
         # "elvira_go100_ref2",
         # "quadratic_aero_ref2",
         # "circle_avg",
@@ -382,10 +379,10 @@ if __name__ == "__main__":
     }
     model_color = {
         "piecewise_constant": cpink,
-        "nn_linear": cgreen,
-        # "nn_linear_torch": "forestgreen",
-        "nn_linear_keras": "mediumseagreen",
-        "nn_linear_skkeras": "forestgreen",
+        "nn_linear": "forestgreen",
+        "nn_quadratic_3x3": cpurple,
+        "nn_quadratic_3x7": cblue,
+        "nn_quadratic_3x7_params": ccyan,
         "elvira": cyellow,
         "elvira_w": None,
         "elvira_w_oriented": corange,
@@ -397,9 +394,11 @@ if __name__ == "__main__":
 
         "quadratic_obera_non_adaptive": cgray,
         "quadratic_obera": cred,
+        "quadratic_obera_ml": corange,
         "quadratic_aero": cgreen,
         "obera_circle": cyellow,
         "obera_circle_vander": cpurple,
+        "obera_circle_vander_ml": "mediumseagreen",
     }
 
     runsinfo.append_info(
@@ -410,9 +409,6 @@ if __name__ == "__main__":
     accepted_models = {
         "LinearModels": [
             "nn_linear",
-            "nn_linear_torch",
-            "nn_linear_keras",
-            "nn_linear_skkeras",
             "elvira",
             "elvira_w_oriented",
             "linear_obera",
@@ -429,6 +425,20 @@ if __name__ == "__main__":
             "quadratic_aero",
             "obera_circle",
             "obera_circle_vander"
+        ],
+        "OtherTests": [
+            "piecewise_constant",
+            "nn_linear",
+            "linear_aero_w",
+            "quadratic_obera_non_adaptive",
+            "quadratic_obera",
+            "quadratic_obera_ml",
+            "quadratic_aero",
+            "obera_circle",
+            "obera_circle_vander",
+            "nn_quadratic_3x3",
+            "nn_quadratic_3x7",
+            "nn_quadratic_3x7_params",
         ]
     }
     rateonly = list(names_dict.keys())[:-2]

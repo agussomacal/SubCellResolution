@@ -90,8 +90,9 @@ class LearningMethodManager:
     def predict_curve_params(self, kernel: np.ndarray) -> CurveBase:
         return self.trainable_model.predict([kernel])[0]
 
-    def predict_kernel(self, curve_params: np.ndarray) -> CurveBase:
-        return self.trainable_model.predict([curve_params]).reshape(self.dataset_manager.kernel_size)
+    def predict_kernel(self, curve_params: np.ndarray, reshape=False) -> np.ndarray:
+        kernel = self.trainable_model.predict([curve_params])
+        return kernel.reshape(self.dataset_manager.kernel_size) if reshape else kernel
 
     def predict_classification(self, kernel: np.ndarray) -> int:
         return np.ravel(self.trainable_model.predict([kernel])[0])[0]

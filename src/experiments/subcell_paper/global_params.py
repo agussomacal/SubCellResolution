@@ -25,6 +25,7 @@ CCExtraWeight = 100  # central cell extra weight 100
 CurveAverageQuadraticCC = ClassPartialInit(CurveAveragePolynomial, class_name="CurveAverageQuadraticCC",
                                            degree=2, ccew=CCExtraWeight)
 VanderQuadratic = ClassPartialInit(CurveVandermondePolynomial, class_name="VanderQuadratic", degree=2)
+AvgQuadratic = ClassPartialInit(CurveAveragePolynomial, class_name="AvgQuadratic", degree=2)
 
 runsinfo = RunsInfo2Latex(path2latex=f"{subcell_paper_folder_path}/main.tex")
 runsinfo.insert_preamble_in_latex_file()

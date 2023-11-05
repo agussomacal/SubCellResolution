@@ -35,7 +35,8 @@ from lib.SubCellReconstruction import SubCellReconstruction, CellCreatorPipeline
 
 def get_sub_cell_model(curve_cell_creator, refinement, name, iterations, central_cell_extra_weight, metric,
                        stencil_creator=StencilCreatorFixedShape((3, 3)),
-                       orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, angle_threshold=45)):
+                       orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, angle_threshold=45),
+                       reconstruction_error_measure=None):
     return SubCellReconstruction(
         name=name,
         smoothness_calculator=naive_piece_wise,
@@ -59,7 +60,8 @@ def get_sub_cell_model(curve_cell_creator, refinement, name, iterations, central
                                       condition=operator.eq),
                 orientator=orientator,
                 stencil_creator=stencil_creator,
-                cell_creator=curve_cell_creator(regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax)
+                cell_creator=curve_cell_creator(regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax),
+                reconstruction_error_measure=reconstruction_error_measure
             )
         ],
         obera_iterations=iterations
