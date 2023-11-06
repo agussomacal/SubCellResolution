@@ -99,8 +99,9 @@ class LinearVertexCellCurveCellCreator(CurveCellCreatorBase):
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
                       stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
         value_up, value_down = self.updown_value_getter(coords, regular_opposite_cells)
-        stencil_values = prepare_stencil4one_dimensionalization(independent_axis, value_up, value_down, stencil,
-                                                                smoothness_index, indexer)
+        stencil_values = prepare_stencil4one_dimensionalization(
+            value_up=value_up, value_down=value_down, independent_axis=independent_axis, stencil=stencil,
+            smoothness_index=smoothness_index, indexer=indexer)
         stencil_values = stencil_values.sum(axis=1)
 
         x_shift = np.min(stencil.coords[:, independent_axis])

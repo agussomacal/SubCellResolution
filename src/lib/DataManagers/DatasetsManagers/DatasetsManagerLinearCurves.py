@@ -42,7 +42,7 @@ class DatasetsManagerLinearCurves(DatasetsBaseManager):
         """
 
         if self.learning_objective == SLOPE_OBJECTIVE:
-            return np.tan(angle), r
+            return r, np.tan(angle)
         elif self.learning_objective == COS_SIN_OBJECTIVE:
             return np.sin(angle), np.cos(angle), r
         elif self.learning_objective == ANGLE_OBJECTIVE:
@@ -59,7 +59,7 @@ class DatasetsManagerLinearCurves(DatasetsBaseManager):
     def create_curve_from_params(self, curve_params, coords: CellCoords, independent_axis: int, value_up, value_down,
                                  stencil: Stencil):
         if self.learning_objective == SLOPE_OBJECTIVE:
-            slope, y_origin = curve_params
+            y_origin, slope = curve_params
         elif self.learning_objective == COS_SIN_OBJECTIVE:
             sin_angle, cos_angle, y_origin = curve_params
             slope = sin_angle / cos_angle

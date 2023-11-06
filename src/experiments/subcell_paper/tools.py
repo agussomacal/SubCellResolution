@@ -36,7 +36,7 @@ def calculate_averages_from_image(image, num_cells_per_dim: Union[int, Tuple[int
 
 
 def calculate_averages_from_curve(curve: Curve, resolution: Tuple[int, int], deplacement: Tuple = None,
-                                  origin=(0, 0)):
+                                  origin=(0, 0), cells2reconstruct=None):
     "TODO generalize"
     if deplacement is None:
         deplacement = 1 / np.array(resolution)
@@ -44,7 +44,9 @@ def calculate_averages_from_curve(curve: Curve, resolution: Tuple[int, int], dep
 
     num_squares = np.product(resolution)
     averages = np.zeros(resolution)
-    for i, j in tqdm(itertools.product(*list(map(np.arange, resolution))), desc="Over {}".format(num_squares)):
+    for i, j in tqdm(
+            itertools.product(*list(map(np.arange, resolution))) if cells2reconstruct is None else cells2reconstruct,
+            desc="Over {}".format(num_squares)):
         averages[i, j] = curve.calculate_rectangle_average(
             x_limits=origin[0] + np.array(((i + 1) / resolution[0] - deplacement[0], (i + 1) / resolution[0])),
             y_limits=origin[1] + np.array(((j + 1) / resolution[1] - deplacement[1], (j + 1) / resolution[1]))
@@ -67,15 +69,20 @@ def get_reconstruction_error(enhanced_image, reconstruction, reconstruction_fact
     return np.mean(np.abs(np.array(reconstruction) - enhanced_image))
 
 
-def edge_mask(image: Union[str, np.ndarray], num_cells_per_dim, reconstruction):
-    image = load_image(image) if isinstance(image, str) else image
-    image = calculate_averages_from_image(image, num_cells_per_dim)
-    edge_mask = (1 > image) & (image > 0)  # cells with an edge passing through
-    # extend repeating mask to have the same shape as reconstructed images
+def singular_cells_mask(avg_values):
+    return (0 < np.array(avg_values)) * (np.array(avg_values) < 1)
 
-    resolution_factor = np.array(np.shape(reconstruction)) // num_cells_per_dim
-    edge_mask = np.repeat(np.repeat(edge_mask, resolution_factor[0], axis=0), resolution_factor[1], axis=1)
-    return edge_mask
+
+def make_image_high_resolution(matrix, reconstruction_factor):
+    resolution_factor = reconstruction_factor if isinstance(reconstruction_factor, (list, tuple, np.ndarray)) else (
+        reconstruction_factor, reconstruction_factor)
+    return np.repeat(np.repeat(matrix, resolution_factor[0], axis=0), resolution_factor[1], axis=1)
+
+
+def edge_mask(avg_values, reconstruction_factor):
+    edge_mask = singular_cells_mask(avg_values)  # cells with an edge passing through
+    # extend repeating mask to have the same shape as reconstructed images
+    return make_image_high_resolution(edge_mask, reconstruction_factor)
 
 
 def get_reconstruction_error_in_interface(image, enhanced_image, reconstruction, reconstruction_factor,
@@ -85,10 +92,6 @@ def get_reconstruction_error_in_interface(image, enhanced_image, reconstruction,
         # TODO: should be the evaluations not the averages.
         enhanced_image = calculate_averages_from_image(enhanced_image, num_cells_per_dim=np.shape(reconstruction))
     return np.mean(np.abs(np.array(reconstruction) - enhanced_image)[mask])
-
-
-def singular_cells_mask(avg_values):
-    return (0 < np.array(avg_values)) * (np.array(avg_values) < 1)
 
 
 def curve_cells_fitting_times(model):

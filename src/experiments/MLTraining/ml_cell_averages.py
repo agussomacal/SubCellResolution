@@ -9,11 +9,12 @@ from experiments.VizReconstructionUtils import plot_cells
 from experiments.subcell_paper.global_params import VanderQuadratic, AvgQuadratic
 from experiments.subcell_paper.tools import get_evaluations2test_curve
 from lib.Curves.CurveCircle import CurveSemiCircle, CircleParams
-from lib.Curves.CurvePolynomial import CurvePolynomial
+from lib.Curves.CurvePolynomial import CurvePolynomial, CurveLinearAngle
 from lib.Curves.VanderCurves import CurveVanderCircle
 from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import get_averages_from_curve_kernel, \
     CELL_AVERAGES_PROBLEM
-from lib.DataManagers.DatasetsManagers.DatasetsManagerLinearCurves import DatasetsManagerLinearCurves, ANGLE_OBJECTIVE
+from lib.DataManagers.DatasetsManagers.DatasetsManagerLinearCurves import DatasetsManagerLinearCurves, ANGLE_OBJECTIVE, \
+    SLOPE_OBJECTIVE
 from lib.DataManagers.DatasetsManagers.DatasetsManagerVanderCurves import DatasetsManagerVanderCurves, POINTS_OBJECTIVE, \
     POINTS_SAMPLER_EQUISPACE, PARAMS_OBJECTIVE
 from lib.DataManagers.LearningMethodManager import LearningMethodManager
@@ -25,7 +26,7 @@ refit = False
 dataset_manager_lines = DatasetsManagerLinearCurves(
     velocity_range=[(0, 1 / 4), (1 / 4, 0), (0, -1 / 4), (-1 / 4, 0)],
     path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
-    workers=workers, recalculate=False, learning_objective=ANGLE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
+    workers=workers, recalculate=False, learning_objective=SLOPE_OBJECTIVE, angle_limits=(-3 / 8, 3 / 8),
     value_up_random=value_up_random, curve_position_radius=1
 )
 dataset_manager_quadratics = DatasetsManagerVanderCurves(
@@ -134,8 +135,6 @@ kernel_circles_ml_model_points = LearningMethodManager(
 
 
 if __name__ == "__main__":
-    angle = 0.0
-    y0 = 0.23
     value_up = 0
     value_down = 1
     refinement = 5
@@ -162,14 +161,16 @@ if __name__ == "__main__":
     # kernel_pred = kernel_quadratics_points_ml_model.predict_kernel(curve.params, reshape=True)
     # kernel_size = kernel_quadratics_points_ml_model.dataset_manager.kernel_size
 
-    curve = AvgQuadratic(x_points=np.array([-1, 0, 1]), y_points=np.array([0.02, 0, -0.01]), value_up=value_up,
-                         value_down=value_down)
-    kernel_pred = kernel_quadratics_avg_ml_model.predict_kernel(curve.params, reshape=True)
-    kernel_size = kernel_quadratics_avg_ml_model.dataset_manager.kernel_size
+    # curve = AvgQuadratic(x_points=np.array([-1, 0, 1]), y_points=np.array([0.02, 0, -0.01]), value_up=value_up,
+    #                      value_down=value_down)
+    # kernel_pred = kernel_quadratics_avg_ml_model.predict_kernel(curve.params, reshape=True)
+    # kernel_size = kernel_quadratics_avg_ml_model.dataset_manager.kernel_size
 
     # curve = CurveLinearAngle(angle, y0, value_up, value_down, x_shift=0)
     # kernel_pred = kernel_lines_ml_model.predict_kernel(curve.params[::-1], reshape=True)
-    # kernel_size = kernel_quadratics_ml_model.dataset_manager.kernel_size
+    curve = CurvePolynomial([0.23, np.tan(0.3)], value_up, value_down, x_shift=0)
+    kernel_pred = kernel_lines_ml_model.predict_kernel(curve.params, reshape=True)
+    kernel_size = kernel_lines_ml_model.dataset_manager.kernel_size
 
     kernel = get_averages_from_curve_kernel(kernel_size, curve, center_cell_coords=None)
     u = get_evaluations2test_curve(curve, kernel_size, refinement=refinement)
@@ -183,7 +184,7 @@ if __name__ == "__main__":
     ax3 = fig.add_subplot(ax[8:, :])
     ax3.set_title('Approx Averages')
 
-    plot_cells(ax=ax1, colors=u.T, mesh_shape=np.array(kernel_size).T * refinement, alpha=0.5,
+    plot_cells(ax=ax1, colors=u, mesh_shape=np.array(kernel_size) * refinement, alpha=0.5,
                cmap="viridis",
                vmin=-1, vmax=1)
     sns.heatmap(kernel, annot=True, cmap="viridis", alpha=0.7, ax=ax2)

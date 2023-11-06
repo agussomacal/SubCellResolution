@@ -55,8 +55,9 @@ class LearningFluxRegularCellCreator(CellCreatorBase):
                      coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
                      stencil: Stencil, stencils: Dict[Tuple[int, ...], np.ndarray]) -> Generator[CellBase, None, None]:
         value_up, value_down = self.updown_value_getter(coords, stencil=stencil)
-        stencil_values = prepare_stencil4one_dimensionalization(independent_axis, value_up, value_down, stencil,
-                                                                smoothness_index, indexer)
+        stencil_values = prepare_stencil4one_dimensionalization(
+            value_up=value_up, value_down=value_down, independent_axis=independent_axis, stencil=stencil,
+            smoothness_index=smoothness_index, indexer=indexer)
 
         def flux_calculator(velocity):
             next_coords, next_flux = self.learning_manager.predict_flux(stencil_values, velocity[

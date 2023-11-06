@@ -18,8 +18,9 @@ class DefaultCircleCurveCellCreator(CurveCellCreatorBase):
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
                       stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[CurveSemiCircle, None, None]:
         value_up, value_down = self.updown_value_getter(coords, regular_opposite_cells)
-        stencil_values = prepare_stencil4one_dimensionalization(value_up, value_down, independent_axis, stencil,
-                                                                smoothness_index, indexer)
+        stencil_values = prepare_stencil4one_dimensionalization(
+            value_up=value_up, value_down=value_down, independent_axis=independent_axis, stencil=stencil,
+            smoothness_index=smoothness_index, indexer=indexer)
         stencil_values = stencil_values.sum(axis=1)
         x_points = get_x_points(stencil, independent_axis)
         concavity = get_concavity(x_points, stencil_values)

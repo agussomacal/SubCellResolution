@@ -31,8 +31,9 @@ class ValuesCurveCellCreator(CurveCellCreatorBase):
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
                       stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
         value_up, value_down = self.updown_value_getter(coords, regular_opposite_cells)
-        stencil_values = prepare_stencil4one_dimensionalization(independent_axis, value_up, value_down, stencil,
-                                                                smoothness_index, indexer)
+        stencil_values = prepare_stencil4one_dimensionalization(
+            value_up=value_up, value_down=value_down, independent_axis=independent_axis, stencil=stencil,
+            smoothness_index=smoothness_index, indexer=indexer)
         stencil_values = stencil_values.sum(axis=1)
         x_points = get_x_points(stencil, independent_axis)
         curve = self.vander_curve(
@@ -66,8 +67,9 @@ class ValuesLineConsistentCurveCellCreator(ValuesCurveCellCreator):
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
                       stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
         value_up, value_down = self.updown_value_getter(coords, regular_opposite_cells)
-        stencil_values = prepare_stencil4one_dimensionalization(independent_axis, value_up, value_down, stencil,
-                                                                smoothness_index, indexer)
+        stencil_values = prepare_stencil4one_dimensionalization(
+            value_up=value_up, value_down=value_down, independent_axis=independent_axis, stencil=stencil,
+            smoothness_index=smoothness_index, indexer=indexer)
         stencil_values = stencil_values.sum(axis=1)
         x_points = get_x_points(stencil, independent_axis)
         curve = self.vander_curve(
@@ -99,8 +101,9 @@ class ValuesLinearCellCreator(ValuesCurveCellCreator):
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
                       stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
         value_up, value_down = self.updown_value_getter(coords, regular_opposite_cells)
-        stencil_values = prepare_stencil4one_dimensionalization(value_up, value_down, independent_axis, stencil,
-                                                                smoothness_index, indexer)
+        stencil_values = prepare_stencil4one_dimensionalization(
+            value_up=value_up, value_down=value_down, independent_axis=independent_axis, stencil=stencil,
+            smoothness_index=smoothness_index, indexer=indexer)
         stencil_values = stencil_values.sum(axis=1)
         x_points = get_x_points(stencil, independent_axis)
         curve = self.vander_curve(
@@ -109,6 +112,7 @@ class ValuesLinearCellCreator(ValuesCurveCellCreator):
             value_up=value_up,
             value_down=value_down
         )
+        curve.set_y_shift(np.min(stencil.coords[:, 1 - independent_axis]))
         if self.natural_params:
             yield curve.get_natural_parametrization_curve()
         else:
@@ -125,8 +129,9 @@ class ValuesCircleCellCreator(CurveCellCreatorBase):
                       coords: CellCoords, smoothness_index: np.ndarray, independent_axis: int,
                       stencil: Stencil, regular_opposite_cells: Tuple) -> Generator[Curve, None, None]:
         value_up, value_down = self.updown_value_getter(coords, regular_opposite_cells)
-        stencil_values = prepare_stencil4one_dimensionalization(value_up, value_down, independent_axis, stencil,
-                                                                smoothness_index, indexer)
+        stencil_values = prepare_stencil4one_dimensionalization(
+            value_up=value_up, value_down=value_down, independent_axis=independent_axis, stencil=stencil,
+            smoothness_index=smoothness_index, indexer=indexer)
         stencil_values = stencil_values.sum(axis=1)
         x_points = get_x_points(stencil, independent_axis)
         curve = CurveVanderCircle(
@@ -135,6 +140,7 @@ class ValuesCircleCellCreator(CurveCellCreatorBase):
             value_up=value_up,
             value_down=value_down,
         )
+        curve.set_y_shift(np.min(stencil.coords[:, 1 - independent_axis]))
         if self.natural_params:
             yield curve.get_natural_parametrization_curve()
         else:

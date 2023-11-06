@@ -4,24 +4,21 @@ from itertools import chain
 
 import numpy as np
 import seaborn as sns
-from sklearn.neural_network import MLPRegressor
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import FunctionTransformer
 
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
-from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
+from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
 from PerplexityLab.visualization import generic_plot, make_data_frames, perplex_plot
-from experiments.LearningMethods import flatter, skkeras_20x20_relu_noisy
-from experiments.MLTraining.ml_cell_averages import kernel_circles_ml_model_points, kernel_quadratics_avg_ml_model
+from experiments.MLTraining.ml_cell_averages import kernel_circles_ml_model_points, kernel_quadratics_avg_ml_model, \
+    kernel_lines_ml_model
 from experiments.MLTraining.ml_curve_params import lines_ml_model, quadratics7_points_ml_model, \
     quadratics7_params_ml_model, quadratics_ml_model
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, OBERA_ITERS, \
     CCExtraWeight, runsinfo, cblue, corange, cgreen, cred, cpurple, cbrown, cpink, cgray, cyellow, ccyan
 from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
-from experiments.subcell_paper.tools import calculate_averages_from_image, calculate_averages_from_curve, \
-    curve_cells_fitting_times
+from experiments.subcell_paper.tools import calculate_averages_from_curve, \
+    curve_cells_fitting_times, singular_cells_mask, make_image_high_resolution
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
@@ -34,20 +31,37 @@ from lib.CellIterators import iterate_all
 from lib.CellOrientators import BaseOrientator, OrientByGradient
 from lib.Curves.AverageCurves import CurveAveragePolynomial
 from lib.Curves.VanderCurves import CurveVandermondePolynomial
-from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import CURVE_PROBLEM
-from lib.DataManagers.DatasetsManagers.DatasetsManagerLinearCurves import DatasetsManagerLinearCurves, ANGLE_OBJECTIVE, \
-    COS_SIN_OBJECTIVE
-from lib.DataManagers.LearningMethodManager import LearningMethodManager
 from lib.SmoothnessCalculators import indifferent
 from lib.StencilCreators import StencilCreatorFixedShape, StencilCreatorAdaptive
 from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasureBase, CellCreatorPipeline, \
-    ReconstructionErrorMeasureML
+    ReconstructionErrorMeasureML, reconstruct_by_factor
+
+
+def obtain_images(shape_name, num_cells_per_dim):
+    image = calculate_averages_from_curve(get_shape(shape_name), (num_cells_per_dim, num_cells_per_dim))
+    return {
+        "image": image
+    }
+
+
+def obtain_image4error(shape_name, num_cells_per_dim, sub_discretization2bound_error, image):
+    edge_mask = make_image_high_resolution(singular_cells_mask(image),
+                                           reconstruction_factor=sub_discretization2bound_error)
+    cells2reconstruct = list(zip(*np.where(edge_mask)))
+    true_reconstruction = make_image_high_resolution(image, reconstruction_factor=sub_discretization2bound_error)
+    true_reconstruction[edge_mask] = calculate_averages_from_curve(
+        get_shape(shape_name),
+        (num_cells_per_dim * sub_discretization2bound_error,
+         num_cells_per_dim * sub_discretization2bound_error),
+        cells2reconstruct=cells2reconstruct)[edge_mask]
+
+    return {
+        "image4error": true_reconstruction
+    }
 
 
 def fit_model(sub_cell_model):
     def decorated_func(image, noise, sub_discretization2bound_error):
-        # image = load_image(image)
-        # avg_values = calculate_averages_from_image(image, num_cells_per_dim)
         np.random.seed(42)
         avg_values = image + np.random.uniform(-noise, noise, size=image.shape)
 
@@ -58,12 +72,16 @@ def fit_model(sub_cell_model):
         model.fit(average_values=avg_values, indexer=ArrayIndexerNd(avg_values, "cyclic"))
         t_fit = time.time() - t0
 
+        edge_mask = singular_cells_mask(avg_values)
+        edge_mask_hr = make_image_high_resolution(edge_mask,
+                                                  reconstruction_factor=sub_discretization2bound_error)
+        cells2reconstruct = list(zip(*np.where(edge_mask)))
         t0 = time.time()
-        reconstruction = model.reconstruct_by_factor(resolution_factor=sub_discretization2bound_error)
+        reconstruction = make_image_high_resolution(avg_values, reconstruction_factor=sub_discretization2bound_error)
+        reconstruction[edge_mask_hr] = \
+            reconstruct_by_factor(cells=model.cells, resolution=model.resolution, cells2reconstruct=cells2reconstruct,
+                                  resolution_factor=sub_discretization2bound_error)[edge_mask_hr]
         t_reconstruct = time.time() - t0
-        # if refinement is set in place
-        reconstruction = calculate_averages_from_image(reconstruction, tuple(
-            (np.array(np.shape(image)) * sub_discretization2bound_error).tolist()))
 
         return {
             "model": model,
@@ -108,6 +126,17 @@ def elvira_w():
 
 def elvira_w_oriented():
     return get_sub_cell_model(ELVIRACurveCellCreator, 1, "ELVIRAGRAD", 0, CCExtraWeight, 2)
+
+
+def elvira_w_oriented_ml():
+    return get_sub_cell_model(ELVIRACurveCellCreator, 1, "ELVIRAGRAD", 0, CCExtraWeight, 2,
+                              reconstruction_error_measure=ReconstructionErrorMeasureML(
+                                  ml_model=kernel_lines_ml_model,
+                                  stencil_creator=StencilCreatorFixedShape(
+                                      kernel_lines_ml_model.dataset_manager.kernel_size),
+                                  metric=2,
+                                  central_cell_extra_weight=CCExtraWeight
+                              ))
 
 
 def elvira_go100_ref2():
@@ -210,7 +239,8 @@ def quadratic_obera_ml():
         partial(ValuesCurveCellCreator,
                 vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=CCExtraWeight)), 1,
         "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 2,
-        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3),
+        # stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3),
+        stencil_creator=StencilCreatorFixedShape(kernel_circles_ml_model_points.dataset_manager.kernel_size),
         reconstruction_error_measure=ReconstructionErrorMeasureML(
             ml_model=kernel_quadratics_avg_ml_model,
             stencil_creator=StencilCreatorFixedShape(
@@ -253,8 +283,10 @@ def obera_circle_vander():
 def obera_circle_vander_ml():
     return get_sub_cell_model(ValuesCircleCellCreator, 1,
                               "CircleAvg", OBERA_ITERS, CCExtraWeight, 2,
-                              stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0,
-                                                                     independent_dim_stencil_size=3),
+                              # stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0,
+                              #                                        independent_dim_stencil_size=3),
+                              stencil_creator=StencilCreatorFixedShape(
+                                      kernel_circles_ml_model_points.dataset_manager.kernel_size),
                               reconstruction_error_measure=ReconstructionErrorMeasureML(
                                   ml_model=kernel_circles_ml_model_points,
                                   stencil_creator=StencilCreatorFixedShape(
@@ -278,26 +310,12 @@ if __name__ == "__main__":
     lab = LabPipeline()
     lab.define_new_block_of_functions(
         "precompute_images",
-        FunctionBlock(
-            "getimages",
-            lambda shape_name, num_cells_per_dim: {
-                "image": calculate_averages_from_curve(
-                    get_shape(shape_name),
-                    (num_cells_per_dim,
-                     num_cells_per_dim))}
-        )
+        obtain_images
     )
 
     lab.define_new_block_of_functions(
         "precompute_error_resolution",
-        FunctionBlock(
-            "subresolution",
-            lambda shape_name, num_cells_per_dim, sub_discretization2bound_error: {
-                "image4error": calculate_averages_from_curve(
-                    get_shape(shape_name),
-                    (num_cells_per_dim * sub_discretization2bound_error,
-                     num_cells_per_dim * sub_discretization2bound_error))}
-        )
+        obtain_image4error
     )
 
     lab.define_new_block_of_functions(
@@ -307,6 +325,8 @@ if __name__ == "__main__":
                       piecewise_constant,
                       elvira,
                       elvira_w_oriented,
+                      elvira_w_oriented_ml,
+
                       linear_obera,
                       linear_obera_w,
                       linear_aero,
@@ -342,7 +362,7 @@ if __name__ == "__main__":
         data_manager,
         num_cores=num_cores,
         forget=False,
-        save_on_iteration=None,
+        save_on_iteration=5,
         num_cells_per_dim=num_cells_per_dim,
         noise=[0],
         shape_name=[
@@ -353,29 +373,33 @@ if __name__ == "__main__":
 
     names_dict = {
         "piecewise_constant": "Piecewise Constant",
+
         "nn_linear": "NN Linear",
         "nn_quadratic_3x3": "NN Quadratic 3x3",
         "nn_quadratic_3x7": "NN Quadratic 3x7",
         "nn_quadratic_3x7_params": "NN Quadratic 3x7 params",
+
         "elvira": "ELVIRA",
         "elvira_w": "ELVIRA-W",
         "elvira_w_oriented": "ELVIRA-W Oriented",
+        "elvira_w_oriented_ml": "ELVIRA-W Oriented ML",
+
         "linear_obera": "OBERA Linear",
         "linear_obera_w": "OBERA-W Linear",
         "linear_aero": "AEROS Linear",
         "linear_aero_w": "AEROS-W Linear",
         "linear_aero_consistent": "AEROS Linear Column Consistent",
+
         "quadratic_obera_non_adaptive": "OBERA Quadratic 3x3",
         "quadratic_obera": "OBERA Quadratic",
         "quadratic_obera_ml": "OBERA Quadratic ML",
         "quadratic_aero": "AEROS Quadratic",
+
         "obera_circle": "OBERA Circle",
         "obera_circle_vander": "OBERA Circle ReParam",
         "obera_circle_vander_ml": "OBERA Circle ReParam ML",
         # "elvira_go100_ref2",
         # "quadratic_aero_ref2",
-        # "circle_avg",
-        # "circle_vander_avg",
     }
     model_color = {
         "piecewise_constant": cpink,
@@ -386,6 +410,7 @@ if __name__ == "__main__":
         "elvira": cyellow,
         "elvira_w": None,
         "elvira_w_oriented": corange,
+        "elvira_w_oriented_ml": cred,
         "linear_obera": cbrown,
         "linear_obera_w": cpurple,
         "linear_aero": ccyan,
@@ -411,6 +436,7 @@ if __name__ == "__main__":
             "nn_linear",
             "elvira",
             "elvira_w_oriented",
+            "elvira_w_oriented_ml"
             "linear_obera",
             "linear_obera_w",
             "linear_aero",
@@ -424,7 +450,7 @@ if __name__ == "__main__":
             "quadratic_obera",
             "quadratic_aero",
             "obera_circle",
-            "obera_circle_vander"
+            "obera_circle_vander",
         ],
         "OtherTests": [
             "piecewise_constant",
@@ -436,6 +462,7 @@ if __name__ == "__main__":
             "quadratic_aero",
             "obera_circle",
             "obera_circle_vander",
+            "obera_circle_vander_ml",
             "nn_quadratic_3x3",
             "nn_quadratic_3x7",
             "nn_quadratic_3x7_params",
@@ -655,6 +682,7 @@ if __name__ == "__main__":
                      format=".pdf"
                      )
 
+    for group, models2plot in accepted_models.items():
         plot_reconstruction(
             data_manager,
             folder=group,
@@ -670,8 +698,8 @@ if __name__ == "__main__":
             plot_singular_cells=False,
             plot_original_image=True,
             numbers_on=True,
-            plot_again=False,
-            num_cores=15,
+            plot_again=True,
+            num_cores=1,
             # trim=trim
         )
 
