@@ -57,8 +57,9 @@ class ValuesCurveCellCreator(CurveCellCreatorBase):
 class ValuesLineConsistentCurveCellCreator(ValuesCurveCellCreator):
     def __init__(self, regular_opposite_cell_searcher: Callable,
                  natural_params=False, ccew=0, updown_value_getter: Callable = get_values_up_down_regcell_eval):
-        super().__init__(vander_curve=ClassPartialInit(CurveAveragePolynomial, class_name="CurveAverageLinearCC",
-                                                       degree=1, ccew=ccew),
+        super().__init__(vander_curve=partial(CurveAveragePolynomial,
+                                              # class_name="CurveAverageLinearCC",
+                                              degree=1, ccew=ccew),
                          regular_opposite_cell_searcher=regular_opposite_cell_searcher,
                          natural_params=natural_params,
                          updown_value_getter=updown_value_getter)
