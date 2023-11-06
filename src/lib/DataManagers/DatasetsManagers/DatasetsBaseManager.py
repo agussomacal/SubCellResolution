@@ -171,6 +171,9 @@ class DatasetsBaseManager:
         """
         return args
 
+    def get_params_from_curve(self, curve):
+        return curve.params
+
     def get_dataset4problem(self, type_of_problem, n=None, n_train=None):
         n = self.N if n is None else n
         data = self.load_dataset(n)

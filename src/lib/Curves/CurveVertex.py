@@ -76,7 +76,7 @@ class CurveVertexPolynomial(CurvesCombined):
     def params(self):
         params = super(CurveVertexPolynomial, self).params
         # [parameters of first polynomial] [parameters of second polynomial except y0 because is included in first] [x0]
-        return np.hstack((params[:self.curves[0].dim], params[self.curves[0].dim + 1:]))
+        return np.hstack((params[:self.curves[0].dim], params[self.curves[0].dim+1:], (self.x0,)))
 
     @params.setter
     def params(self, args):

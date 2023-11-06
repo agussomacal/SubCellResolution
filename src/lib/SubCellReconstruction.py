@@ -97,7 +97,8 @@ class ReconstructionErrorMeasureML(ReconstructionErrorMeasure):
         curve = copy.deepcopy(proposed_cell.curve)
         curve.set_y_shift(-proposed_cell.coords[proposed_cell.dependent_axis] - 0.5)
         curve.set_x_shift(-proposed_cell.coords[proposed_cell.independent_axis] - 0.5)
-        approx_avg = self.ml_model.predict_kernel(curve.params, reshape=True)
+        params = self.ml_model.dataset_manager.get_params_from_curve(curve)
+        approx_avg = self.ml_model.predict_kernel(params, reshape=True)
         approx_avg = (1 - approx_avg) \
             if proposed_cell.curve.value_up > proposed_cell.curve.value_down else approx_avg
         approx_avg *= (max(proposed_cell.curve.value_up, proposed_cell.curve.value_down) -

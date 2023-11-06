@@ -10,6 +10,7 @@ from experiments.subcell_paper.global_params import VanderQuadratic, AvgQuadrati
 from experiments.subcell_paper.tools import get_evaluations2test_curve
 from lib.Curves.CurveCircle import CurveSemiCircle, CircleParams
 from lib.Curves.CurvePolynomial import CurvePolynomial, CurveLinearAngle
+from lib.Curves.CurveVertex import CurveVertexLinearAngle
 from lib.Curves.VanderCurves import CurveVanderCircle
 from lib.DataManagers.DatasetsManagers.DatasetsBaseManager import get_averages_from_curve_kernel, \
     CELL_AVERAGES_PROBLEM
@@ -17,6 +18,7 @@ from lib.DataManagers.DatasetsManagers.DatasetsManagerLinearCurves import Datase
     SLOPE_OBJECTIVE
 from lib.DataManagers.DatasetsManagers.DatasetsManagerVanderCurves import DatasetsManagerVanderCurves, POINTS_OBJECTIVE, \
     POINTS_SAMPLER_EQUISPACE, PARAMS_OBJECTIVE
+from lib.DataManagers.DatasetsManagers.DatasetsManagerVertex import DatasetsManagerVertex, CURVE_VERTEX_LINEAR_ANGLE
 from lib.DataManagers.LearningMethodManager import LearningMethodManager
 from lib.MLutils.scikit_keras import SkKerasRegressor
 
@@ -69,6 +71,13 @@ dataset_manager_circle_3x7points = DatasetsManagerVanderCurves(
     workers=workers, recalculate=recalculate, learning_objective=POINTS_OBJECTIVE,
     curve_position_radius=(1.5, 0.5, 1.5), points_interval_size=1, value_up_random=value_up_random, num_points=3,
     points_sampler=POINTS_SAMPLER_EQUISPACE,
+)
+dataset_manager_vertex = DatasetsManagerVertex(
+    velocity_range=[(0, 1 / 4), (1 / 4, 0), (0, -1 / 4), (-1 / 4, 0)],
+    angle_cone_limits=(3 / 8, 2 - 3 / 8), angle1_limits=(-3 / 8, 3 / 8),
+    path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
+    workers=workers, recalculate=recalculate, learning_objective=CURVE_VERTEX_LINEAR_ANGLE,
+    curve_position_radius=0.5, value_up_random=value_up_random
 )
 
 regression_skkeras_20x20_relu_noisy = Pipeline(
@@ -125,14 +134,13 @@ kernel_circles_ml_model_points = LearningMethodManager(
     refit=refit, n2use=-1,
     train_percentage=0.9
 )
-# vertex_ml_model = LearningMethodManager(
-#     dataset_manager=dataset_manager_vertex,
-#     type_of_problem=CURVE_PROBLEM,
-#     trainable_model=regression_skkeras_20x20_relu_noisy,
-#     refit=False, n2use=-1,
-#     train_percentage=0.9
-# )
-
+vertex_ml_model = LearningMethodManager(
+    dataset_manager=dataset_manager_vertex,
+    type_of_problem=CELL_AVERAGES_PROBLEM,
+    trainable_model=regression_skkeras_20x20_relu_noisy,
+    refit=False, n2use=-1,
+    train_percentage=0.9
+)
 
 if __name__ == "__main__":
     value_up = 0
@@ -168,9 +176,16 @@ if __name__ == "__main__":
 
     # curve = CurveLinearAngle(angle, y0, value_up, value_down, x_shift=0)
     # kernel_pred = kernel_lines_ml_model.predict_kernel(curve.params[::-1], reshape=True)
-    curve = CurvePolynomial([0.23, np.tan(0.3)], value_up, value_down, x_shift=0)
-    kernel_pred = kernel_lines_ml_model.predict_kernel(curve.params, reshape=True)
-    kernel_size = kernel_lines_ml_model.dataset_manager.kernel_size
+    # curve = CurvePolynomial([0.23, np.tan(0.3)], value_up, value_down, x_shift=0)
+    # params = kernel_lines_ml_model.dataset_manager.get_params_from_curve(curve)
+    # kernel_pred = kernel_lines_ml_model.predict_kernel(params, reshape=True)
+    # kernel_size = kernel_lines_ml_model.dataset_manager.kernel_size
+
+    curve = CurveVertexLinearAngle(angle1=0, angle2=np.pi * 1.25, x0=-0.25, y0=0.1, value_up=value_up,
+                                   value_down=value_down)
+    params = vertex_ml_model.dataset_manager.get_params_from_curve(curve)
+    kernel_pred = vertex_ml_model.predict_kernel(params, reshape=True)
+    kernel_size = vertex_ml_model.dataset_manager.kernel_size
 
     kernel = get_averages_from_curve_kernel(kernel_size, curve, center_cell_coords=None)
     u = get_evaluations2test_curve(curve, kernel_size, refinement=refinement)
