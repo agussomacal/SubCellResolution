@@ -57,7 +57,7 @@ dataset_manager_quadratics_avg = DatasetsManagerVanderCurves(
 dataset_manager_circle_3x7params = DatasetsManagerVanderCurves(
     curve_type=CurveVanderCircle,
     velocity_range=[(0, 1 / 4), (1 / 4, 0), (0, -1 / 4), (-1 / 4, 0)],
-    path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
+    path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
     workers=workers, recalculate=recalculate, learning_objective=PARAMS_OBJECTIVE,
     curve_position_radius=(1.5, 0.5, 1.5), points_interval_size=1, value_up_random=value_up_random, num_points=3,
     points_sampler=POINTS_SAMPLER_EQUISPACE,
@@ -65,7 +65,7 @@ dataset_manager_circle_3x7params = DatasetsManagerVanderCurves(
 dataset_manager_circle_3x7points = DatasetsManagerVanderCurves(
     curve_type=CurveVanderCircle,
     velocity_range=[(0, 1 / 4), (1 / 4, 0), (0, -1 / 4), (-1 / 4, 0)],
-    path2data=config.data_path, N=N, kernel_size=(3, 7), min_val=0, max_val=1,
+    path2data=config.data_path, N=N, kernel_size=(3, 3), min_val=0, max_val=1,
     workers=workers, recalculate=recalculate, learning_objective=POINTS_OBJECTIVE,
     curve_position_radius=(1.5, 0.5, 1.5), points_interval_size=1, value_up_random=value_up_random, num_points=3,
     points_sampler=POINTS_SAMPLER_EQUISPACE,
@@ -151,10 +151,10 @@ if __name__ == "__main__":
     # kernel_pred = kernel_circles_ml_model_points.predict_kernel(curve.params, reshape=True)
     # kernel_size = kernel_circles_ml_model_points.dataset_manager.kernel_size
     #
-    # curve = CurvePolynomial(polynomial=[0, 0.5, -0.25], value_up=value_up,
-    #                         value_down=value_down)
-    # kernel_pred = kernel_quadratics_ml_model.predict_kernel(curve.params, reshape=True)
-    # kernel_size = kernel_quadratics_ml_model.dataset_manager.kernel_size
+    curve = CurvePolynomial(polynomial=[0, 0.5, -0.25], value_up=value_up,
+                            value_down=value_down)
+    kernel_pred = kernel_quadratics_ml_model.predict_kernel(curve.params, reshape=True)
+    kernel_size = kernel_quadratics_ml_model.dataset_manager.kernel_size
     #
     # curve = VanderQuadratic(x_points=np.array([-1, 0, 1]), y_points=np.array([0.02, 0, -0.01]), value_up=value_up,
     #                         value_down=value_down)
@@ -168,9 +168,9 @@ if __name__ == "__main__":
 
     # curve = CurveLinearAngle(angle, y0, value_up, value_down, x_shift=0)
     # kernel_pred = kernel_lines_ml_model.predict_kernel(curve.params[::-1], reshape=True)
-    curve = CurvePolynomial([0.23, np.tan(0.3)], value_up, value_down, x_shift=0)
-    kernel_pred = kernel_lines_ml_model.predict_kernel(curve.params, reshape=True)
-    kernel_size = kernel_lines_ml_model.dataset_manager.kernel_size
+    # curve = CurvePolynomial([0.23, np.tan(0.3)], value_up, value_down, x_shift=0)
+    # kernel_pred = kernel_lines_ml_model.predict_kernel(curve.params, reshape=True)
+    # kernel_size = kernel_lines_ml_model.dataset_manager.kernel_size
 
     kernel = get_averages_from_curve_kernel(kernel_size, curve, center_cell_coords=None)
     u = get_evaluations2test_curve(curve, kernel_size, refinement=refinement)

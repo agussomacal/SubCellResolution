@@ -267,11 +267,17 @@ class SubCellReconstruction:
                                 if isinstance(proposed_cell, tuple):
                                     proposed_cell, coords = proposed_cell
 
+                                if cell_creator.reconstruction_error_measure is None:
+                                    reconstruction_error_measure = copy.copy(self.reconstruction_error_measure)
+                                else:
+                                    reconstruction_error_measure = copy.copy(
+                                        cell_creator.reconstruction_error_measure)
+
                                 # ---------- Doing OBERA ---------- #
                                 if proposed_cell.CELL_TYPE != REGULAR_CELL_TYPE and self.obera_iterations > 0:
                                     def optim_func(params):
                                         proposed_cell.curve.params = params
-                                        loss = self.reconstruction_error_measure.calculate_error(
+                                        loss = reconstruction_error_measure.calculate_error(
                                             proposed_cell, average_values, indexer, smoothness_index, independent_axis)
                                         return loss
 
@@ -288,11 +294,6 @@ class SubCellReconstruction:
                                     # ---------- Deciding which cell to keep ---------- #
                                     # if some other cell has been put there then compare
                                     if coords.tuple in self.stencils:
-                                        if cell_creator.reconstruction_error_measure is None:
-                                            reconstruction_error_measure = copy.copy(self.reconstruction_error_measure)
-                                        else:
-                                            reconstruction_error_measure = copy.copy(
-                                                cell_creator.reconstruction_error_measure)
                                         proposed_cell_reconstruction_error = reconstruction_error_measure.calculate_error(
                                             proposed_cell, average_values, indexer, smoothness_index, independent_axis,
                                             stencil)

@@ -11,7 +11,7 @@ from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
 from PerplexityLab.visualization import generic_plot, make_data_frames, perplex_plot
 from experiments.MLTraining.ml_cell_averages import kernel_circles_ml_model_points, kernel_quadratics_avg_ml_model, \
-    kernel_lines_ml_model
+    kernel_lines_ml_model, kernel_quadratics_ml_model
 from experiments.MLTraining.ml_curve_params import lines_ml_model, quadratics7_points_ml_model, \
     quadratics7_params_ml_model, quadratics_ml_model
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, OBERA_ITERS, \
@@ -222,14 +222,14 @@ def nn_quadratic_3x7_params():
 def quadratic_obera_non_adaptive():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator,
-                vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=CCExtraWeight)), 1,
+                vander_curve=partial(CurveVandermondePolynomial, degree=2, ccew=CCExtraWeight)), 1,
         "QuadraticOptNonAdaptive", OBERA_ITERS, CCExtraWeight, 2)
 
 
 def quadratic_obera():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator,
-                vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=CCExtraWeight)), 1,
+                vander_curve=partial(CurveVandermondePolynomial, degree=2, ccew=CCExtraWeight)), 1,
         "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 2,
         stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3))
 
@@ -237,14 +237,15 @@ def quadratic_obera():
 def quadratic_obera_ml():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator,
-                vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=CCExtraWeight)), 1,
+                vander_curve=partial(CurveVandermondePolynomial, degree=2, ccew=CCExtraWeight),
+                natural_params=True), 1,
         "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 2,
         # stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3),
-        stencil_creator=StencilCreatorFixedShape(kernel_circles_ml_model_points.dataset_manager.kernel_size),
+        stencil_creator=StencilCreatorFixedShape(kernel_quadratics_avg_ml_model.dataset_manager.kernel_size),
         reconstruction_error_measure=ReconstructionErrorMeasureML(
-            ml_model=kernel_quadratics_avg_ml_model,
+            ml_model=kernel_quadratics_ml_model,
             stencil_creator=StencilCreatorFixedShape(
-                kernel_circles_ml_model_points.dataset_manager.kernel_size),
+                kernel_quadratics_ml_model.dataset_manager.kernel_size),
             metric=2,
             central_cell_extra_weight=CCExtraWeight
         ))
@@ -322,42 +323,43 @@ if __name__ == "__main__":
         "models",
         *list(map(fit_model,
                   [
-                      piecewise_constant,
-                      elvira,
-                      elvira_w_oriented,
-                      elvira_w_oriented_ml,
+                      # piecewise_constant,
+                      # elvira,
+                      # elvira_w_oriented,
+                      # elvira_w_oriented_ml,
+                      #
+                      # linear_obera,
+                      # linear_obera_w,
+                      # linear_aero,
+                      # linear_aero_w,
+                      # linear_aero_consistent,
 
-                      linear_obera,
-                      linear_obera_w,
-                      linear_aero,
-                      linear_aero_w,
-                      linear_aero_consistent,
-                      nn_linear,
-                      nn_quadratic_3x3,
-                      nn_quadratic_3x7,
-                      nn_quadratic_3x7_params,
+                      # nn_linear,
+                      # nn_quadratic_3x3,
+                      # nn_quadratic_3x7,
+                      # nn_quadratic_3x7_params,
 
-                      quadratic_obera_non_adaptive,
-                      quadratic_obera,
+                      # quadratic_obera_non_adaptive,
+                      # quadratic_obera,
                       quadratic_obera_ml,
-                      quadratic_aero,
+                      # quadratic_aero,
 
                       # elvira_go100_ref2,
                       # quadratic_aero_ref2,
 
-                      obera_circle,
-                      obera_circle_vander,
-                      obera_circle_vander_ml
+                      # obera_circle,
+                      # obera_circle_vander,
+                      # obera_circle_vander_ml
                   ]
                   )),
-        recalculate=False
+        recalculate=True
     )
-    # num_cells_per_dim = np.logspace(np.log10(10), np.log10(100), num=20, dtype=int).tolist()[:5]
+    num_cells_per_dim = np.logspace(np.log10(10), np.log10(100), num=20, dtype=int).tolist()[:5]
     # num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=20, dtype=int).tolist()
-    num_cells_per_dim = np.logspace(np.log10(20), np.log10(500), num=30, dtype=int).tolist()
-    num_cells_per_dim = np.logspace(np.log10(10), np.log10(20), num=5, dtype=int,
-                                    endpoint=False).tolist() + num_cells_per_dim
-    num_cores = 50
+    # num_cells_per_dim = np.logspace(np.log10(20), np.log10(500), num=30, dtype=int).tolist()
+    # num_cells_per_dim = np.logspace(np.log10(10), np.log10(20), num=5, dtype=int,
+    #                                 endpoint=False).tolist() + num_cells_per_dim
+    num_cores = 1
     lab.execute(
         data_manager,
         num_cores=num_cores,
@@ -432,26 +434,26 @@ if __name__ == "__main__":
 
     # -------------------- linear models -------------------- #
     accepted_models = {
-        "LinearModels": [
-            "nn_linear",
-            "elvira",
-            "elvira_w_oriented",
-            "elvira_w_oriented_ml"
-            "linear_obera",
-            "linear_obera_w",
-            "linear_aero",
-            "linear_aero_w",
-            "linear_aero_consistent"
-        ],
-        "HighOrderModels": [
-            "piecewise_constant",
-            "linear_aero_w",
-            "quadratic_obera_non_adaptive",
-            "quadratic_obera",
-            "quadratic_aero",
-            "obera_circle",
-            "obera_circle_vander",
-        ],
+        # "LinearModels": [
+        #     "nn_linear",
+        #     "elvira",
+        #     "elvira_w_oriented",
+        #     "elvira_w_oriented_ml"
+        #     "linear_obera",
+        #     "linear_obera_w",
+        #     "linear_aero",
+        #     "linear_aero_w",
+        #     "linear_aero_consistent"
+        # ],
+        # "HighOrderModels": [
+        #     "piecewise_constant",
+        #     "linear_aero_w",
+        #     "quadratic_obera_non_adaptive",
+        #     "quadratic_obera",
+        #     "quadratic_aero",
+        #     "obera_circle",
+        #     "obera_circle_vander",
+        # ],
         "OtherTests": [
             "piecewise_constant",
             "nn_linear",
