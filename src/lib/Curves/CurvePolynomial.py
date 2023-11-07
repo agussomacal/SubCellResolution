@@ -1,4 +1,5 @@
 import operator
+from math import factorial
 from typing import Union, List, Tuple
 
 import numpy as np
@@ -20,7 +21,9 @@ class CurvePolynomial(Curve):
         """
         self.polynomial = polynomial if isinstance(polynomial, Polynomial) else Polynomial(polynomial)
         self.poly_integral = self.polynomial.integ()
-        self.x_shift = x_shift
+        # self.x_shift = x_shift
+        self.set_x_shift(x_shift)
+        self.x_shift = 0
 
         if self.polynomial.degree() == 1:
             curve_name = "Line"
@@ -40,7 +43,11 @@ class CurvePolynomial(Curve):
         self.poly_integral = self.polynomial.integ()
 
     def set_x_shift(self, shift):
-        self.x_shift += shift
+        if shift != 0:
+            # self.x_shift += shift
+            p = self.polynomial.copy()
+            new_p = [p.deriv(m=i)(-shift) / factorial(i) for i in range(len(p))]
+            CurvePolynomial.params.fset(self, new_p)
 
     def set_y_shift(self, shift):
         params = np.array(CurvePolynomial.params.fget(self))
@@ -73,6 +80,7 @@ class CurvePolynomialByParts(CurvePolynomial):
         self.x0_integral = super(CurvePolynomialByParts, self).function_integral(self.x0)
 
     def set_x_shift(self, shift):
+        raise Exception("x_shift deprecated.")
         self.x_shift += shift
         self.x0 += shift
         self.x0_integral = super(CurvePolynomialByParts, self).function_integral(self.x0)
@@ -209,3 +217,12 @@ class NoCurveRegion(Curve):
         xf = np.reshape(x_breakpoints[1:], (-1, 1))
         dx = (xf - x0)
         return dx * dy * self.evaluate((xf + x0) / 2)
+
+
+if __name__ == "__main__":
+    curve = CurvePolynomial([1, 1], value_up=0, value_down=1, x_shift=0)
+    assert curve(0) == 1
+    assert curve(1) == 2
+
+    curve = CurvePolynomial([1, 1], value_up=0, value_down=1, x_shift=-1)
+    assert curve(0) == 2

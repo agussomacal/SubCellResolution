@@ -97,13 +97,18 @@ class ReconstructionErrorMeasureML(ReconstructionErrorMeasure):
         curve = copy.deepcopy(proposed_cell.curve)
         curve.set_y_shift(-proposed_cell.coords[proposed_cell.dependent_axis] - 0.5)
         curve.set_x_shift(-proposed_cell.coords[proposed_cell.independent_axis] - 0.5)
-        approx_avg = self.ml_model.predict_kernel(curve.params, reshape=True)
-        approx_avg = (1 - approx_avg) \
-            if proposed_cell.curve.value_up > proposed_cell.curve.value_down else approx_avg
-        approx_avg *= (max(proposed_cell.curve.value_up, proposed_cell.curve.value_down) -
-                       min(proposed_cell.curve.value_up, proposed_cell.curve.value_down))
-        approx_avg += min(proposed_cell.curve.value_up, proposed_cell.curve.value_down)
-        approx_avg = np.transpose(approx_avg, [proposed_cell.independent_axis, proposed_cell.dependent_axis])
+
+        if np.any(np.isnan(curve.params)):  # in case the optimization asks for out of range values (circle OBERA)
+            approx_avg = np.ones(self.ml_model.dataset_manager.kernel_size) * np.inf
+        else:
+            approx_avg = self.ml_model.predict_kernel(curve.params, reshape=True)
+            approx_avg = (1 - approx_avg) \
+                if proposed_cell.curve.value_up > proposed_cell.curve.value_down else approx_avg
+            approx_avg *= (max(proposed_cell.curve.value_up, proposed_cell.curve.value_down) -
+                           min(proposed_cell.curve.value_up, proposed_cell.curve.value_down))
+            approx_avg += min(proposed_cell.curve.value_up, proposed_cell.curve.value_down)
+            approx_avg = np.transpose(approx_avg, [proposed_cell.independent_axis, proposed_cell.dependent_axis])
+
         return approx_avg.ravel()
 
 
@@ -272,6 +277,7 @@ class SubCellReconstruction:
                                 else:
                                     reconstruction_error_measure = copy.copy(
                                         cell_creator.reconstruction_error_measure)
+                                proposed_cell_reconstruction_error = np.inf
 
                                 # ---------- Doing OBERA ---------- #
                                 if proposed_cell.CELL_TYPE != REGULAR_CELL_TYPE and self.obera_iterations > 0:
@@ -286,18 +292,21 @@ class SubCellReconstruction:
                                     res = minimize(optim_func, x0=x0, method="L-BFGS-B", tol=1e-10,
                                                    options={'maxiter': self.obera_iterations * 2 * (1 + len(x0))})
                                     proposed_cell.curve.params = res.x
+                                    proposed_cell_reconstruction_error = res.fun
                                     self.obera_fevals[proposed_cell.CELL_TYPE][coords.tuple] += res.nfev
 
                                 # only calculate error if more than one proposition is done otherwise just keep the only one
                                 if len(axis3try) > 1 or len(proposed_cells) > 1 or len(
                                         cell_classification[coords.tuple]) > 1:
-                                    # ---------- Deciding which cell to keep ---------- #
-                                    # if some other cell has been put there then compare
-                                    if coords.tuple in self.stencils:
+
+                                    if proposed_cell_reconstruction_error == np.inf:
                                         proposed_cell_reconstruction_error = reconstruction_error_measure.calculate_error(
                                             proposed_cell, average_values, indexer, smoothness_index, independent_axis,
                                             stencil)
 
+                                    # ---------- Deciding which cell to keep ---------- #
+                                    # if some other cell has been put there then compare
+                                    if coords.tuple in self.stencils:
                                         # if it has never been calculated or the stencil used is different from the current
                                         if np.isinf(reconstruction_error[coords.tuple]) or set(
                                                 list(map(tuple, stencil.coords.tolist()))) != set(
@@ -315,9 +324,11 @@ class SubCellReconstruction:
                                     else:
                                         self.cells[coords.tuple] = proposed_cell
                                         self.stencils[coords.tuple] = list(map(tuple, stencil.coords.tolist()))
+                                        reconstruction_error[coords.tuple] = proposed_cell_reconstruction_error
                                 else:
                                     self.cells[coords.tuple] = proposed_cell
                                     self.stencils[coords.tuple] = list(map(tuple, stencil.coords.tolist()))
+                                    reconstruction_error[coords.tuple] = proposed_cell_reconstruction_error
                             self.times[proposed_cell.CELL_TYPE][coords.tuple] += time.time() - t0
 
             if r < self.refinement - 1:

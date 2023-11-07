@@ -1,7 +1,7 @@
 import psutil
 
 RAM = psutil.virtual_memory().total / 1000000000  # in GB
-server = RAM > 50
+server = RAM > 70
 if server:  # if run in server
     print("running in server")
     N = int(1e6)

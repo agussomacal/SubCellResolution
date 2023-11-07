@@ -90,6 +90,7 @@ kernel_lines_ml_model = LearningMethodManager(
     refit=refit, n2use=-1,
     train_percentage=0.9
 )
+
 kernel_quadratics_ml_model = LearningMethodManager(
     dataset_manager=dataset_manager_quadratics,
     type_of_problem=CELL_AVERAGES_PROBLEM,
@@ -151,15 +152,17 @@ if __name__ == "__main__":
     # kernel_pred = kernel_circles_ml_model_points.predict_kernel(curve.params, reshape=True)
     # kernel_size = kernel_circles_ml_model_points.dataset_manager.kernel_size
     #
-    curve = CurvePolynomial(polynomial=[0, 0.5, -0.25], value_up=value_up,
-                            value_down=value_down)
-    kernel_pred = kernel_quadratics_ml_model.predict_kernel(curve.params, reshape=True)
-    kernel_size = kernel_quadratics_ml_model.dataset_manager.kernel_size
-    #
-    # curve = VanderQuadratic(x_points=np.array([-1, 0, 1]), y_points=np.array([0.02, 0, -0.01]), value_up=value_up,
+    # curve = CurvePolynomial(polynomial=[0, 0.5, -0.25], value_up=value_up,
     #                         value_down=value_down)
-    # kernel_pred = kernel_quadratics_points_ml_model.predict_kernel(curve.params, reshape=True)
-    # kernel_size = kernel_quadratics_points_ml_model.dataset_manager.kernel_size
+    # kernel_pred = kernel_quadratics_ml_model.predict_kernel(curve.params, reshape=True)
+    # kernel_size = kernel_quadratics_ml_model.dataset_manager.kernel_size
+
+    y_points = np.array((5.993816730873693, 5.23852507146881, 4.479833111794201))-5
+    # y_points = np.array([0.25, 0, -0.57])
+    curve = VanderQuadratic(x_points=np.array([-1, 0, 1]), y_points=y_points, value_up=value_up,
+                            value_down=value_down)
+    kernel_pred = kernel_quadratics_points_ml_model.predict_kernel(curve.params, reshape=True)
+    kernel_size = kernel_quadratics_points_ml_model.dataset_manager.kernel_size
 
     # curve = AvgQuadratic(x_points=np.array([-1, 0, 1]), y_points=np.array([0.02, 0, -0.01]), value_up=value_up,
     #                      value_down=value_down)
