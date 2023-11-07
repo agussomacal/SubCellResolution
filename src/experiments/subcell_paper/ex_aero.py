@@ -14,6 +14,7 @@ from experiments.MLTraining.ml_cell_averages import kernel_circles_ml_model_poin
     kernel_lines_ml_model, kernel_quadratics_ml_model, kernel_quadratics_points_ml_model
 from experiments.MLTraining.ml_curve_params import lines_ml_model, quadratics7_points_ml_model, \
     quadratics7_params_ml_model, quadratics_ml_model
+from experiments.MLTraining.ml_global_params import num_cores
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, OBERA_ITERS, \
     CCExtraWeight, runsinfo, cblue, corange, cgreen, cred, cpurple, cbrown, cpink, cgray, cyellow, ccyan
 from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
@@ -274,6 +275,14 @@ def quadratic_aero():
         stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
 
 
+def cubic_aero():
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveAveragePolynomial, degree=3, ccew=CCExtraWeight)), 1,
+        "QuadraticAvg", 0, CCExtraWeight, 2,
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=5))
+
+
 def quadratic_aero_ref2():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator,
@@ -314,8 +323,7 @@ def obera_circle_vander_ml():
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
-        # name=f'AERO',
-        name=f'AERO22',
+        name=f'AERO',
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
@@ -360,27 +368,28 @@ if __name__ == "__main__":
                       quadratic_obera_ml,
                       quadratic_aero,
 
-                      elvira_go100_ref2,
-                      quadratic_aero_ref2,
+                      cubic_aero,
 
+                      # elvira_go100_ref2,
+                      # quadratic_aero_ref2,
+                      #
                       obera_circle,
                       obera_circle_vander,
                       obera_circle_vander_ml
                   ]
                   )),
-        recalculate=True
+        recalculate=False
     )
-    # num_cells_per_dim = np.logspace(np.log10(10), np.log10(100), num=20, dtype=int).tolist()[:5]
-    # num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=20, dtype=int).tolist()
-    num_cells_per_dim = np.logspace(np.log10(20), np.log10(500), num=30, dtype=int).tolist()
+    # num_cells_per_dim = np.logspace(np.log10(10), np.log10(100), num=20, dtype=int).tolist()[5:10]
+    num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=20, dtype=int).tolist()
+    # num_cells_per_dim = np.logspace(np.log10(20), np.log10(500), num=30, dtype=int).tolist()
     num_cells_per_dim = np.logspace(np.log10(10), np.log10(20), num=5, dtype=int,
                                     endpoint=False).tolist() + num_cells_per_dim
-    num_cores = 50
     lab.execute(
         data_manager,
         num_cores=num_cores,
         forget=False,
-        save_on_iteration=5,
+        save_on_iteration=100,
         num_cells_per_dim=num_cells_per_dim,
         noise=[0],
         shape_name=[
@@ -413,6 +422,8 @@ if __name__ == "__main__":
         "quadratic_obera": "OBERA Quadratic",
         "quadratic_obera_ml": "OBERA Quadratic ML-ker",
         "quadratic_aero": "AEROS Quadratic",
+
+        "cubic_aero": "AEROS Cubic",
 
         "obera_circle": "OBERA Circle",
         "obera_circle_vander": "OBERA Circle ReParam",
@@ -471,6 +482,7 @@ if __name__ == "__main__":
             "quadratic_obera": cred,
             "quadratic_obera_ml": cyellow,
             "quadratic_aero": cgreen,
+            "cubic_aero": "forestgreen",
             "obera_circle": cpurple,
             "obera_circle_vander": cblue,
             "nn_quadratic_3x7": ccyan,

@@ -44,17 +44,23 @@ class CurveVandermondePolynomial(CurveVander, CurvePolynomial):
 
 def points2circle(a, b, c):
     a, b, c = list(map(np.array, [a, b, c]))
-    x0, y0 = np.linalg.lstsq([b - a,
-                              c - a,
-                              c - b],
-                             [(a + b) / 2 @ (b - a),
-                              (a + c) / 2 @ (c - a),
-                              (c + b) / 2 @ (c - b)],
-                             rcond=None)[0]
-    return x0, y0, \
-        (np.sqrt((a[0] - x0) ** 2 + (a[1] - y0) ** 2) +
-         np.sqrt((b[0] - x0) ** 2 + (b[1] - y0) ** 2) +
-         np.sqrt((c[0] - x0) ** 2 + (c[1] - y0) ** 2)) / 3
+    matrix = np.array([b - a,
+                       c - a,
+                       c - b])
+    try:
+        x0, y0 = np.linalg.lstsq(matrix,
+                                 [(a + b) / 2 @ (b - a),
+                                  (a + c) / 2 @ (c - a),
+                                  (c + b) / 2 @ (c - b)],
+                                 rcond=None)[0]
+        return x0, y0, \
+               (np.sqrt((a[0] - x0) ** 2 + (a[1] - y0) ** 2) +
+                np.sqrt((b[0] - x0) ** 2 + (b[1] - y0) ** 2) +
+                np.sqrt((c[0] - x0) ** 2 + (c[1] - y0) ** 2)) / 3
+    except:
+        # if it can't solve there is a problem in the transfomration
+        x0, y0 = tuple(np.nanmean([a, b, c], axis=0).tolist())
+        return x0, y0, 1
 
 
 class CurveVanderCircle(CurveVander, CurveSemiCircle):
