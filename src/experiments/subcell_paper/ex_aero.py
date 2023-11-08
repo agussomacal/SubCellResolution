@@ -121,7 +121,7 @@ names_dict = {
     # "quadratic_aero_ref2",
 }
 
-rateonly = list(filter(lambda x: "circle" in x, names_dict.keys()))
+rateonly = list(filter(lambda x: "circle" not in x, names_dict.keys()))
 runsinfo.append_info(
     **{k.replace("_", "-"): v for k, v in names_dict.items()}
 )
@@ -558,6 +558,7 @@ if __name__ == "__main__":
         sub_discretization2bound_error=[SUB_CELL_DISCRETIZATION2BOUND_ERROR],
     )
 
+
     # ========== =========== ========== =========== #
     #               Experiment Times                #
     # ========== =========== ========== =========== #
@@ -664,7 +665,8 @@ if __name__ == "__main__":
                      models=models2plot,
                      sort_by=["models", "N"],
                      method=lambda models: names_dict[str(models)],
-                     format=".pdf"
+                     format=".pdf",
+                     # rateonly=rateonly
                      )
 
         plot_h_convergence(
