@@ -37,7 +37,99 @@ from lib.StencilCreators import StencilCreatorFixedShape, StencilCreatorAdaptive
 from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasureBase, CellCreatorPipeline, \
     ReconstructionErrorMeasureML, reconstruct_by_factor
 
+# ========== =========== ========== =========== #
+#               Models for paper                #
+# ========== =========== ========== =========== #
+accepted_models = {
+    "LinearModels": {
+        # "nn_linear": cgreen,
+        "elvira": cred,
+        "elvira_w_oriented": corange,
+        # "elvira_w_oriented_ml": cyellow,
+        "linear_obera": cblue,
+        "linear_obera_w": cpurple,
+        # "linear_obera_w_ml": ccyan,
+        "linear_aero": cgray,
+        "linear_aero_w": cgreen,
+        "linear_aero_consistent": cpink
+    },
+    "HighOrderModels": {
+        "piecewise_constant": cpink,
+        "elvira_w_oriented": corange,
+        "quadratic_obera_non_adaptive": cred,
+        # "quadratic_obera": cred,
+        # "quadratic_obera_ml": cyellow,
+        "quadratic_aero": cgreen,
+        "cubic_aero": cblue,
+        "quartic_aero": cpurple,
+        "obera_circle": cbrown,
+        "obera_circle_vander": cyellow,
+        # "nn_quadratic_3x7": ccyan,
+        # "nn_quadratic_3x7_params": cbrown,
+    },
+    "MLLinear": {
+        "elvira_w_oriented": corange,
+        "nn_linear": cgreen,
+        "linear_obera_w_ml": cblue,
+        "linear_obera_w": cpurple,
+    },
+    "MLQuadratic": {
+        "elvira_w_oriented": corange,
+        "elvira_w_oriented_ml": cyellow,
 
+        "quadratic_obera_non_adaptive": cred,
+        "quadratic_obera_ml": cgreen,
+
+        "nn_quadratic_3x3": cbrown,
+        "nn_quadratic_3x7": cpurple,
+        "nn_quadratic_3x7_params": cblue,
+    }
+}
+
+names_dict = {
+    "piecewise_constant": "Piecewise Constant",
+
+    "nn_linear": "NN Linear",
+    "nn_quadratic_3x3": "NN Quadratic 3x3",
+    "nn_quadratic_3x7": "NN Quadratic 3x7",
+    "nn_quadratic_3x7_params": "NN Quadratic 3x7 params",
+
+    "elvira": "ELVIRA",
+    "elvira_w": "ELVIRA-W",
+    "elvira_w_oriented": "ELVIRA-W Oriented",
+    "elvira_w_oriented_ml": "ELVIRA-W Oriented ML-ker",
+
+    "linear_obera": "OBERA Linear",
+    "linear_obera_w": "OBERA-W Linear",
+    "linear_aero": "AEROS Linear",
+    "linear_aero_w": "AEROS-W Linear",
+    "linear_aero_consistent": "AEROS Linear Column Consistent",
+    "linear_obera_w_ml": "OBERA-W Linear ML-ker",
+
+    "quadratic_obera_non_adaptive": "OBERA Quadratic 3x3",
+    "quadratic_obera": "OBERA Quadratic",
+    "quadratic_obera_ml": "OBERA Quadratic ML-ker",
+    "quadratic_aero": "AEROS Quadratic",
+
+    "cubic_aero": "AEROS Cubic",
+    "quartic_aero": "AEROS Quartic",
+
+    "obera_circle": "OBERA Circle",
+    "obera_circle_vander": "OBERA Circle ReParam",
+    "obera_circle_vander_ml": "OBERA Circle ReParam ML-ker",
+    # "elvira_go100_ref2",
+    # "quadratic_aero_ref2",
+}
+
+rateonly = list(filter(lambda x: "circle" in x, names_dict.keys()))
+runsinfo.append_info(
+    **{k.replace("_", "-"): v for k, v in names_dict.items()}
+)
+
+
+# ========== =========== ========== =========== #
+#            Experiments definition             #
+# ========== =========== ========== =========== #
 def obtain_images(shape_name, num_cells_per_dim):
     image = calculate_averages_from_curve(get_shape(shape_name), (num_cells_per_dim, num_cells_per_dim))
     return {
@@ -97,6 +189,64 @@ def fit_model(sub_cell_model):
     return decorated_func
 
 
+error = lambda reconstruction, image4error: np.mean(np.abs(reconstruction - image4error).ravel()) \
+    if reconstruction is not None else np.nan
+
+
+# ========== =========== ========== =========== #
+#               Plots definition                #
+# ========== =========== ========== =========== #
+@perplex_plot(group_by="models")
+def plot_h_convergence(fig, ax, num_cells_per_dim, reconstruction, image4error, models,
+                       threshold=1.0 / np.sqrt(1000), rateonly=None, *args, **kwargs):
+    er = np.array(list(map(lambda x: error(*x), zip(reconstruction, image4error))))
+    name = f"{names_dict[str(models)]}"
+    h = 1.0 / np.array(num_cells_per_dim)
+    if rateonly is None or models in rateonly:
+        valid_ix = h < threshold
+        rate, origin = np.ravel(np.linalg.lstsq(
+            np.vstack([np.log(h[valid_ix]), np.ones(np.sum(valid_ix))]).T,
+            np.log(er[valid_ix]).reshape((-1, 1)), rcond=None)[0])
+        # ax.plot(df[x].values[valid_ix], np.sqrt(df[x].values[valid_ix]) ** rate * np.exp(origin), "-",
+        #         c=model_color[method], linewidth=3, alpha=0.5)
+        name = name + f": O({abs(rate):.1f})"
+    sns.lineplot(x=h, y=er, color=model_color[models], label=name, ax=ax,
+                 marker="o", linestyle="--", alpha=1)
+    # ax.plot(df[x], df[y], marker=".", linestyle=":", c=model_color[method], label=name)
+    ax.set_xlabel(fr"$h$")
+    ax.set_ylabel(r"$||u-\tilde u ||_{L^1}$")
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+
+
+def plot_convergence(data, x, y, hue, ax, threshold=np.sqrt(1000), rateonly=None, *args, **kwargs):
+    # sns.scatterplot(data=data, x=x, y=y, hue=label, ax=ax)
+    for method, df in data.groupby(hue):
+        name = f"{names_dict[str(method)]}"
+        if rateonly is None or method in rateonly:
+            hinv = np.sqrt(df[x].values)
+            valid_ix = hinv > threshold
+            rate, origin = np.ravel(np.linalg.lstsq(
+                np.vstack([np.log(hinv[valid_ix]), np.ones(np.sum(valid_ix))]).T,
+                np.log(df[y].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
+            # ax.plot(df[x].values[valid_ix], np.sqrt(df[x].values[valid_ix]) ** rate * np.exp(origin), "-",
+            #         c=model_color[method], linewidth=3, alpha=0.5)
+            name = name + f": O({abs(rate):.1f})"
+        sns.lineplot(x=df[x], y=df[y], color=model_color[method], label=name, ax=ax,
+                     marker="o", linestyle="--", alpha=1)
+        # ax.plot(df[x], df[y], marker=".", linestyle=":", c=model_color[method], label=name)
+    ax.set_xlabel(fr"${{{x}}}$")
+    ax.set_ylabel(r"$||u-\tilde u ||_{L^1}$")
+
+    # n = np.sort(np.unique(data[x]))
+    # ax.plot(n, 1 / n, ":", c=cgray, linewidth=2, alpha=0.5, label=r"$O(h^{-1})$")
+    # ax.plot(n, 1 / n ** 2, ":", c=cgray, linewidth=2, alpha=0.5, label=r"$O(h^{-2})$")
+    # ax.plot(n, 1 / n ** 3, ":", c=cgray, linewidth=2, alpha=0.5, label=r"$O(h^{-3})$")
+
+
+# ========== =========== ========== =========== #
+#               Models definition               #
+# ========== =========== ========== =========== #
 def piecewise_constant(*args):
     return SubCellReconstruction(
         name="PiecewiseConstant",
@@ -181,24 +331,22 @@ def linear_aero():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=0)), 1,
         "LinearAvg", 0, CCExtraWeight, 2,
-        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3,
-                                               center_weight=2.1))
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3))
 
 
 def linear_aero_w():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator, vander_curve=partial(CurveAveragePolynomial, degree=1, ccew=CCExtraWeight)), 1,
         "LinearAvg100", 0, CCExtraWeight, 2,
-        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3,
-                                               center_weight=2.1))
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3))
 
 
 def linear_aero_consistent():
-    return get_sub_cell_model(partial(ValuesLineConsistentCurveCellCreator, ccew=CCExtraWeight), 1,
-                              "LinearAvgConsistent", 0, CCExtraWeight, 1,
-                              stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
-                                                                     independent_dim_stencil_size=3,
-                                                                     center_weight=2.1))
+    return get_sub_cell_model(
+        partial(ValuesLineConsistentCurveCellCreator, ccew=CCExtraWeight), 1,
+        "LinearAvgConsistent", 0, CCExtraWeight, 1,
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
+                                               independent_dim_stencil_size=3))
 
 
 def nn_linear():
@@ -283,6 +431,14 @@ def cubic_aero():
         stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=5))
 
 
+def quartic_aero():
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveAveragePolynomial, degree=4, ccew=CCExtraWeight)), 1,
+        "QuadraticAvg", 0, CCExtraWeight, 2,
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=5))
+
+
 def quadratic_aero_ref2():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator,
@@ -321,6 +477,9 @@ def obera_circle_vander_ml():
 
 
 if __name__ == "__main__":
+    # ========== =========== ========== =========== #
+    #                Experiment Run                 #
+    # ========== =========== ========== =========== #
     data_manager = DataManager(
         path=config.results_path,
         name=f'AERO',
@@ -369,6 +528,7 @@ if __name__ == "__main__":
                       quadratic_aero,
 
                       cubic_aero,
+                      quartic_aero,
 
                       # elvira_go100_ref2,
                       # quadratic_aero_ref2,
@@ -398,170 +558,9 @@ if __name__ == "__main__":
         sub_discretization2bound_error=[SUB_CELL_DISCRETIZATION2BOUND_ERROR],
     )
 
-    names_dict = {
-        "piecewise_constant": "Piecewise Constant",
-
-        "nn_linear": "NN Linear",
-        "nn_quadratic_3x3": "NN Quadratic 3x3",
-        "nn_quadratic_3x7": "NN Quadratic 3x7",
-        "nn_quadratic_3x7_params": "NN Quadratic 3x7 params",
-
-        "elvira": "ELVIRA",
-        "elvira_w": "ELVIRA-W",
-        "elvira_w_oriented": "ELVIRA-W Oriented",
-        "elvira_w_oriented_ml": "ELVIRA-W Oriented ML-ker",
-
-        "linear_obera": "OBERA Linear",
-        "linear_obera_w": "OBERA-W Linear",
-        "linear_aero": "AEROS Linear",
-        "linear_aero_w": "AEROS-W Linear",
-        "linear_aero_consistent": "AEROS Linear Column Consistent",
-        "linear_obera_w_ml": "OBERA-W Linear ML-ker",
-
-        "quadratic_obera_non_adaptive": "OBERA Quadratic 3x3",
-        "quadratic_obera": "OBERA Quadratic",
-        "quadratic_obera_ml": "OBERA Quadratic ML-ker",
-        "quadratic_aero": "AEROS Quadratic",
-
-        "cubic_aero": "AEROS Cubic",
-
-        "obera_circle": "OBERA Circle",
-        "obera_circle_vander": "OBERA Circle ReParam",
-        "obera_circle_vander_ml": "OBERA Circle ReParam ML-ker",
-        # "elvira_go100_ref2",
-        # "quadratic_aero_ref2",
-    }
-    model_color = {
-        "piecewise_constant": cpink,
-        "nn_linear": "forestgreen",
-        "nn_quadratic_3x3": cpurple,
-        "nn_quadratic_3x7": cblue,
-        "nn_quadratic_3x7_params": ccyan,
-        "elvira": cyellow,
-        "elvira_w": None,
-        "elvira_w_oriented": corange,
-        "elvira_w_oriented_ml": cred,
-        "linear_obera": cbrown,
-        "linear_obera_w": cpurple,
-        "linear_obera_w_ml": cgray,
-        "linear_aero": ccyan,
-        "linear_aero_w": cblue,
-        "linear_aero_consistent": cpink,
-
-        "quadratic_obera_non_adaptive": cgray,
-        "quadratic_obera": cred,
-        "quadratic_obera_ml": corange,
-        "quadratic_aero": cgreen,
-        "obera_circle": cyellow,
-        "obera_circle_vander": cpurple,
-        "obera_circle_vander_ml": "mediumseagreen",
-    }
-
-    runsinfo.append_info(
-        **{k.replace("_", "-"): v for k, v in names_dict.items()}
-    )
-
-    # -------------------- linear models -------------------- #
-    accepted_models = {
-        "LinearModels": {
-            "nn_linear": cgreen,
-            "elvira": cred,
-            "elvira_w_oriented": corange,
-            "elvira_w_oriented_ml": cyellow,
-            "linear_obera": cblue,
-            "linear_obera_w": cpurple,
-            "linear_obera_w_ml": ccyan,
-            "linear_aero": cgray,
-            "linear_aero_w": cpink,
-            "linear_aero_consistent": cbrown
-        },
-        "HighOrderModels": {
-            "piecewise_constant": cpink,
-            "elvira_w_oriented": corange,
-            "quadratic_obera_non_adaptive": cgray,
-            "quadratic_obera": cred,
-            "quadratic_obera_ml": cyellow,
-            "quadratic_aero": cgreen,
-            "cubic_aero": "forestgreen",
-            "obera_circle": cpurple,
-            "obera_circle_vander": cblue,
-            "nn_quadratic_3x7": ccyan,
-            "nn_quadratic_3x7_params": cbrown,
-        },
-        # "OtherTests": [
-        #     "piecewise_constant",
-        #     "elvira_w_oriented",
-        #     "elvira_w_oriented_ml",
-        #     "linear_obera_w",
-        #     "linear_obera_w_ml",
-        #     "nn_linear",
-        #     "linear_aero_w",
-        #     "quadratic_obera_non_adaptive",
-        #     "quadratic_obera",
-        #     "quadratic_obera_ml",
-        #     "quadratic_aero",
-        #     "obera_circle",
-        #     "obera_circle_vander",
-        #     "obera_circle_vander_ml",
-        #     "nn_quadratic_3x3",
-        #     "nn_quadratic_3x7",
-        #     "nn_quadratic_3x7_params",
-        # ]
-    }
-    rateonly = list(names_dict.keys())[:-2]
-
-    error = lambda reconstruction, image4error: np.mean(np.abs(reconstruction - image4error).ravel()) \
-        if reconstruction is not None else np.nan
-
-
-    @perplex_plot(group_by="models")
-    def plot_h_convergence(fig, ax, num_cells_per_dim, reconstruction, image4error, models,
-                           threshold=1.0 / np.sqrt(1000), rateonly=None, *args, **kwargs):
-        er = np.array(list(map(lambda x: error(*x), zip(reconstruction, image4error))))
-        name = f"{names_dict[str(models)]}"
-        h = 1.0 / np.array(num_cells_per_dim)
-        if rateonly is None or models in rateonly:
-            valid_ix = h < threshold
-            rate, origin = np.ravel(np.linalg.lstsq(
-                np.vstack([np.log(h[valid_ix]), np.ones(np.sum(valid_ix))]).T,
-                np.log(er[valid_ix]).reshape((-1, 1)), rcond=None)[0])
-            # ax.plot(df[x].values[valid_ix], np.sqrt(df[x].values[valid_ix]) ** rate * np.exp(origin), "-",
-            #         c=model_color[method], linewidth=3, alpha=0.5)
-            name = name + f": O({abs(rate):.1f})"
-        sns.lineplot(x=h, y=er, color=model_color[models], label=name, ax=ax,
-                     marker="o", linestyle="--", alpha=1)
-        # ax.plot(df[x], df[y], marker=".", linestyle=":", c=model_color[method], label=name)
-        ax.set_xlabel(fr"$h$")
-        ax.set_ylabel(r"$||u-\tilde u ||_{L^1}$")
-        ax.set_xscale("log")
-        ax.set_yscale("log")
-
-
-    def plot_convergence(data, x, y, hue, ax, threshold=np.sqrt(1000), rateonly=None, *args, **kwargs):
-        # sns.scatterplot(data=data, x=x, y=y, hue=label, ax=ax)
-        for method, df in data.groupby(hue):
-            name = f"{names_dict[str(method)]}"
-            if rateonly is None or method in rateonly:
-                hinv = np.sqrt(df[x].values)
-                valid_ix = hinv > threshold
-                rate, origin = np.ravel(np.linalg.lstsq(
-                    np.vstack([np.log(hinv[valid_ix]), np.ones(np.sum(valid_ix))]).T,
-                    np.log(df[y].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
-                # ax.plot(df[x].values[valid_ix], np.sqrt(df[x].values[valid_ix]) ** rate * np.exp(origin), "-",
-                #         c=model_color[method], linewidth=3, alpha=0.5)
-                name = name + f": O({abs(rate):.1f})"
-            sns.lineplot(x=df[x], y=df[y], color=model_color[method], label=name, ax=ax,
-                         marker="o", linestyle="--", alpha=1)
-            # ax.plot(df[x], df[y], marker=".", linestyle=":", c=model_color[method], label=name)
-        ax.set_xlabel(fr"${{{x}}}$")
-        ax.set_ylabel(r"$||u-\tilde u ||_{L^1}$")
-
-        # n = np.sort(np.unique(data[x]))
-        # ax.plot(n, 1 / n, ":", c=cgray, linewidth=2, alpha=0.5, label=r"$O(h^{-1})$")
-        # ax.plot(n, 1 / n ** 2, ":", c=cgray, linewidth=2, alpha=0.5, label=r"$O(h^{-2})$")
-        # ax.plot(n, 1 / n ** 3, ":", c=cgray, linewidth=2, alpha=0.5, label=r"$O(h^{-3})$")
-
-
+    # ========== =========== ========== =========== #
+    #               Experiment Times                #
+    # ========== =========== ========== =========== #
     def myround(n):
         # https://stackoverflow.com/questions/32812255/round-floats-down-in-python-to-keep-one-non-zero-decimal-only
         if n == 0:
@@ -631,6 +630,9 @@ if __name__ == "__main__":
         **{"median-" + k.replace("_", "-") + "-time": np.round(v, decimals=4) for k, v in dfstd.items()}
     )
 
+    # ========== =========== ========== =========== #
+    #               Experiment Plots                #
+    # ========== =========== ========== =========== #
     for group, model_color in accepted_models.items():
         models2plot = list(model_color.keys())
         generic_plot(data_manager,
