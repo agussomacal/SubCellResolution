@@ -15,7 +15,8 @@ from PerplexityLab.visualization import generic_plot
 from experiments.LearningMethods import flatter
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, OBERA_ITERS, \
     CCExtraWeight, runsinfo
-from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
+from experiments.subcell_paper.obera_experiments import plot_reconstruction
+from experiments.subcell_paper.ex_aero import get_sub_cell_model, get_shape
 from experiments.subcell_paper.tools import calculate_averages_from_image, calculate_averages_from_curve, \
     singular_cells_mask
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL

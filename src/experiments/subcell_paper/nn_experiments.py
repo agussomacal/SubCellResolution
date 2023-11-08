@@ -9,9 +9,10 @@ from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version, ClassPartialInit
 from PerplexityLab.visualization import generic_plot
 from experiments.LearningMethods import skkeras_20x20_relu, skkeras_20x20_relu_noisy
-from experiments.subcell_paper.ex_aero import fit_model, elvira_w_oriented, quadratic_aero
+from experiments.subcell_paper.ex_aero import fit_model, elvira_w_oriented, quadratic_aero, get_sub_cell_model, \
+    get_shape
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, CCExtraWeight, VanderQuadratic
-from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
+from experiments.subcell_paper.obera_experiments import plot_reconstruction
 from experiments.subcell_paper.tools import calculate_averages_from_curve
 from lib.CellCreators.CurveCellCreators.LearningCurveCellCreator import LearningCurveCellCreator
 from lib.Curves.VanderCurves import CurveVandermondePolynomial, CurveVanderCircle

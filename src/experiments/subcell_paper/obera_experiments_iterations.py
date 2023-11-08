@@ -10,7 +10,7 @@ from PerplexityLab.LabPipeline import LabPipeline, FunctionBlock
 from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import generic_plot
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, CCExtraWeight
-from experiments.subcell_paper.obera_experiments import get_shape, get_sub_cell_model
+from experiments.subcell_paper.ex_aero import get_sub_cell_model, get_shape
 from experiments.subcell_paper.tools import calculate_averages_from_curve
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE

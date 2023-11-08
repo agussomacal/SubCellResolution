@@ -1,4 +1,3 @@
-import operator
 import time
 from functools import partial
 
@@ -12,60 +11,17 @@ from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import perplex_plot, generic_plot, one_line_iterator
 from experiments.VizReconstructionUtils import plot_cells, plot_cells_identity, plot_cells_vh_classification_core, \
     plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders
-from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, runsinfo
+from experiments.subcell_paper.ex_aero import get_sub_cell_model, get_shape
+from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR
 from experiments.subcell_paper.tools import calculate_averages_from_curve
-from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.ParametersCurveCellCreators import DefaultCircleCurveCellCreator, \
     DefaultPolynomialCurveCellCreator
-from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells_by_minmax
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator, \
     ValuesDefaultCurveCellCreator, ValuesLinearCellCreator, ValuesDefaultLinearCellCreator, \
     ValuesDefaultCircleCellCreator, ValuesCircleCellCreator
-from lib.CellCreators.RegularCellCreator import PiecewiseConstantRegularCellCreator
-from lib.CellIterators import iterate_by_condition_on_smoothness
-from lib.CellOrientators import BaseOrientator, OrientByGradient
-from lib.Curves.CurveCircle import CurveCircle, CircleParams
 from lib.Curves.VanderCurves import CurveVandermondePolynomial
-from lib.SmoothnessCalculators import naive_piece_wise
-from lib.StencilCreators import StencilCreatorFixedShape
-from lib.SubCellReconstruction import SubCellReconstruction, CellCreatorPipeline, ReconstructionErrorMeasure
-
-
-def get_sub_cell_model(curve_cell_creator, refinement, name, iterations, central_cell_extra_weight, metric,
-                       stencil_creator=StencilCreatorFixedShape((3, 3)),
-                       orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, angle_threshold=45),
-                       reconstruction_error_measure=None):
-    return SubCellReconstruction(
-        name=name,
-        smoothness_calculator=naive_piece_wise,
-        reconstruction_error_measure=ReconstructionErrorMeasure(StencilCreatorFixedShape((3, 3)),
-                                                                metric=metric,
-                                                                central_cell_extra_weight=central_cell_extra_weight),
-        refinement=refinement,
-        cell_creators=
-        [  # regular cell with piecewise_constant
-            CellCreatorPipeline(
-                cell_iterator=partial(iterate_by_condition_on_smoothness, value=REGULAR_CELL,
-                                      condition=operator.eq),  # only regular cells
-                orientator=BaseOrientator(dimensionality=2),
-                stencil_creator=StencilCreatorFixedShape(stencil_shape=(1, 1)),
-                cell_creator=PiecewiseConstantRegularCellCreator(
-                    apriori_up_value=1, apriori_down_value=0, dimensionality=2)
-            ),
-            # curve cell
-            CellCreatorPipeline(
-                cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
-                                      condition=operator.eq),
-                orientator=orientator,
-                stencil_creator=stencil_creator,
-                cell_creator=curve_cell_creator(regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax),
-                reconstruction_error_measure=reconstruction_error_measure
-            )
-        ],
-        obera_iterations=iterations
-    )
 
 
 def fit_model(sub_cell_model):
@@ -238,21 +194,6 @@ def plot_reconstruction(fig, ax, image4error, num_cells_per_dim, model, reconstr
 
     ax.set_xlim((-0.5 + trim[0][0] * model.resolution[0], model.resolution[0] * trim[0][1] - 0.5))
     ax.set_ylim((model.resolution[1] * trim[1][0] - 0.5, model.resolution[1] * trim[1][1] - 0.5))
-
-
-runsinfo.append_info(
-    circler=0.232,
-    circlex=0.511,
-    circley=0.486
-)
-
-
-def get_shape(shape_name):
-    if shape_name == "Circle":
-        return CurveCircle(
-            params=CircleParams(x0=runsinfo["circlex"], y0=runsinfo["circley"], radius=runsinfo["circler"]))
-    else:
-        raise Exception("Not implemented.")
 
 
 def get_reconstructed_subcells_coords(coord, sub_discretization2bound_error, reconstruction):

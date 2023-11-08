@@ -1,3 +1,4 @@
+import operator
 import time
 from functools import partial
 from itertools import chain
@@ -9,33 +10,37 @@ import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
-from PerplexityLab.visualization import generic_plot, make_data_frames, perplex_plot
-from experiments.MLTraining.ml_cell_averages import kernel_circles_ml_model_points, kernel_quadratics_avg_ml_model, \
-    kernel_lines_ml_model, kernel_quadratics_ml_model, kernel_quadratics_points_ml_model
+from PerplexityLab.visualization import generic_plot, make_data_frames, perplex_plot, one_line_iterator
+from experiments.MLTraining.ml_cell_averages import kernel_circles_ml_model_points, kernel_lines_ml_model, \
+    kernel_quadratics_ml_model, kernel_quadratics_points_ml_model
 from experiments.MLTraining.ml_curve_params import lines_ml_model, quadratics7_points_ml_model, \
     quadratics7_params_ml_model, quadratics_ml_model
 from experiments.MLTraining.ml_global_params import num_cores
+from experiments.VizReconstructionUtils import plot_cells, plot_cells_identity, plot_cells_vh_classification_core, \
+    plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, OBERA_ITERS, \
     CCExtraWeight, runsinfo, cblue, corange, cgreen, cred, cpurple, cbrown, cpink, cgray, cyellow, ccyan
-from experiments.subcell_paper.obera_experiments import get_sub_cell_model, get_shape, plot_reconstruction
 from experiments.subcell_paper.tools import calculate_averages_from_curve, \
     curve_cells_fitting_times, singular_cells_mask, make_image_high_resolution
-from lib.AuxiliaryStructures.Constants import REGULAR_CELL
+from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
+from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
 from lib.CellCreators.CurveCellCreators.LearningCurveCellCreator import LearningCurveCellCreator
+from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells_by_minmax
 from lib.CellCreators.CurveCellCreators.TaylorCurveCellCreator import TaylorCircleCurveCellCreator
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesCurveCellCreator, \
     ValuesLineConsistentCurveCellCreator, ValuesCircleCellCreator
-from lib.CellCreators.RegularCellCreator import MirrorCellCreator
-from lib.CellIterators import iterate_all
+from lib.CellCreators.RegularCellCreator import MirrorCellCreator, PiecewiseConstantRegularCellCreator
+from lib.CellIterators import iterate_all, iterate_by_condition_on_smoothness
 from lib.CellOrientators import BaseOrientator, OrientByGradient
 from lib.Curves.AverageCurves import CurveAveragePolynomial
+from lib.Curves.CurveCircle import CurveCircle, CircleParams
 from lib.Curves.VanderCurves import CurveVandermondePolynomial
-from lib.SmoothnessCalculators import indifferent
+from lib.SmoothnessCalculators import indifferent, naive_piece_wise
 from lib.StencilCreators import StencilCreatorFixedShape, StencilCreatorAdaptive
 from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionErrorMeasureBase, CellCreatorPipeline, \
-    ReconstructionErrorMeasureML, reconstruct_by_factor
+    ReconstructionErrorMeasureML, reconstruct_by_factor, ReconstructionErrorMeasure
 
 # ========== =========== ========== =========== #
 #               Models for paper                #
@@ -138,10 +143,24 @@ runsinfo.append_info(
     **{k.replace("_", "-"): v for k, v in names_dict.items()}
 )
 
-
 # ========== =========== ========== =========== #
 #            Experiments definition             #
 # ========== =========== ========== =========== #
+runsinfo.append_info(
+    circler=0.232,
+    circlex=0.511,
+    circley=0.486
+)
+
+
+def get_shape(shape_name):
+    if shape_name == "Circle":
+        return CurveCircle(
+            params=CircleParams(x0=runsinfo["circlex"], y0=runsinfo["circley"], radius=runsinfo["circler"]))
+    else:
+        raise Exception("Not implemented.")
+
+
 def obtain_images(shape_name, num_cells_per_dim):
     image = calculate_averages_from_curve(get_shape(shape_name), (num_cells_per_dim, num_cells_per_dim))
     return {
@@ -169,8 +188,27 @@ error = lambda reconstruction, image4error: np.mean(np.abs(reconstruction - imag
     if reconstruction is not None else np.nan
 
 
+def efficient_reconstruction(model, avg_values, sub_discretization2bound_error):
+    """
+    Only reconstructs fully in the cells where there is discontinuity otherwise copies avgcells values
+    :return:
+    """
+
+    edge_mask = singular_cells_mask(avg_values)
+    edge_mask_hr = make_image_high_resolution(edge_mask,
+                                              reconstruction_factor=sub_discretization2bound_error)
+    cells2reconstruct = list(zip(*np.where(edge_mask)))
+    t0 = time.time()
+    reconstruction = make_image_high_resolution(avg_values, reconstruction_factor=sub_discretization2bound_error)
+    reconstruction[edge_mask_hr] = \
+        reconstruct_by_factor(cells=model.cells, resolution=model.resolution, cells2reconstruct=cells2reconstruct,
+                              resolution_factor=sub_discretization2bound_error)[edge_mask_hr]
+    t_reconstruct = time.time() - t0
+    return reconstruction, t_reconstruct
+
+
 def fit_model(sub_cell_model):
-    def decorated_func(image, noise, sub_discretization2bound_error):
+    def decorated_func(image, image4error, noise, sub_discretization2bound_error):
         np.random.seed(42)
         avg_values = image + np.random.uniform(-noise, noise, size=image.shape)
 
@@ -181,21 +219,13 @@ def fit_model(sub_cell_model):
         model.fit(average_values=avg_values, indexer=ArrayIndexerNd(avg_values, "cyclic"))
         t_fit = time.time() - t0
 
-        edge_mask = singular_cells_mask(avg_values)
-        edge_mask_hr = make_image_high_resolution(edge_mask,
-                                                  reconstruction_factor=sub_discretization2bound_error)
-        cells2reconstruct = list(zip(*np.where(edge_mask)))
-        t0 = time.time()
-        reconstruction = make_image_high_resolution(avg_values, reconstruction_factor=sub_discretization2bound_error)
-        reconstruction[edge_mask_hr] = \
-            reconstruct_by_factor(cells=model.cells, resolution=model.resolution, cells2reconstruct=cells2reconstruct,
-                                  resolution_factor=sub_discretization2bound_error)[edge_mask_hr]
-        t_reconstruct = time.time() - t0
+        reconstruction, t_reconstruct = efficient_reconstruction(model, avg_values, sub_discretization2bound_error)
 
         return {
             "model": model,
             "time_to_fit": t_fit,
-            "reconstruction": reconstruction,
+            "error": error(reconstruction, image4error),
+            # "reconstruction": reconstruction,
             "time_to_reconstruct": t_reconstruct
         }
 
@@ -208,21 +238,82 @@ def fit_model(sub_cell_model):
 # ========== =========== ========== =========== #
 #               Plots definition                #
 # ========== =========== ========== =========== #
+
+@perplex_plot()
+@one_line_iterator
+def plot_reconstruction(fig, ax, image, image4error, num_cells_per_dim, model, sub_discretization2bound_error,
+                        alpha=0.5, plot_original_image=True, difference=False, plot_curve=True, plot_curve_winner=False,
+                        plot_vh_classification=True, plot_singular_cells=True, cmap="magma", trim=((0, 1), (0, 1)),
+                        numbers_on=True):
+    """
+
+    :param fig:
+    :param ax:
+    :param image4error:
+    :param num_cells_per_dim:
+    :param model:
+    :param reconstruction:
+    :param alpha:
+    :param plot_original_image:
+    :param difference:
+    :param plot_curve:
+    :param plot_curve_winner:
+    :param plot_vh_classification:
+    :param plot_singular_cells:
+    :param cmap:
+    :param trim: (xlims, ylims)
+    :param numbers_on:
+    :return:
+    """
+    model_resolution = np.array(model.resolution)
+    reconstruction, t_reconstruct = efficient_reconstruction(model, image, sub_discretization2bound_error)
+
+    if plot_original_image:
+        plot_cells(ax, colors=image4error, mesh_shape=model_resolution, alpha=alpha, cmap="Greys_r",
+                   vmin=np.min(image4error), vmax=np.max(image4error))
+    if difference:
+        plot_cells(ax, colors=reconstruction - image4error, mesh_shape=model_resolution, alpha=alpha, cmap=cmap,
+                   vmin=-1, vmax=1)
+    else:
+        plot_cells(ax, colors=reconstruction, mesh_shape=model_resolution, alpha=alpha, cmap=cmap, vmin=-1, vmax=1)
+
+    if plot_curve:
+        if plot_curve_winner:
+            plot_cells_identity(ax, model_resolution, model.cells, alpha=0.8)
+            # plot_cells_type_of_curve_core(ax, model.resolution, model.cells, alpha=0.8)
+        elif plot_vh_classification:
+            plot_cells_vh_classification_core(ax, model_resolution, model.cells, alpha=0.8)
+        elif plot_singular_cells:
+            plot_cells_not_regular_classification_core(ax, model_resolution, model.cells, alpha=0.8)
+        plot_curve_core(ax, curve_cells=[cell for cell in model.cells.values() if
+                                         cell.CELL_TYPE == CURVE_CELL_TYPE])
+
+    draw_cell_borders(
+        ax, mesh_shape=num_cells_per_dim,
+        refinement=model_resolution // num_cells_per_dim,
+        numbers_on=numbers_on,
+        prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
+    )
+
+    ax.set_xlim((-0.5 + trim[0][0] * model.resolution[0], model.resolution[0] * trim[0][1] - 0.5))
+    ax.set_ylim((model.resolution[1] * trim[1][0] - 0.5, model.resolution[1] * trim[1][1] - 0.5))
+
+
 @perplex_plot(group_by="models")
-def plot_h_convergence(fig, ax, num_cells_per_dim, reconstruction, image4error, models,
+def plot_h_convergence(fig, ax, num_cells_per_dim, error, models,
                        threshold=1.0 / np.sqrt(1000), rateonly=None, *args, **kwargs):
-    er = np.array(list(map(lambda x: error(*x), zip(reconstruction, image4error))))
+    error = np.array(error)
     name = f"{names_dict[str(models)]}"
     h = 1.0 / np.array(num_cells_per_dim)
     if rateonly is None or models in rateonly:
         valid_ix = h < threshold
         rate, origin = np.ravel(np.linalg.lstsq(
             np.vstack([np.log(h[valid_ix]), np.ones(np.sum(valid_ix))]).T,
-            np.log(er[valid_ix]).reshape((-1, 1)), rcond=None)[0])
+            np.log(error[valid_ix]).reshape((-1, 1)), rcond=None)[0])
         # ax.plot(df[x].values[valid_ix], np.sqrt(df[x].values[valid_ix]) ** rate * np.exp(origin), "-",
         #         c=model_color[method], linewidth=3, alpha=0.5)
         name = name + f": O({abs(rate):.1f})"
-    sns.lineplot(x=h, y=er, color=model_color[models], label=name, ax=ax,
+    sns.lineplot(x=h, y=error, color=model_color[models], label=name, ax=ax,
                  marker="o", linestyle="--", alpha=1)
     # ax.plot(df[x], df[y], marker=".", linestyle=":", c=model_color[method], label=name)
     ax.set_xlabel(fr"$h$")
@@ -259,6 +350,42 @@ def plot_convergence(data, x, y, hue, ax, threshold=np.sqrt(1000), rateonly=None
 # ========== =========== ========== =========== #
 #               Models definition               #
 # ========== =========== ========== =========== #
+
+def get_sub_cell_model(curve_cell_creator, refinement, name, iterations, central_cell_extra_weight, metric,
+                       stencil_creator=StencilCreatorFixedShape((3, 3)),
+                       orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, angle_threshold=45),
+                       reconstruction_error_measure=None):
+    return SubCellReconstruction(
+        name=name,
+        smoothness_calculator=naive_piece_wise,
+        reconstruction_error_measure=ReconstructionErrorMeasure(StencilCreatorFixedShape((3, 3)),
+                                                                metric=metric,
+                                                                central_cell_extra_weight=central_cell_extra_weight),
+        refinement=refinement,
+        cell_creators=
+        [  # regular cell with piecewise_constant
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_condition_on_smoothness, value=REGULAR_CELL,
+                                      condition=operator.eq),  # only regular cells
+                orientator=BaseOrientator(dimensionality=2),
+                stencil_creator=StencilCreatorFixedShape(stencil_shape=(1, 1)),
+                cell_creator=PiecewiseConstantRegularCellCreator(
+                    apriori_up_value=1, apriori_down_value=0, dimensionality=2)
+            ),
+            # curve cell
+            CellCreatorPipeline(
+                cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL,
+                                      condition=operator.eq),
+                orientator=orientator,
+                stencil_creator=stencil_creator,
+                cell_creator=curve_cell_creator(regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax),
+                reconstruction_error_measure=reconstruction_error_measure
+            )
+        ],
+        obera_iterations=iterations
+    )
+
+
 def piecewise_constant(*args):
     return SubCellReconstruction(
         name="PiecewiseConstant",
@@ -547,7 +674,7 @@ if __name__ == "__main__":
     # ========== =========== ========== =========== #
     data_manager = DataManager(
         path=config.results_path,
-        name=f'AERO',
+        name=f'AERO_test',
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
@@ -571,41 +698,41 @@ if __name__ == "__main__":
                   [
                       piecewise_constant,
                       elvira,
-                      elvira_w_oriented,
-                      elvira_w_oriented_l1,
-                      elvira_w_oriented_ml,
-
-                      linear_obera,
-                      linear_obera_w,
-                      linear_obera_w_ml,
-
-                      linear_aero,
-                      linear_aero_w,
-                      linear_aero_consistent,
-
-                      nn_linear,
-                      nn_quadratic_3x3,
-                      nn_quadratic_3x7,
-                      nn_quadratic_3x7_params,
-                      nn_quadratic_3x7_adapt,
-                      nn_quadratic_3x7_params_adapt,
-
-                      quadratic_obera_non_adaptive,
-                      quadratic_obera,
-                      quadratic_obera_ml_params,
-                      # quadratic_obera_ml_points_adapt,
-                      quadratic_obera_ml_points,
-                      quadratic_aero,
-
-                      cubic_aero,
-                      quartic_aero,
-
-                      # elvira_go100_ref2,
-                      # quadratic_aero_ref2,
+                      # elvira_w_oriented,
+                      # elvira_w_oriented_l1,
+                      # elvira_w_oriented_ml,
                       #
-                      obera_circle,
-                      obera_circle_vander,
-                      obera_circle_vander_ml
+                      # linear_obera,
+                      # linear_obera_w,
+                      # linear_obera_w_ml,
+                      #
+                      # linear_aero,
+                      # linear_aero_w,
+                      # linear_aero_consistent,
+                      #
+                      # nn_linear,
+                      # nn_quadratic_3x3,
+                      # nn_quadratic_3x7,
+                      # nn_quadratic_3x7_params,
+                      # nn_quadratic_3x7_adapt,
+                      # nn_quadratic_3x7_params_adapt,
+                      #
+                      # quadratic_obera_non_adaptive,
+                      # quadratic_obera,
+                      # quadratic_obera_ml_params,
+                      # # quadratic_obera_ml_points_adapt,
+                      # quadratic_obera_ml_points,
+                      # quadratic_aero,
+                      #
+                      # cubic_aero,
+                      # quartic_aero,
+                      #
+                      # # elvira_go100_ref2,
+                      # # quadratic_aero_ref2,
+                      # #
+                      # obera_circle,
+                      # obera_circle_vander,
+                      # obera_circle_vander_ml
                   ]
                   )),
         recalculate=False
@@ -706,39 +833,6 @@ if __name__ == "__main__":
     # ========== =========== ========== =========== #
     for group, model_color in accepted_models.items():
         models2plot = list(model_color.keys())
-        generic_plot(data_manager,
-                     name=f"TimeComplexityPerCellBar_{group}",
-                     path=config.subcell_paper_figures_path,
-                     folder=group,
-                     x="method", y="time", num_cells_per_dim=num_cells_per_dim,
-                     plot_func=NamedPartial(sns.boxenplot,
-                                            palette={names_dict[k]: v for k, v in model_color.items()}),
-                     log="y",
-                     time=curve_cells_fitting_times,
-                     N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                     error=error,
-                     models=models2plot,
-                     method=lambda models: names_dict[str(models)],
-                     format=".pdf"
-                     )
-
-        generic_plot(data_manager,
-                     name=f"Convergence_{group}",
-                     path=config.subcell_paper_figures_path,
-                     folder=group,
-                     x="N", y="error", label="models", num_cells_per_dim=num_cells_per_dim,
-                     plot_func=plot_convergence,
-                     # plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--"),
-                     log="xy",
-                     N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                     error=error,
-                     models=models2plot,
-                     sort_by=["models", "N"],
-                     method=lambda models: names_dict[str(models)],
-                     format=".pdf",
-                     # rateonly=rateonly
-                     )
-
         plot_h_convergence(
             data_manager,
             path=config.subcell_paper_figures_path,
@@ -751,6 +845,35 @@ if __name__ == "__main__":
             format=".pdf",
             rateonly=rateonly
         )
+        generic_plot(data_manager,
+                     name=f"TimeComplexityPerCellBar_{group}",
+                     path=config.subcell_paper_figures_path,
+                     folder=group,
+                     x="method", y="time", num_cells_per_dim=num_cells_per_dim,
+                     plot_func=NamedPartial(sns.boxenplot,
+                                            palette={names_dict[k]: v for k, v in model_color.items()}),
+                     log="y",
+                     time=curve_cells_fitting_times,
+                     N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                     models=models2plot,
+                     method=lambda models: names_dict[str(models)],
+                     format=".pdf"
+                     )
+
+        generic_plot(data_manager,
+                     name=f"Convergence_{group}",
+                     path=config.subcell_paper_figures_path,
+                     folder=group,
+                     x="N", y="error", label="models", num_cells_per_dim=num_cells_per_dim,
+                     plot_func=plot_convergence,
+                     log="xy",
+                     N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                     models=models2plot,
+                     sort_by=["models", "N"],
+                     method=lambda models: names_dict[str(models)],
+                     format=".pdf",
+                     # rateonly=rateonly
+                     )
 
         generic_plot(data_manager,
                      name=f"TimeComplexity_{group}",
@@ -762,7 +885,6 @@ if __name__ == "__main__":
                      log="xy",
                      time=lambda time_to_fit: time_to_fit,
                      N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                     error=error,
                      models=models2plot,
                      method=lambda models: names_dict[str(models)],
                      format=".pdf"
@@ -777,7 +899,6 @@ if __name__ == "__main__":
                      log="xy",
                      time=curve_cells_fitting_times,
                      N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                     error=error,
                      models=models2plot,
                      method=lambda models: names_dict[str(models)],
                      format=".pdf"
@@ -791,12 +912,12 @@ if __name__ == "__main__":
                      plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--",
                                             palette={names_dict[k]: v for k, v in model_color.items()}),
                      log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                     error=error,
                      models=models2plot,
                      method=lambda models: names_dict[str(models)],
                      format=".pdf"
                      )
 
+    num_cells_per_dim_2plot = [num_cells_per_dim[0], num_cells_per_dim[5], num_cells_per_dim[10]]
     for group, model_color in accepted_models.items():
         models2plot = list(model_color.keys())
         plot_reconstruction(
@@ -806,6 +927,7 @@ if __name__ == "__main__":
             axes_by=['models'],
             models=models2plot,
             plot_by=['num_cells_per_dim'],
+            num_cells_per_dim=num_cells_per_dim_2plot,
             axes_xy_proportions=(15, 15),
             difference=False,
             plot_curve=True,
