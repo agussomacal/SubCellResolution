@@ -45,6 +45,7 @@ accepted_models = {
         # "nn_linear": cgreen,
         "elvira": cred,
         "elvira_w_oriented": corange,
+        "elvira_w_oriented_l1": cbrown,
         # "elvira_w_oriented_ml": cyellow,
         "linear_obera": cblue,
         "linear_obera_w": cpurple,
@@ -69,20 +70,25 @@ accepted_models = {
     },
     "MLLinear": {
         "elvira_w_oriented": corange,
+        "elvira_w_oriented_ml": cred,
         "nn_linear": cgreen,
         "linear_obera_w_ml": cblue,
         "linear_obera_w": cpurple,
     },
     "MLQuadratic": {
-        "elvira_w_oriented": corange,
-        "elvira_w_oriented_ml": cyellow,
-
         "quadratic_obera_non_adaptive": cred,
-        "quadratic_obera_ml": cgreen,
 
-        "nn_quadratic_3x3": cbrown,
-        "nn_quadratic_3x7": cpurple,
+        "quadratic_obera_ml_params": corange,
+        "quadratic_obera_ml_points_adapt": cpink,
+        "quadratic_obera_ml_points": ccyan,
+
+        "quadratic_aero": cgreen,
+
+        "nn_quadratic_3x3": cgray,
+        "nn_quadratic_3x7": cyellow,
         "nn_quadratic_3x7_params": cblue,
+        "nn_quadratic_3x7_adapt": cbrown,
+        "nn_quadratic_3x7_params_adapt": cpurple,
     }
 }
 
@@ -93,10 +99,13 @@ names_dict = {
     "nn_quadratic_3x3": "NN Quadratic 3x3",
     "nn_quadratic_3x7": "NN Quadratic 3x7",
     "nn_quadratic_3x7_params": "NN Quadratic 3x7 params",
+    "nn_quadratic_3x7_adapt": "NN Quadratic 3x7 Adapt S",
+    "nn_quadratic_3x7_params_adapt": "NN Quadratic 3x7 params Adapt S",
 
     "elvira": "ELVIRA",
     "elvira_w": "ELVIRA-W",
     "elvira_w_oriented": "ELVIRA-W Oriented",
+    "elvira_w_oriented_l1": "ELVIRA-W Oriented l1",
     "elvira_w_oriented_ml": "ELVIRA-W Oriented ML-ker",
 
     "linear_obera": "OBERA Linear",
@@ -110,6 +119,9 @@ names_dict = {
     "quadratic_obera": "OBERA Quadratic",
     "quadratic_obera_ml": "OBERA Quadratic ML-ker",
     "quadratic_aero": "AEROS Quadratic",
+    "quadratic_obera_ml_params": "OBERA Quadratic ML-ker 3x3",
+    "quadratic_obera_ml_points_adapt": "OBERA Quadratic ML-ker 3x3 ReParam Adapt S",
+    "quadratic_obera_ml_points": "OBERA Quadratic ML-ker 3x3 ReParam",
 
     "cubic_aero": "AEROS Cubic",
     "quartic_aero": "AEROS Quartic",
@@ -153,6 +165,10 @@ def obtain_image4error(shape_name, num_cells_per_dim, sub_discretization2bound_e
     }
 
 
+error = lambda reconstruction, image4error: np.mean(np.abs(reconstruction - image4error).ravel()) \
+    if reconstruction is not None else np.nan
+
+
 def fit_model(sub_cell_model):
     def decorated_func(image, noise, sub_discretization2bound_error):
         np.random.seed(42)
@@ -187,10 +203,6 @@ def fit_model(sub_cell_model):
     # the other option is to pass to the block the name we wish to associate to the function.
     decorated_func.__name__ = sub_cell_model.__name__
     return decorated_func
-
-
-error = lambda reconstruction, image4error: np.mean(np.abs(reconstruction - image4error).ravel()) \
-    if reconstruction is not None else np.nan
 
 
 # ========== =========== ========== =========== #
@@ -279,6 +291,10 @@ def elvira_w_oriented():
     return get_sub_cell_model(ELVIRACurveCellCreator, 1, "ELVIRAGRAD", 0, CCExtraWeight, 2)
 
 
+def elvira_w_oriented_l1():
+    return get_sub_cell_model(ELVIRACurveCellCreator, 1, "ELVIRAGRAD", 0, CCExtraWeight, 1)
+
+
 def elvira_w_oriented_ml():
     return get_sub_cell_model(ELVIRACurveCellCreator, 1, "ELVIRAGRAD", 0, CCExtraWeight, 2,
                               reconstruction_error_measure=ReconstructionErrorMeasureML(
@@ -357,9 +373,6 @@ def nn_linear():
 def nn_quadratic_3x3():
     return get_sub_cell_model(partial(LearningCurveCellCreator, quadratics_ml_model), 1,
                               "QuadraticNN", 0, CCExtraWeight, 2,
-                              # stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0,
-                              #                                        independent_dim_stencil_size=3,
-                              #                                        dependent_dim_size=7),
                               )
 
 
@@ -367,9 +380,6 @@ def nn_quadratic_3x7():
     return get_sub_cell_model(partial(LearningCurveCellCreator, quadratics7_points_ml_model), 1,
                               "QuadraticNN", 0, CCExtraWeight, 2,
                               stencil_creator=StencilCreatorFixedShape(stencil_shape=(3, 7))
-                              # stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0,
-                              #                                        independent_dim_stencil_size=3,
-                              #                                        dependent_dim_size=7)
                               )
 
 
@@ -377,9 +387,25 @@ def nn_quadratic_3x7_params():
     return get_sub_cell_model(partial(LearningCurveCellCreator, quadratics7_params_ml_model), 1,
                               "QuadraticNN", 0, CCExtraWeight, 2,
                               stencil_creator=StencilCreatorFixedShape(stencil_shape=(3, 7))
-                              # stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0,
-                              #                                        independent_dim_stencil_size=3,
-                              #                                        dependent_dim_size=7)
+                              )
+
+
+def nn_quadratic_3x7_adapt():
+    return get_sub_cell_model(partial(LearningCurveCellCreator, quadratics7_points_ml_model), 1,
+                              "QuadraticNN", 0, CCExtraWeight, 2,
+                              stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
+                                                                     independent_dim_stencil_size=3,
+                                                                     dependent_dim_size=7)
+                              )
+
+
+def nn_quadratic_3x7_params_adapt():
+    return get_sub_cell_model(partial(LearningCurveCellCreator, quadratics7_params_ml_model), 1,
+                              "QuadraticNN", 0, CCExtraWeight, 2,
+                              # stencil_creator=StencilCreatorFixedShape(stencil_shape=(3, 7))
+                              stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
+                                                                     independent_dim_stencil_size=3,
+                                                                     dependent_dim_size=7)
                               )
 
 
@@ -398,18 +424,57 @@ def quadratic_obera():
         stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3))
 
 
-def quadratic_obera_ml():
+def quadratic_obera_ml_params():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator,
                 vander_curve=partial(CurveVandermondePolynomial, degree=2, ccew=CCExtraWeight),
                 natural_params=True), 1,
         "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 2,
-        # stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3),
-        stencil_creator=StencilCreatorFixedShape(kernel_quadratics_avg_ml_model.dataset_manager.kernel_size),
+        stencil_creator=StencilCreatorFixedShape(kernel_quadratics_ml_model.dataset_manager.kernel_size),
         reconstruction_error_measure=ReconstructionErrorMeasureML(
             ml_model=kernel_quadratics_ml_model,
             stencil_creator=StencilCreatorFixedShape(
                 kernel_quadratics_ml_model.dataset_manager.kernel_size),
+            metric=2,
+            central_cell_extra_weight=CCExtraWeight
+        ))
+
+
+def quadratic_obera_ml_points():
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveVandermondePolynomial, degree=2, ccew=CCExtraWeight),
+                natural_params=False), 1,
+        "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 2,
+        stencil_creator=StencilCreatorFixedShape(kernel_quadratics_points_ml_model.dataset_manager.kernel_size),
+        reconstruction_error_measure=ReconstructionErrorMeasureML(
+            ml_model=kernel_quadratics_points_ml_model,
+            stencil_creator=StencilCreatorFixedShape(
+                kernel_quadratics_points_ml_model.dataset_manager.kernel_size),
+            metric=2,
+            central_cell_extra_weight=CCExtraWeight
+        ))
+
+
+def quadratic_obera_ml_points_adapt():
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveVandermondePolynomial, degree=2, ccew=CCExtraWeight),
+                natural_params=True), 1,
+        "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 2,
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
+                                               independent_dim_stencil_size=
+                                               kernel_quadratics_points_ml_model.dataset_manager.kernel_size[0],
+                                               dependent_dim_size=
+                                               kernel_quadratics_points_ml_model.dataset_manager.kernel_size[1]),
+        reconstruction_error_measure=ReconstructionErrorMeasureML(
+            ml_model=kernel_quadratics_points_ml_model,
+            stencil_creator=StencilCreatorAdaptive(
+                smoothness_threshold=REGULAR_CELL,
+                independent_dim_stencil_size=
+                kernel_quadratics_points_ml_model.dataset_manager.kernel_size[0],
+                dependent_dim_size=
+                kernel_quadratics_points_ml_model.dataset_manager.kernel_size[1]),
             metric=2,
             central_cell_extra_weight=CCExtraWeight
         ))
@@ -420,7 +485,7 @@ def quadratic_aero():
         partial(ValuesCurveCellCreator,
                 vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=CCExtraWeight)), 1,
         "QuadraticAvg", 0, CCExtraWeight, 2,
-        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3))
 
 
 def cubic_aero():
@@ -428,7 +493,7 @@ def cubic_aero():
         partial(ValuesCurveCellCreator,
                 vander_curve=partial(CurveAveragePolynomial, degree=3, ccew=CCExtraWeight)), 1,
         "QuadraticAvg", 0, CCExtraWeight, 2,
-        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=5))
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=5))
 
 
 def quartic_aero():
@@ -436,7 +501,7 @@ def quartic_aero():
         partial(ValuesCurveCellCreator,
                 vander_curve=partial(CurveAveragePolynomial, degree=4, ccew=CCExtraWeight)), 1,
         "QuadraticAvg", 0, CCExtraWeight, 2,
-        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=5))
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=5))
 
 
 def quadratic_aero_ref2():
@@ -444,27 +509,27 @@ def quadratic_aero_ref2():
         partial(ValuesCurveCellCreator,
                 vander_curve=partial(CurveAveragePolynomial, degree=2, ccew=CCExtraWeight)), 2,
         "QuadraticAvg", 0, CCExtraWeight, 2,
-        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3))
 
 
 def obera_circle():
     return get_sub_cell_model(
         partial(TaylorCircleCurveCellCreator, ccew=CCExtraWeight, natural_params=False), 1,
         "CircleAvg", OBERA_ITERS, CCExtraWeight, 2,
-        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=3))
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3))
 
 
 def obera_circle_vander():
     return get_sub_cell_model(ValuesCircleCellCreator, 1,
                               "CircleAvg", OBERA_ITERS, CCExtraWeight, 2,
-                              stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0,
+                              stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
                                                                      independent_dim_stencil_size=3))
 
 
 def obera_circle_vander_ml():
     return get_sub_cell_model(ValuesCircleCellCreator, 1,
                               "CircleAvg", OBERA_ITERS, CCExtraWeight, 2,
-                              stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0,
+                              stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
                                                                      independent_dim_stencil_size=3),
                               # stencil_creator=StencilCreatorFixedShape(
                               #     kernel_circles_ml_model_points.dataset_manager.kernel_size),
@@ -507,6 +572,7 @@ if __name__ == "__main__":
                       piecewise_constant,
                       elvira,
                       elvira_w_oriented,
+                      elvira_w_oriented_l1,
                       elvira_w_oriented_ml,
 
                       linear_obera,
@@ -521,10 +587,14 @@ if __name__ == "__main__":
                       nn_quadratic_3x3,
                       nn_quadratic_3x7,
                       nn_quadratic_3x7_params,
+                      nn_quadratic_3x7_adapt,
+                      nn_quadratic_3x7_params_adapt,
 
                       quadratic_obera_non_adaptive,
                       quadratic_obera,
-                      quadratic_obera_ml,
+                      quadratic_obera_ml_params,
+                      # quadratic_obera_ml_points_adapt,
+                      quadratic_obera_ml_points,
                       quadratic_aero,
 
                       cubic_aero,

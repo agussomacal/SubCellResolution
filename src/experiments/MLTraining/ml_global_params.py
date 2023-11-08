@@ -7,7 +7,7 @@ if RAM > 70:  # if run in server
     num_cores = workers = 50
 elif RAM > 40:
     print("running in local power machine")
-    N = int(1e5)
+    N = int(1e6)
     num_cores = workers = 15
 else:
     print("running in local machine")
