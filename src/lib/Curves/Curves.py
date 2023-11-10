@@ -194,7 +194,6 @@ class CurveReparametrized(Curve):
         :param points: Nx2 matrix of points
         :param value_up:
         :param value_down:
-        :param x_shift:
         """
         self.x_points = np.array(x_points)
         self.y_points = np.array(y_points)

@@ -48,9 +48,9 @@ class DefaultPolynomialCurveCellCreator(CurveCellCreatorBase):
         value_up, value_down = self.updown_value_getter(coords, regular_opposite_cells)
         init_coefficients = np.zeros(self.degree + 1)
         init_coefficients[0] = coords[1 - independent_axis] + 0.5
-        yield CurvePolynomial(
+        curve = CurvePolynomial(
             polynomial=Polynomial(init_coefficients),
             value_up=value_up,
-            value_down=value_down,
-            x_shift=coords[independent_axis] + 0.5
-        )
+            value_down=value_down)
+        curve.set_x_shift(coords[independent_axis] + 0.5)
+        yield curve

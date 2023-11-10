@@ -169,9 +169,9 @@ if __name__ == "__main__":
     # kernel_pred = kernel_quadratics_avg_ml_model.predict_kernel(curve.params, reshape=True)
     # kernel_size = kernel_quadratics_avg_ml_model.dataset_manager.kernel_size
 
-    # curve = CurveLinearAngle(angle, y0, value_up, value_down, x_shift=0)
+    # curve = CurveLinearAngle(angle, y0, value_up, value_down)
     # kernel_pred = kernel_lines_ml_model.predict_kernel(curve.params[::-1], reshape=True)
-    # curve = CurvePolynomial([0.23, np.tan(0.3)], value_up, value_down, x_shift=0)
+    # curve = CurvePolynomial([0.23, np.tan(0.3)], value_up, value_down)
     # kernel_pred = kernel_lines_ml_model.predict_kernel(curve.params, reshape=True)
     # kernel_size = kernel_lines_ml_model.dataset_manager.kernel_size
 

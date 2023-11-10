@@ -38,7 +38,7 @@ class CurveAveragePolynomial(CurveReparametrized, CurvePolynomial):
 
     def get_natural_parametrization_curve(self):
         return CurvePolynomial(self.new_params2natural_params(self.x_points, self.y_points), value_up=self.value_up,
-                               value_down=self.value_down, x_shift=self.x_shift)
+                               value_down=self.value_down)
 
 
 if __name__ == "__main__":

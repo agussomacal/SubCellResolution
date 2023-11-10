@@ -116,10 +116,11 @@ class LinearVertexCellCurveCellCreator(CurveCellCreatorBase):
                 if ~np.isnan(x0) and ~np.any(np.isnan(polynomials)):
                     ps[0][0] += y_shift
                     ps[1][0] += y_shift
-                    yield CurveVertexPolynomial(
+                    curve = CurveVertexPolynomial(
                         polynomials=np.round(ps, decimals=ROUND2MACHINE_PRECISION),
                         x0=x0,
                         value_up=value_up,
-                        value_down=value_down,
-                        x_shift=x_shift
+                        value_down=value_down
                     )
+                    curve.set_x_shift(x_shift)
+                    yield curve

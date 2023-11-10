@@ -146,7 +146,7 @@ if __name__ == "__main__":
                                         value_up=value_up, value_down=value_down)
     # curve = VanderQuadratic(x_points=np.array([-1, 0, 1]), y_points=np.array([-0.3, 0, -0.1]), value_up=value_up,
     #                         value_down=value_down)
-    # curve = CurveLinearAngle(angle, y0, value_up, value_down, x_shift=0)
+    # curve = CurveLinearAngle(angle, y0, value_up, value_down)
     kernel = get_averages_from_curve_kernel(kernel_size, curve, center_cell_coords=None)
     u = get_evaluations2test_curve(curve, kernel_size, refinement=refinement)
 

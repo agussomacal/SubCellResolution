@@ -6,10 +6,31 @@ from PerplexityLab.visualization import perplex_plot, one_line_iterator
 from experiments.VizReconstructionUtils import plot_cells, plot_cells_identity, plot_cells_vh_classification_core, \
     plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders
 from experiments.subcell_paper.global_params import EVALUATIONS
-from experiments.subcell_paper.tools import load_image, calculate_averages_from_image, reconstruct
+from experiments.subcell_paper.tools import load_image, calculate_averages_from_image, reconstruct, singular_cells_mask, \
+    make_image_high_resolution
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CellCreatorBase import REGULAR_CELL_TYPE
+from lib.SubCellReconstruction import reconstruct_by_factor
 
+
+def efficient_reconstruction(model, avg_values, sub_discretization2bound_error):
+    """
+    Only reconstructs fully in the cells where there is discontinuity otherwise copies avgcells values
+    :return:
+    """
+
+    edge_mask = singular_cells_mask(avg_values)
+    edge_mask_hr = make_image_high_resolution(edge_mask,
+                                              reconstruction_factor=sub_discretization2bound_error)
+    cells2reconstruct = list(zip(*np.where(edge_mask)))
+    t0 = time.time()
+    reconstruction = make_image_high_resolution(avg_values, reconstruction_factor=sub_discretization2bound_error)
+    reconstruction[edge_mask_hr] = \
+        reconstruct(image=avg_values, cells=model.cells, model_resolution=model.resolution,
+                    cells2reconstruct=cells2reconstruct,
+                              resolution_factor=sub_discretization2bound_error)[edge_mask_hr]
+    t_reconstruct = time.time() - t0
+    return reconstruction, t_reconstruct
 
 def fit_model(sub_cell_model):
     def decorated_func(image, noise, num_cells_per_dim, reconstruction_factor, refinement, angle_threshold=25):

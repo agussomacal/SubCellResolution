@@ -51,10 +51,9 @@ accepted_models = {
         "elvira": cred,
         "elvira_w_oriented": corange,
         "elvira_w_oriented_l1": cbrown,
-        # "elvira_w_oriented_ml": cyellow,
         "linear_obera": cblue,
         "linear_obera_w": cpurple,
-        # "linear_obera_w_ml": ccyan,
+        "linear_obera_w_l2": ccyan,
         "linear_aero": cgray,
         "linear_aero_w": cgreen,
         "linear_aero_consistent": cpink
@@ -63,15 +62,11 @@ accepted_models = {
         "piecewise_constant": cpink,
         "elvira_w_oriented": corange,
         "quadratic_obera_non_adaptive": cred,
-        # "quadratic_obera": cred,
-        # "quadratic_obera_ml": cyellow,
         "quadratic_aero": cgreen,
         "cubic_aero": cblue,
         "quartic_aero": cpurple,
         "obera_circle": cbrown,
         "obera_circle_vander": cyellow,
-        # "nn_quadratic_3x7": ccyan,
-        # "nn_quadratic_3x7_params": cbrown,
     },
     "MLLinear": {
         "elvira_w_oriented": corange,
@@ -115,8 +110,10 @@ names_dict = {
 
     "linear_obera": "OBERA Linear",
     "linear_obera_w": "OBERA-W Linear",
+    "linear_obera_w_l2": "OBERA-W Linear l2",
     "linear_aero": "AEROS Linear",
     "linear_aero_w": "AEROS-W Linear",
+    "linear_aero_w_l2": "AEROS-W Linear l2",
     "linear_aero_consistent": "AEROS Linear Column Consistent",
     "linear_obera_w_ml": "OBERA-W Linear ML-ker",
 
@@ -455,6 +452,13 @@ def linear_obera_w():
         "LinearOpt", OBERA_ITERS, CCExtraWeight, 1)
 
 
+def linear_obera_w_l2():
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=1, ccew=0),
+                natural_params=True), 1,
+        "LinearOpt", OBERA_ITERS, CCExtraWeight, 2)
+
+
 def linear_obera_w_ml():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator, vander_curve=partial(CurveVandermondePolynomial, degree=1, ccew=0),
@@ -674,7 +678,7 @@ if __name__ == "__main__":
     # ========== =========== ========== =========== #
     data_manager = DataManager(
         path=config.results_path,
-        name=f'AERO_test',
+        name=f'AERO',
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
@@ -698,38 +702,39 @@ if __name__ == "__main__":
                   [
                       piecewise_constant,
                       elvira,
-                      # elvira_w_oriented,
-                      # elvira_w_oriented_l1,
-                      # elvira_w_oriented_ml,
+                      elvira_w_oriented,
+                      elvira_w_oriented_l1,
+                      elvira_w_oriented_ml,
+
+                      linear_obera,
+                      linear_obera_w,
+                      linear_obera_w_l2,
+                      linear_obera_w_ml,
+
+                      linear_aero,
+                      linear_aero_w,
+                      linear_aero_consistent,
+
+                      nn_linear,
+                      nn_quadratic_3x3,
+                      nn_quadratic_3x7,
+                      nn_quadratic_3x7_params,
+                      nn_quadratic_3x7_adapt,
+                      nn_quadratic_3x7_params_adapt,
+
+                      quadratic_obera_non_adaptive,
+                      quadratic_obera,
+                      quadratic_obera_ml_params,
+                      # quadratic_obera_ml_points_adapt,
+                      quadratic_obera_ml_points,
+                      quadratic_aero,
+
+                      cubic_aero,
+                      quartic_aero,
+
+                      # elvira_go100_ref2,
+                      # quadratic_aero_ref2,
                       #
-                      # linear_obera,
-                      # linear_obera_w,
-                      # linear_obera_w_ml,
-                      #
-                      # linear_aero,
-                      # linear_aero_w,
-                      # linear_aero_consistent,
-                      #
-                      # nn_linear,
-                      # nn_quadratic_3x3,
-                      # nn_quadratic_3x7,
-                      # nn_quadratic_3x7_params,
-                      # nn_quadratic_3x7_adapt,
-                      # nn_quadratic_3x7_params_adapt,
-                      #
-                      # quadratic_obera_non_adaptive,
-                      # quadratic_obera,
-                      # quadratic_obera_ml_params,
-                      # # quadratic_obera_ml_points_adapt,
-                      # quadratic_obera_ml_points,
-                      # quadratic_aero,
-                      #
-                      # cubic_aero,
-                      # quartic_aero,
-                      #
-                      # # elvira_go100_ref2,
-                      # # quadratic_aero_ref2,
-                      # #
                       # obera_circle,
                       # obera_circle_vander,
                       # obera_circle_vander_ml

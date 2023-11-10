@@ -172,7 +172,7 @@ if __name__ == "__main__":
     value_up = 0
     value_down = 1
 
-    # curve = CurveLinearAngle(angle, y0, value_up, value_down, x_shift=0)
+    # curve = CurveLinearAngle(angle, y0, value_up, value_down)
 
     print("Vertex")
     curve = CurveVertexLinearAngleAngle(angle1=-1 / 8 * np.pi, angle2=2 / 8 * np.pi - np.pi, x0=0, y0=y0,
@@ -183,7 +183,7 @@ if __name__ == "__main__":
     print(curve_classification_ml_model.predict_curve_type_index(kernel))
 
     print("Line")
-    curve = CurveLinearAngle(angle, y0, value_up, value_down, x_shift=0)
+    curve = CurveLinearAngle(angle, y0, value_up, value_down)
     kernel = get_averages_from_curve_kernel(kernel_size, curve, center_cell_coords=None)
     print(curve_classification_ml_model.trainable_model.predict([kernel]))
     print(curve_classification_ml_model.trainable_model.predict_proba([kernel]))

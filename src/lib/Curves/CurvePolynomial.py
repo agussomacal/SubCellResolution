@@ -13,7 +13,7 @@ LEFT_RIGHT_OPERATORS = {LEFT: operator.le, RIGHT: operator.ge}
 
 
 class CurvePolynomial(Curve):
-    def __init__(self, polynomial: Union[List, np.ndarray, Polynomial], value_up=0, value_down=1, x_shift=0):
+    def __init__(self, polynomial: Union[List, np.ndarray, Polynomial], value_up=0, value_down=1):
         """
         coef : array_like
         Polynomial coefficients in order of increasing degree, i.e.,
@@ -21,10 +21,6 @@ class CurvePolynomial(Curve):
         """
         self.polynomial = polynomial if isinstance(polynomial, Polynomial) else Polynomial(polynomial)
         self.poly_integral = self.polynomial.integ()
-        # self.x_shift = x_shift
-        self.set_x_shift(x_shift)
-        self.x_shift = 0
-
         if self.polynomial.degree() == 1:
             curve_name = "Line"
         elif self.polynomial.degree() == 2:
@@ -44,7 +40,6 @@ class CurvePolynomial(Curve):
 
     def set_x_shift(self, shift):
         if shift != 0:
-            # self.x_shift += shift
             p = self.polynomial.copy()
             new_p = [p.deriv(m=i)(-shift) / factorial(i) for i in range(len(p))]
             CurvePolynomial.params.fset(self, new_p)
@@ -55,19 +50,18 @@ class CurvePolynomial(Curve):
         CurvePolynomial.params.fset(self, params)
 
     def function(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
-        return self.polynomial(x - self.x_shift)
+        return self.polynomial(x)
 
     def function_inverse(self, y: float) -> List[float]:
-        roots = (self.polynomial - y).roots() + self.x_shift
+        roots = (self.polynomial - y).roots()
         return roots[np.isreal(roots)]
 
     def function_integral(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
-        return self.poly_integral(x - self.x_shift)
+        return self.poly_integral(x)
 
 
 class CurvePolynomialByParts(CurvePolynomial):
-    def __init__(self, x0: float, direction, polynomial: Union[List, np.ndarray, Polynomial], value_up=0, value_down=1,
-                 x_shift=0):
+    def __init__(self, x0: float, direction, polynomial: Union[List, np.ndarray, Polynomial], value_up=0, value_down=1):
         """
         coef : array_like
         Polynomial coefficients in order of increasing degree, i.e.,
@@ -76,12 +70,11 @@ class CurvePolynomialByParts(CurvePolynomial):
         self.x0 = x0
         self.direction = direction
         self.direction_op = LEFT_RIGHT_OPERATORS[direction]
-        super().__init__(polynomial=polynomial, value_up=value_up, value_down=value_down, x_shift=x_shift)
+        super().__init__(polynomial=polynomial, value_up=value_up, value_down=value_down)
         self.x0_integral = super(CurvePolynomialByParts, self).function_integral(self.x0)
 
     def set_x_shift(self, shift):
-        raise Exception("x_shift deprecated.")
-        self.x_shift += shift
+        super(CurvePolynomialByParts, self).set_x_shift(shift)
         self.x0 += shift
         self.x0_integral = super(CurvePolynomialByParts, self).function_integral(self.x0)
 
@@ -109,8 +102,8 @@ def angle_2slope(y0, angle):
 
 
 class CurveLinearAngle(CurvePolynomial):
-    def __init__(self, angle, y0, value_up=0, value_down=1, x_shift=0):
-        super().__init__(list(angle_2slope(y0, angle)), value_up, value_down, x_shift)
+    def __init__(self, angle, y0, value_up=0, value_down=1):
+        super().__init__(list(angle_2slope(y0, angle)), value_up, value_down)
 
     @property
     def params(self):
@@ -163,13 +156,13 @@ class CurveLinearAngleOffset(Curve):
 
 
 class CurveQuadraticAngle(CurvePolynomial):
-    def __init__(self, angle, y0, a, value_up=0, value_down=1, x_shift=0):
-        super().__init__([y0, np.tan(angle), a], value_up, value_down, x_shift)
+    def __init__(self, angle, y0, a, value_up=0, value_down=1):
+        super().__init__([y0, np.tan(angle), a], value_up, value_down)
 
 
 class CurveQuadratic(CurvePolynomial):
-    def __init__(self, c, b, a, value_up=0, value_down=1, x_shift=0):
-        super().__init__([c, b, a], value_up, value_down, x_shift)
+    def __init__(self, c, b, a, value_up=0, value_down=1):
+        super().__init__([c, b, a], value_up, value_down)
 
 
 class NoCurveRegion(Curve):
@@ -220,9 +213,11 @@ class NoCurveRegion(Curve):
 
 
 if __name__ == "__main__":
-    curve = CurvePolynomial([1, 1], value_up=0, value_down=1, x_shift=0)
+    curve = CurvePolynomial([1, 1], value_up=0, value_down=1)
+    curve.set_x_shift(0)
     assert curve(0) == 1
     assert curve(1) == 2
 
-    curve = CurvePolynomial([1, 1], value_up=0, value_down=1, x_shift=-1)
+    curve = CurvePolynomial([1, 1], value_up=0, value_down=1)
+    curve.set_x_shift(-1)
     assert curve(0) == 2

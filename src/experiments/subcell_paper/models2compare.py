@@ -1,11 +1,9 @@
 import operator
 from functools import partial
 
-from experiments.MLTraining.ml_curve_classification import curve_classification_ml_model
 from experiments.subcell_paper.global_params import CCExtraWeight, CurveAverageQuadraticCC, cgray, \
     cblue, cgreen, cred, corange
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
-from lib.CellClassifiers import cell_classifier_ml
 from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import get_values_up_down_01_harcoded
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells_by_minmax
@@ -21,8 +19,7 @@ from lib.CellOrientators import BaseOrientator, OrientByGradient, OrientPredefin
 from lib.SmoothnessCalculators import naive_piece_wise
 from lib.StencilCreators import StencilCreatorFixedShape, StencilCreatorAdaptive
 from lib.SubCellReconstruction import ReconstructionErrorMeasure, keep_cells_on_condition, curve_condition, \
-    ReconstructionErrorMeasureDefaultStencil, CellCreatorPipeline, SubCellReconstruction, SubCellFlux, \
-    SubCellReconstruction
+    ReconstructionErrorMeasureDefaultStencil, CellCreatorPipeline, SubCellFlux, SubCellReconstruction
 
 # ========== ========== Reconstruction error ========== ========== #
 reconstruction_error_measure_default = ReconstructionErrorMeasure(
@@ -298,24 +295,24 @@ def aero_qelvira_vertex(smoothness_calculator=naive_piece_wise, refinement=1, an
     )
 
 
-def ml_vql(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=0, *args, **kwargs):
-    return SubCellReconstruction(
-        name="All",
-        smoothness_calculator=smoothness_calculator,
-        cell_classifier=partial(cell_classifier_ml, ml_model=curve_classification_ml_model,
-                                regular_cell_creators_indexes=[0]),
-        reconstruction_error_measure=reconstruction_error_measure_default,
-        refinement=refinement,
-        cell_creators=
-        [
-            piecewise01,
-            # aero_l(angle_threshold),
-            elvira_cc(angle_threshold=angle_threshold),
-            aero_q(angle_threshold=angle_threshold),
-            tem,
-        ],
-        obera_iterations=0
-    )
+# def ml_vql(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=0, *args, **kwargs):
+#     return SubCellReconstruction(
+#         name="All",
+#         smoothness_calculator=smoothness_calculator,
+#         cell_classifier=partial(cell_classifier_ml, ml_model=curve_classification_ml_model,
+#                                 regular_cell_creators_indexes=[0]),
+#         reconstruction_error_measure=reconstruction_error_measure_default,
+#         refinement=refinement,
+#         cell_creators=
+#         [
+#             piecewise01,
+#             # aero_l(angle_threshold),
+#             elvira_cc(angle_threshold=angle_threshold),
+#             aero_q(angle_threshold=angle_threshold),
+#             tem,
+#         ],
+#         obera_iterations=0
+#     )
 
 
 winner_color_dict = {
