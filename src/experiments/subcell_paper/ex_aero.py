@@ -104,18 +104,17 @@ names_dict = {
 
     "elvira": "ELVIRA",
     "elvira_w": "ELVIRA-W",
-    "elvira_w_oriented": "ELVIRA-W Oriented",
+    "elvira_w_oriented": "ELVIRA-W Oriented l2",
     "elvira_w_oriented_l1": "ELVIRA-W Oriented l1",
-    "elvira_w_oriented_ml": "ELVIRA-W Oriented ML-ker",
+    "elvira_w_oriented_ml": "ELVIRA-W Oriented ML-ker l2",
 
-    "linear_obera": "OBERA Linear",
-    "linear_obera_w": "OBERA-W Linear",
+    "linear_obera": "OBERA Linear l1",
+    "linear_obera_w": "OBERA-W Linear l1",
     "linear_obera_w_l2": "OBERA-W Linear l2",
     "linear_aero": "AEROS Linear",
     "linear_aero_w": "AEROS-W Linear",
-    "linear_aero_w_l2": "AEROS-W Linear l2",
     "linear_aero_consistent": "AEROS Linear Column Consistent",
-    "linear_obera_w_ml": "OBERA-W Linear ML-ker",
+    "linear_obera_w_ml": "OBERA-W Linear ML-ker l1",
 
     "quadratic_obera_non_adaptive": "OBERA Quadratic 3x3",
     "quadratic_obera": "OBERA Quadratic",
@@ -181,7 +180,10 @@ def obtain_image4error(shape_name, num_cells_per_dim, sub_discretization2bound_e
     }
 
 
-error = lambda reconstruction, image4error: np.mean(np.abs(reconstruction - image4error).ravel()) \
+error_l1 = lambda reconstruction, image4error: np.mean(np.abs(reconstruction - image4error).ravel()) \
+    if reconstruction is not None else np.nan
+
+error_linf = lambda reconstruction, image4error: np.max(np.abs(reconstruction - image4error).ravel()) \
     if reconstruction is not None else np.nan
 
 
@@ -221,8 +223,8 @@ def fit_model(sub_cell_model):
         return {
             "model": model,
             "time_to_fit": t_fit,
-            "error": error(reconstruction, image4error),
-            # "reconstruction": reconstruction,
+            "error_l1": error_l1(reconstruction, image4error),
+            "error_linf": error_linf(reconstruction, image4error),
             "time_to_reconstruct": t_reconstruct
         }
 
@@ -297,9 +299,9 @@ def plot_reconstruction(fig, ax, image, image4error, num_cells_per_dim, model, s
 
 
 @perplex_plot(group_by="models")
-def plot_h_convergence(fig, ax, num_cells_per_dim, error, models,
+def plot_h_convergence(fig, ax, num_cells_per_dim, models, error_l1, error_linf, error="l1",
                        threshold=1.0 / np.sqrt(1000), rateonly=None, *args, **kwargs):
-    error = np.array(error)
+    error = np.array(error_l1 if error == "l1" else error_linf)
     name = f"{names_dict[str(models)]}"
     h = 1.0 / np.array(num_cells_per_dim)
     if rateonly is None or models in rateonly:
@@ -563,12 +565,11 @@ def quadratic_obera_ml_params():
         "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 2,
         stencil_creator=StencilCreatorFixedShape(kernel_quadratics_ml_model.dataset_manager.kernel_size),
         reconstruction_error_measure=ReconstructionErrorMeasureML(
-            ml_model=kernel_quadratics_ml_model,
-            stencil_creator=StencilCreatorFixedShape(
-                kernel_quadratics_ml_model.dataset_manager.kernel_size),
+            ml_model=[kernel_quadratics_ml_model],
             metric=2,
             central_cell_extra_weight=CCExtraWeight
-        ))
+        )
+    )
 
 
 def quadratic_obera_ml_points():
@@ -579,12 +580,11 @@ def quadratic_obera_ml_points():
         "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 2,
         stencil_creator=StencilCreatorFixedShape(kernel_quadratics_points_ml_model.dataset_manager.kernel_size),
         reconstruction_error_measure=ReconstructionErrorMeasureML(
-            ml_model=kernel_quadratics_points_ml_model,
-            stencil_creator=StencilCreatorFixedShape(
-                kernel_quadratics_points_ml_model.dataset_manager.kernel_size),
+            ml_model=[kernel_quadratics_points_ml_model],
             metric=2,
             central_cell_extra_weight=CCExtraWeight
-        ))
+        )
+    )
 
 
 def quadratic_obera_ml_points_adapt():
@@ -701,10 +701,10 @@ if __name__ == "__main__":
         *list(map(fit_model,
                   [
                       piecewise_constant,
-                      elvira,
+                      # elvira,
                       elvira_w_oriented,
                       elvira_w_oriented_l1,
-                      elvira_w_oriented_ml,
+                      # elvira_w_oriented_ml,
 
                       linear_obera,
                       linear_obera_w,
@@ -713,14 +713,14 @@ if __name__ == "__main__":
 
                       linear_aero,
                       linear_aero_w,
-                      linear_aero_consistent,
+                      # linear_aero_consistent,
 
                       nn_linear,
-                      nn_quadratic_3x3,
-                      nn_quadratic_3x7,
-                      nn_quadratic_3x7_params,
+                      # nn_quadratic_3x3,
+                      # nn_quadratic_3x7,
+                      # nn_quadratic_3x7_params,
                       nn_quadratic_3x7_adapt,
-                      nn_quadratic_3x7_params_adapt,
+                      # nn_quadratic_3x7_params_adapt,
 
                       quadratic_obera_non_adaptive,
                       quadratic_obera,
@@ -736,7 +736,7 @@ if __name__ == "__main__":
                       # quadratic_aero_ref2,
                       #
                       # obera_circle,
-                      # obera_circle_vander,
+                      obera_circle_vander,
                       # obera_circle_vander_ml
                   ]
                   )),
@@ -838,18 +838,20 @@ if __name__ == "__main__":
     # ========== =========== ========== =========== #
     for group, model_color in accepted_models.items():
         models2plot = list(model_color.keys())
-        plot_h_convergence(
-            data_manager,
-            path=config.subcell_paper_figures_path,
-            name=f"HConvergence_{group}",
-            folder=group,
-            log="xy",
-            models=models2plot,
-            sort_by=["models", "h"],
-            method=lambda models: names_dict[str(models)],
-            format=".pdf",
-            rateonly=rateonly
-        )
+        for er in ["l1", "linf"]:
+            plot_h_convergence(
+                data_manager,
+                path=config.subcell_paper_figures_path,
+                name=f"HConvergence_{er}_{group}",
+                folder=group,
+                log="xy",
+                error=er,
+                models=models2plot,
+                sort_by=["models", "h"],
+                format=".pdf",
+                rateonly=rateonly
+            )
+
         generic_plot(data_manager,
                      name=f"TimeComplexityPerCellBar_{group}",
                      path=config.subcell_paper_figures_path,
@@ -869,7 +871,7 @@ if __name__ == "__main__":
                      name=f"Convergence_{group}",
                      path=config.subcell_paper_figures_path,
                      folder=group,
-                     x="N", y="error", label="models", num_cells_per_dim=num_cells_per_dim,
+                     x="N", y="error_l1", label="models", num_cells_per_dim=num_cells_per_dim,
                      plot_func=plot_convergence,
                      log="xy",
                      N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
@@ -910,10 +912,10 @@ if __name__ == "__main__":
                      )
 
         generic_plot(data_manager,
-                     name=f"TimeComplexityMSE_{group}",
+                     name=f"TimeComplexityVSError_{group}",
                      path=config.subcell_paper_figures_path,
                      folder=group,
-                     x="time", y="error", label="method", num_cells_per_dim=num_cells_per_dim,
+                     x="time", y="error_l1", label="method", num_cells_per_dim=num_cells_per_dim,
                      plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--",
                                             palette={names_dict[k]: v for k, v in model_color.items()}),
                      log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,

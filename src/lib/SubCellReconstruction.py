@@ -17,7 +17,7 @@ from lib.CellCreators.CellCreatorBase import CellBase, REGULAR_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import CellCurveBase
 from lib.CellIterators import iterate_all
 from lib.DataManagers.LearningMethodManager import LearningMethodManager
-from lib.StencilCreators import StencilCreator, Stencil
+from lib.StencilCreators import StencilCreator, Stencil, StencilCreatorFixedShape
 
 CellCreatorPipeline = namedtuple("CellCreatorPipeline",
                                  "cell_iterator orientator stencil_creator cell_creator reconstruction_error_measure",
@@ -59,14 +59,20 @@ class ReconstructionErrorMeasure(ReconstructionErrorMeasureBase):
         return np.array([proposed_cell.integrate_rectangle(rectangle=np.array([coords, coords + 1]))
                          for coords in stencil_coords])
 
-    def calculate_error(self, proposed_cell: CellBase, average_values: np.ndarray, indexer: ArrayIndexerNd,
-                        smoothness_index: np.ndarray, independent_axis=0, stencil: Stencil = None):
+    def get_stencil_coords(self, proposed_cell: CellBase, average_values: np.ndarray, indexer: ArrayIndexerNd,
+                           smoothness_index: np.ndarray, independent_axis=0, stencil: Stencil = None):
         if stencil is None:
             stencil = self.stencil_creator.get_stencil(
                 average_values=average_values, smoothness_index=smoothness_index, coords=proposed_cell.coords,
                 independent_axis=independent_axis, indexer=indexer)
         stencil_coords = self.keeping_cells_condition(stencil.coords, smoothness_index=smoothness_index,
                                                       indexer=indexer)
+        return stencil_coords
+
+    def calculate_error(self, proposed_cell: CellBase, average_values: np.ndarray, indexer: ArrayIndexerNd,
+                        smoothness_index: np.ndarray, independent_axis=0, stencil: Stencil = None):
+        stencil_coords = self.get_stencil_coords(proposed_cell, average_values, indexer,
+                                                 smoothness_index, independent_axis, stencil)
         approx_avg = self.calculate_approx_cell_avg(proposed_cell, average_values, indexer, stencil_coords)
         true_avg = np.array([average_values[indexer[coords]] for coords in stencil_coords])
         kernel_vector_error = true_avg - approx_avg
@@ -86,22 +92,35 @@ class ReconstructionErrorMeasureDefaultStencil(ReconstructionErrorMeasure):
 
 
 class ReconstructionErrorMeasureML(ReconstructionErrorMeasure):
-    def __init__(self, ml_model: LearningMethodManager, stencil_creator: StencilCreator, metric: int = 2,
+    def __init__(self, ml_model: Union[LearningMethodManager, List[LearningMethodManager]],
+                 stencil_creator: StencilCreator = None, metric: int = 2,
                  central_cell_extra_weight=0, keeping_cells_condition=keep_all_cells):
-        super().__init__(stencil_creator, metric, central_cell_extra_weight, keeping_cells_condition)
-        self.ml_model = ml_model
+        self.ml_models = ml_model if isinstance(ml_model, list) else [ml_model]
+        kernel_sizes = {model.dataset_manager.kernel_size for model in self.ml_models}
+        assert len(kernel_sizes) == 1, "All models need to have the same stencil size"
+        super().__init__(StencilCreatorFixedShape(kernel_sizes.pop()) if stencil_creator is None else stencil_creator,
+                         metric, central_cell_extra_weight, keeping_cells_condition)
+        self.curve_type2model_index = {model.trainable_model.n_features_in_: i for i, model in
+                                       enumerate(self.ml_models)}
+
+    def calculate_error(self, proposed_cell: CellBase, average_values: np.ndarray, indexer: ArrayIndexerNd,
+                        smoothness_index: np.ndarray, independent_axis=0, stencil: Stencil = None):
+        # forces the calculation of error to take the stencil predefined by the ML model.
+        return super().calculate_error(proposed_cell, average_values, indexer,
+                                       smoothness_index, independent_axis, stencil=None)
 
     def calculate_approx_cell_avg(self, proposed_cell: CellCurveBase, average_values: np.ndarray,
-                                  indexer: ArrayIndexerNd,
-                                  stencil_coords):
+                                  indexer: ArrayIndexerNd, stencil_coords):
         curve = copy.deepcopy(proposed_cell.curve)
         curve.set_y_shift(-proposed_cell.coords[proposed_cell.dependent_axis] - 0.5)
         curve.set_x_shift(-proposed_cell.coords[proposed_cell.independent_axis] - 0.5)
+        params = curve.params
 
-        if np.any(np.isnan(curve.params)):  # in case the optimization asks for out of range values (circle OBERA)
-            approx_avg = np.ones(self.ml_model.dataset_manager.kernel_size) * np.inf
+        ml_model = self.ml_models[self.curve_type2model_index[len(params)]]
+        if np.any(np.isnan(params)):  # in case the optimization asks for out of range values (circle OBERA)
+            approx_avg = np.ones(ml_model.dataset_manager.kernel_size) * np.inf
         else:
-            approx_avg = self.ml_model.predict_kernel(curve.params, reshape=True)
+            approx_avg = ml_model.predict_kernel(params, reshape=True)
             approx_avg = (1 - approx_avg) \
                 if proposed_cell.curve.value_up > proposed_cell.curve.value_down else approx_avg
             approx_avg *= (max(proposed_cell.curve.value_up, proposed_cell.curve.value_down) -
@@ -302,18 +321,22 @@ class SubCellReconstruction:
                                     if proposed_cell_reconstruction_error == np.inf:
                                         proposed_cell_reconstruction_error = reconstruction_error_measure.calculate_error(
                                             proposed_cell, average_values, indexer, smoothness_index, independent_axis,
-                                            stencil)
+                                            # stencil
+                                        )
 
                                     # ---------- Deciding which cell to keep ---------- #
                                     # if some other cell has been put there then compare
                                     if coords.tuple in self.stencils:
                                         # if it has never been calculated or the stencil used is different from the current
-                                        if np.isinf(reconstruction_error[coords.tuple]) or set(
-                                                list(map(tuple, stencil.coords.tolist()))) != set(
-                                            self.stencils[coords.tuple]):
+                                        if np.isinf(reconstruction_error[coords.tuple]):
+                                            #     or set(list(map(tuple, stencil.coords.tolist()))) != set(
+                                            # self.stencils[coords.tuple]))\
+                                            #     :
                                             old_cell_reconstruction_error = reconstruction_error_measure.calculate_error(
                                                 self.cells[coords.tuple], average_values, indexer, smoothness_index,
-                                                independent_axis, stencil)
+                                                independent_axis,
+                                                # stencil
+                                            )
                                         else:
                                             old_cell_reconstruction_error = reconstruction_error[coords.tuple]
 

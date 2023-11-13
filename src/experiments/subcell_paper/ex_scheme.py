@@ -9,13 +9,11 @@ from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import generic_plot, one_line_iterator, perplex_plot
-from experiments.MLTraining.ml_flux import flux_lines_ml_model, flux_quadratics_ml_model, \
-    flux_lines_and_quadratics_ml_model
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, plot_cells_identity, \
     plot_cells_vh_classification_core, plot_cells_not_regular_classification_core, plot_curve_core
 from experiments.subcell_paper.global_params import cpink, corange, cyellow, \
     cblue, cgreen, runsinfo, EVALUATIONS, cpurple, cred, ccyan, cgray
-from experiments.subcell_paper.models2compare import nn_flux, ml_vql, qelvira, upwind
+from experiments.subcell_paper.models2compare import qelvira, upwind, qelvira_kml
 from experiments.subcell_paper.tools import calculate_averages_from_image, load_image, \
     reconstruct, singular_cells_mask, get_reconstruction_error
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
@@ -38,7 +36,7 @@ names_dict = {
     "nn_fluxlines": "NN Flux Lines",
     "nn_fluxquadratics": "NN Flux Quadratics",
     "nn_fluxlinesquadratics": "NN Flux Lines-Quadratics",
-    "ml_qelvira": "ML ELVIRA AERO-Quadratic",
+    "qelvira_kml": "ML-Kernel ELVIRA AERO-Quadratic",
     "ml_vql": "ML ELVIRA AERO-Quadratic Vertex",
 }
 model_color = {
@@ -50,7 +48,7 @@ model_color = {
     "qelvira": cred,
     "aero_qelvira_vertex": cgreen,
     "aero_qelvira_vertex45": ccyan,
-    "ml_qelvira": cgray,
+    "qelvira_kml": cgray,
     "nn_fluxlines": "forestgreen",
     "nn_fluxquadratics": corange,
     "nn_fluxlinesquadratics": ccyan,
@@ -207,7 +205,7 @@ scheme_reconstruction_error = lambda true_reconstruction, reconstruction, recons
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.results_path,
-        name='Schemes_NN2',
+        name='Schemes',
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
@@ -224,14 +222,15 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "models",
         *map(fit_model, [
-            # upwind,
-            # # # elvira_oriented,
-            # # elvira,
-            # # aero_linear,
-            # # # aero_linear_oriented,
-            # # quadratic,
-            # qelvira,
-            # # # quadratic_oriented,
+            upwind,
+            # # elvira_oriented,
+            # elvira,
+            # aero_linear,
+            # # aero_linear_oriented,
+            # quadratic,
+            qelvira,
+            qelvira_kml,
+            # # quadratic_oriented,
             # # aero_lq,
             # # aero_qelvira_vertex,
             # # NamedPartial(aero_qelvira_vertex, angle_threshold=45).add_sufix_to_name(45),
@@ -239,9 +238,9 @@ if __name__ == "__main__":
             # NamedPartial(nn_flux, learning_manager=flux_lines_ml_model).add_sufix_to_name("lines"),
             # NamedPartial(nn_flux, learning_manager=flux_quadratics_ml_model).add_sufix_to_name("quadratics"),
             # NamedPartial(nn_flux, learning_manager=flux_lines_and_quadratics_ml_model).add_sufix_to_name("linesquadratics"),
-            ml_vql,
+            # ml_vql,
         ]),
-        recalculate=True
+        recalculate=False
     )
 
     ntimes = 20
@@ -259,9 +258,9 @@ if __name__ == "__main__":
             # "yoda.jpg",
             # "DarthVader.jpeg",
             "Ellipsoid_1680x1680.jpg",
-            # "ShapesVertex_1680x1680.jpg",
+            "ShapesVertex_1680x1680.jpg",
             # "HandVertex_1680x1680.jpg",
-            "Polygon_1680x1680.jpg",
+            # "Polygon_1680x1680.jpg",
         ],
         reconstruction_factor=[5],
         # reconstruction_factor=[1],
