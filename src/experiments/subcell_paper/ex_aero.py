@@ -1,5 +1,6 @@
 import operator
 import time
+from collections import OrderedDict, namedtuple
 from functools import partial
 from itertools import chain
 
@@ -45,51 +46,64 @@ from lib.SubCellReconstruction import SubCellReconstruction, ReconstructionError
 # ========== =========== ========== =========== #
 #               Models for paper                #
 # ========== =========== ========== =========== #
+PlotStyle = namedtuple("PlotStyle", "color marker linestyle", defaults=["black", "o", "--"])
+
 accepted_models = {
-    "LinearModels": {
-        # "nn_linear": cgreen,
-        "elvira": cred,
-        "elvira_w_oriented": corange,
-        "elvira_w_oriented_l1": cbrown,
-        "linear_obera": cblue,
-        "linear_obera_w": cpurple,
-        "linear_obera_w_l2": ccyan,
-        "linear_aero": cgray,
-        "linear_aero_w": cgreen,
-        "linear_aero_consistent": cpink
-    },
-    "HighOrderModels": {
-        "piecewise_constant": cpink,
-        "elvira_w_oriented": corange,
-        "quadratic_obera_non_adaptive": cred,
-        "quadratic_aero": cgreen,
-        "cubic_aero": cblue,
-        "quartic_aero": cpurple,
-        "obera_circle": cbrown,
-        "obera_circle_vander": cyellow,
-    },
-    "MLLinear": {
-        "elvira_w_oriented": corange,
-        "elvira_w_oriented_ml": cred,
-        "nn_linear": cgreen,
-        "linear_obera_w_ml": cblue,
-        "linear_obera_w": cpurple,
-    },
-    "MLQuadratic": {
-        "quadratic_obera_non_adaptive": cred,
+    "LinearModels": OrderedDict([
+        ("elvira", PlotStyle(color=cred)),
+        ("elvira_w_oriented", PlotStyle(color=corange)),
+        ("elvira_w_oriented_l1", PlotStyle(color=cbrown)),
+        ("linear_obera", PlotStyle(color=cblue)),
+        ("linear_obera_w", PlotStyle(color=cpurple)),
+        ("linear_obera_w_l2", PlotStyle(color=ccyan)),
+        ("linear_aero", PlotStyle(color=cgray)),
+        ("linear_aero_w", PlotStyle(color=cgreen)),
+        ("linear_aero_consistent", PlotStyle(color=cpink)),
+    ]),
+    "HighOrderModels": OrderedDict([
+        ("piecewise_constant", PlotStyle(color=cpink)),
 
-        "quadratic_obera_ml_params": corange,
-        "quadratic_obera_ml_points_adapt": cpink,
-        "quadratic_obera_ml_points": ccyan,
+        ("elvira_w_oriented", PlotStyle(color=corange)),
+        ("linear_obera_w", PlotStyle(color=corange, marker=".", linestyle=":")),
 
-        "quadratic_aero": cgreen,
+        # ("quadratic_obera_non_adaptive_l1", PlotStyle(color=cbrown)),
+        ("quadratic_aero", PlotStyle(color=cgreen)),
+        # ("quadratic_obera_non_adaptive", PlotStyle(color=cred)),
+        ("quadratic_obera_non_adaptive", PlotStyle(color=cgreen, marker=".", linestyle=":")),
+        # ("quadratic_obera", PlotStyle(color=cred, marker=".", linestyle=":")),
+        # ("quadratic_obera_l1", PlotStyle(color=cgray, marker=".", linestyle=":")),
 
-        "nn_quadratic_3x3": cgray,
-        "nn_quadratic_3x7": cyellow,
-        "nn_quadratic_3x7_params": cblue,
-        "nn_quadratic_3x7_adapt": cbrown,
-        "nn_quadratic_3x7_params_adapt": cpurple,
-    }
+        ("cubic_aero", PlotStyle(color=cblue)),
+        # ("cubic_obera", PlotStyle(color=cblue, marker=".", linestyle=":")),
+
+        ("quartic_aero", PlotStyle(color=cpurple)),
+        # ("quartic_obera", PlotStyle(color=cpurple, marker=".", linestyle=":")),
+
+        # ("obera_circle", PlotStyle(color=cbrown)),
+        ("obera_circle_vander", PlotStyle(color=cyellow)),
+    ]),
+    "MLLinear": OrderedDict([
+        ("elvira_w_oriented", PlotStyle(color=corange)),
+        ("elvira_w_oriented_ml", PlotStyle(color=cred)),
+        ("nn_linear", PlotStyle(color=cgreen)),
+        ("linear_obera_w_ml", PlotStyle(color=cblue)),
+        ("linear_obera_w", PlotStyle(color=cpurple)),
+    ]),
+    "MLQuadratic": OrderedDict([
+        ("quadratic_obera_non_adaptive", PlotStyle(color=cred)),
+
+        ("quadratic_obera_ml_params", PlotStyle(color=corange)),
+        ("quadratic_obera_ml_points_adapt", PlotStyle(color=cpink)),
+        ("quadratic_obera_ml_points", PlotStyle(color=ccyan)),
+
+        ("quadratic_aero", PlotStyle(color=cgreen)),
+
+        ("nn_quadratic_3x3", PlotStyle(color=cgray)),
+        ("nn_quadratic_3x7", PlotStyle(color=cyellow)),
+        ("nn_quadratic_3x7_params", PlotStyle(color=cblue)),
+        ("nn_quadratic_3x7_adapt", PlotStyle(color=cbrown)),
+        ("nn_quadratic_3x7_params_adapt", PlotStyle(color=cpurple)),
+    ])
 }
 
 names_dict = {
@@ -116,8 +130,10 @@ names_dict = {
     "linear_aero_consistent": "AEROS Linear Column Consistent",
     "linear_obera_w_ml": "OBERA-W Linear ML-ker l1",
 
-    "quadratic_obera_non_adaptive": "OBERA Quadratic 3x3",
-    "quadratic_obera": "OBERA Quadratic",
+    "quadratic_obera_non_adaptive": "OBERA Quadratic 3x3 l2",
+    "quadratic_obera_non_adaptive_l1": "OBERA Quadratic 3x3 l1",
+    "quadratic_obera": "OBERA Quadratic l2",
+    "quadratic_obera_l1": "OBERA Quadratic l1",
     "quadratic_obera_ml": "OBERA Quadratic ML-ker",
     "quadratic_aero": "AEROS Quadratic",
     "quadratic_obera_ml_params": "OBERA Quadratic ML-ker 3x3",
@@ -125,7 +141,10 @@ names_dict = {
     "quadratic_obera_ml_points": "OBERA Quadratic ML-ker 3x3 ReParam",
 
     "cubic_aero": "AEROS Cubic",
+    "cubic_obera": "OBERA Cubic",
+
     "quartic_aero": "AEROS Quartic",
+    "quartic_obera": "OBERA Cubic",
 
     "obera_circle": "OBERA Circle",
     "obera_circle_vander": "OBERA Circle ReParam",
@@ -300,7 +319,8 @@ def plot_reconstruction(fig, ax, image, image4error, num_cells_per_dim, model, s
 
 @perplex_plot(group_by="models")
 def plot_h_convergence(fig, ax, num_cells_per_dim, models, error_l1, error_linf, error="l1",
-                       threshold=1.0 / np.sqrt(1000), rateonly=None, *args, **kwargs):
+                       threshold=1.0 / np.sqrt(1000), rateonly=None, model_style=None, names_dict=None, *args,
+                       **kwargs):
     error = np.array(error_l1 if error == "l1" else error_linf)
     name = f"{names_dict[str(models)]}"
     h = 1.0 / np.array(num_cells_per_dim)
@@ -312,8 +332,13 @@ def plot_h_convergence(fig, ax, num_cells_per_dim, models, error_l1, error_linf,
         # ax.plot(df[x].values[valid_ix], np.sqrt(df[x].values[valid_ix]) ** rate * np.exp(origin), "-",
         #         c=model_color[method], linewidth=3, alpha=0.5)
         name = name + f": O({abs(rate):.1f})"
-    sns.lineplot(x=h, y=error, color=model_color[models], label=name, ax=ax,
-                 marker="o", linestyle="--", alpha=1)
+    order = np.argsort(h)
+    sns.lineplot(
+        x=h[order], y=error[order], label=name, ax=ax, alpha=1,
+        color=model_style[models].color if model_style is not None else None,
+        marker=model_style[models].marker if model_style is not None else None,
+        linestyle=model_style[models].linestyle if model_style is not None else None
+    )
     # ax.plot(df[x], df[y], marker=".", linestyle=":", c=model_color[method], label=name)
     ax.set_xlabel(fr"$h$")
     ax.set_ylabel(r"$||u-\tilde u ||_{L^1}$")
@@ -321,9 +346,10 @@ def plot_h_convergence(fig, ax, num_cells_per_dim, models, error_l1, error_linf,
     ax.set_yscale("log")
 
 
-def plot_convergence(data, x, y, hue, ax, threshold=np.sqrt(1000), rateonly=None, *args, **kwargs):
+def plot_convergence(data, x, y, hue, ax, threshold=np.sqrt(1000), rateonly=None, model_style=None, names_dict=None,
+                     *args, **kwargs):
     # sns.scatterplot(data=data, x=x, y=y, hue=label, ax=ax)
-    for method, df in data.groupby(hue):
+    for method, df in data.groupby(hue, sort=False):
         name = f"{names_dict[str(method)]}"
         if rateonly is None or method in rateonly:
             hinv = np.sqrt(df[x].values)
@@ -334,8 +360,12 @@ def plot_convergence(data, x, y, hue, ax, threshold=np.sqrt(1000), rateonly=None
             # ax.plot(df[x].values[valid_ix], np.sqrt(df[x].values[valid_ix]) ** rate * np.exp(origin), "-",
             #         c=model_color[method], linewidth=3, alpha=0.5)
             name = name + f": O({abs(rate):.1f})"
-        sns.lineplot(x=df[x], y=df[y], color=model_color[method], label=name, ax=ax,
-                     marker="o", linestyle="--", alpha=1)
+        sns.lineplot(
+            x=df[x], y=df[y], label=name, ax=ax, alpha=1,
+            color=model_style[method].color if model_style is not None else None,
+            marker=model_style[method].marker if model_style is not None else None,
+            linestyle=model_style[method].linestyle if model_style is not None else None,
+        )
         # ax.plot(df[x], df[y], marker=".", linestyle=":", c=model_color[method], label=name)
     ax.set_xlabel(fr"${{{x}}}$")
     ax.set_ylabel(r"$||u-\tilde u ||_{L^1}$")
@@ -549,11 +579,26 @@ def quadratic_obera_non_adaptive():
         "QuadraticOptNonAdaptive", OBERA_ITERS, CCExtraWeight, 2)
 
 
+def quadratic_obera_non_adaptive_l1():
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveVandermondePolynomial, degree=2, ccew=CCExtraWeight)), 1,
+        "QuadraticOptNonAdaptive", OBERA_ITERS, CCExtraWeight, 1)
+
+
 def quadratic_obera():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator,
                 vander_curve=partial(CurveVandermondePolynomial, degree=2, ccew=CCExtraWeight)), 1,
         "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 2,
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3))
+
+
+def quadratic_obera_l1():
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveVandermondePolynomial, degree=2, ccew=CCExtraWeight)), 1,
+        "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 1,
         stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3))
 
 
@@ -627,12 +672,30 @@ def cubic_aero():
         stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=5))
 
 
+def cubic_obera():
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveVandermondePolynomial, degree=3, ccew=CCExtraWeight)), 1,
+        "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 2,
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=5))
+
+
 def quartic_aero():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator,
                 vander_curve=partial(CurveAveragePolynomial, degree=4, ccew=CCExtraWeight)), 1,
         "QuadraticAvg", 0, CCExtraWeight, 2,
-        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=5))
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=5)
+    )
+
+
+def quartic_obera():
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveVandermondePolynomial, degree=4, ccew=CCExtraWeight)), 1,
+        "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 2,
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=5)
+    )
 
 
 def quadratic_aero_ref2():
@@ -683,7 +746,7 @@ if __name__ == "__main__":
         trackCO2=True,
         country_alpha_code="FR"
     )
-    data_manager.load()
+    # data_manager.load()
 
     lab = LabPipeline()
     lab.define_new_block_of_functions(
@@ -723,14 +786,19 @@ if __name__ == "__main__":
                       # nn_quadratic_3x7_params_adapt,
 
                       quadratic_obera_non_adaptive,
+                      quadratic_obera_non_adaptive_l1,
                       quadratic_obera,
+                      quadratic_obera_l1,
                       quadratic_obera_ml_params,
                       # quadratic_obera_ml_points_adapt,
                       quadratic_obera_ml_points,
                       quadratic_aero,
 
                       cubic_aero,
+                      cubic_obera,
+
                       quartic_aero,
+                      quartic_obera,
 
                       # elvira_go100_ref2,
                       # quadratic_aero_ref2,
@@ -742,9 +810,8 @@ if __name__ == "__main__":
                   )),
         recalculate=False
     )
-    # num_cells_per_dim = np.logspace(np.log10(10), np.log10(100), num=20, dtype=int).tolist()[5:10]
+    # num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=20, dtype=int).tolist()[:1]
     num_cells_per_dim = np.logspace(np.log10(20), np.log10(100), num=20, dtype=int).tolist()
-    # num_cells_per_dim = np.logspace(np.log10(20), np.log10(500), num=30, dtype=int).tolist()
     num_cells_per_dim = np.logspace(np.log10(10), np.log10(20), num=5, dtype=int,
                                     endpoint=False).tolist() + num_cells_per_dim
     lab.execute(
@@ -836,8 +903,10 @@ if __name__ == "__main__":
     # ========== =========== ========== =========== #
     #               Experiment Plots                #
     # ========== =========== ========== =========== #
-    for group, model_color in accepted_models.items():
-        models2plot = list(model_color.keys())
+    for group, model_style in accepted_models.items():
+        models2plot = list(model_style.keys())
+        palette = {names_dict[k]: v.color for k, v in model_style.items()}
+
         for er in ["l1", "linf"]:
             plot_h_convergence(
                 data_manager,
@@ -847,39 +916,44 @@ if __name__ == "__main__":
                 log="xy",
                 error=er,
                 models=models2plot,
-                sort_by=["models", "h"],
+                model_style=model_style,
+                names_dict=names_dict,
+                sorted_models=lambda models: models2plot.index(models),
+                sort_by=["sorted_models"],
                 format=".pdf",
-                rateonly=rateonly
+                rateonly=rateonly,
             )
-
-        generic_plot(data_manager,
-                     name=f"TimeComplexityPerCellBar_{group}",
-                     path=config.subcell_paper_figures_path,
-                     folder=group,
-                     x="method", y="time", num_cells_per_dim=num_cells_per_dim,
-                     plot_func=NamedPartial(sns.boxenplot,
-                                            palette={names_dict[k]: v for k, v in model_color.items()}),
-                     log="y",
-                     time=curve_cells_fitting_times,
-                     N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                     models=models2plot,
-                     method=lambda models: names_dict[str(models)],
-                     format=".pdf"
-                     )
 
         generic_plot(data_manager,
                      name=f"Convergence_{group}",
                      path=config.subcell_paper_figures_path,
                      folder=group,
                      x="N", y="error_l1", label="models", num_cells_per_dim=num_cells_per_dim,
-                     plot_func=plot_convergence,
+                     plot_func=NamedPartial(plot_convergence, model_style=model_style, names_dict=names_dict),
                      log="xy",
                      N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                      models=models2plot,
-                     sort_by=["models", "N"],
                      method=lambda models: names_dict[str(models)],
+                     names_dict=names_dict,
+                     sorted_models=lambda models: models2plot.index(models),
+                     sort_by=['sorted_models'],
                      format=".pdf",
-                     # rateonly=rateonly
+                     )
+
+        generic_plot(data_manager,
+                     name=f"TimeComplexityPerCellBar_{group}",
+                     path=config.subcell_paper_figures_path,
+                     folder=group,
+                     x="method", y="time", num_cells_per_dim=num_cells_per_dim,
+                     plot_func=NamedPartial(sns.boxenplot, palette=palette),
+                     log="y",
+                     time=curve_cells_fitting_times,
+                     N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                     models=models2plot,
+                     method=lambda models: names_dict[str(models)],
+                     sorted_models=lambda models: models2plot.index(models),
+                     sort_by=["sorted_models"],
+                     format=".pdf"
                      )
 
         generic_plot(data_manager,
@@ -887,13 +961,14 @@ if __name__ == "__main__":
                      path=config.subcell_paper_figures_path,
                      folder=group,
                      x="N", y="time", label="method", num_cells_per_dim=num_cells_per_dim,
-                     plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--",
-                                            palette={names_dict[k]: v for k, v in model_color.items()}),
+                     plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--", palette=palette),
                      log="xy",
                      time=lambda time_to_fit: time_to_fit,
                      N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                      models=models2plot,
                      method=lambda models: names_dict[str(models)],
+                     sorted_models=lambda models: models2plot.index(models),
+                     sort_by=['sorted_models'],
                      format=".pdf"
                      )
         generic_plot(data_manager,
@@ -901,13 +976,14 @@ if __name__ == "__main__":
                      path=config.subcell_paper_figures_path,
                      folder=group,
                      x="N", y="time", label="method", num_cells_per_dim=num_cells_per_dim,
-                     plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--",
-                                            palette={names_dict[k]: v for k, v in model_color.items()}),
+                     plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--", palette=palette),
                      log="xy",
                      time=curve_cells_fitting_times,
                      N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                      models=models2plot,
                      method=lambda models: names_dict[str(models)],
+                     sorted_models=lambda models: models2plot.index(models),
+                     sort_by=['sorted_models'],
                      format=".pdf"
                      )
 
@@ -916,17 +992,18 @@ if __name__ == "__main__":
                      path=config.subcell_paper_figures_path,
                      folder=group,
                      x="time", y="error_l1", label="method", num_cells_per_dim=num_cells_per_dim,
-                     plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--",
-                                            palette={names_dict[k]: v for k, v in model_color.items()}),
+                     plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--", palette=palette),
                      log="xy", time=lambda time_to_fit: time_to_fit, N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                      models=models2plot,
                      method=lambda models: names_dict[str(models)],
+                     sorted_models=lambda models: models2plot.index(models),
+                     sort_by=['sorted_models'],
                      format=".pdf"
                      )
 
     num_cells_per_dim_2plot = [num_cells_per_dim[0], num_cells_per_dim[5], num_cells_per_dim[10]]
-    for group, model_color in accepted_models.items():
-        models2plot = list(model_color.keys())
+    for group, model_style in accepted_models.items():
+        models2plot = list(model_style.keys())
         plot_reconstruction(
             data_manager,
             folder=group,
