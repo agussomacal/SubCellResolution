@@ -63,7 +63,7 @@ def fit_model(sub_cell_model):
     return decorated_func
 
 
-@perplex_plot()
+@perplex_plot(legend=False)
 @one_line_iterator
 def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction, alpha=0.5, plot_original_image=True,
                         difference=False, plot_curve=True, plot_curve_winner=False, plot_vh_classification=True,

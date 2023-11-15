@@ -48,7 +48,7 @@ def experiment(image, num_cells_per_dim, angle_threshold, method="optim", kernel
     }
 
 
-@perplex_plot()
+@perplex_plot(legend=False)
 @one_line_iterator
 def plot_orientation(fig, ax, image, num_cells_per_dim, orientations,
                      alpha=0.5, cmap="Greys_r", trim=((0, 0), (0, 0)), numbers_on=True):
@@ -79,6 +79,11 @@ def plot_orientation(fig, ax, image, num_cells_per_dim, orientations,
     ax.set_xlim((-0.5 + trim[0][0], mesh_shape[0] - trim[0][1] - 0.5))
     ax.set_ylim((mesh_shape[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
 
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    ax.get_xaxis().set_ticks([])
+    ax.get_yaxis().set_ticks([])
+
 
 if __name__ == "__main__":
     data_manager = DataManager(
@@ -102,14 +107,15 @@ if __name__ == "__main__":
         num_cores=15,
         forget=False,
         save_on_iteration=None,
-        num_cells_per_dim=[10, 15, 20, 28, 30, 42],  # 60
+        num_cells_per_dim=[5, 10, 15, 20, 28, 30, 42],  # 60
         image=[
             # "yoda.jpg",
             # "DarthVader.jpeg",
-            "Ellipsoid_1680x1680.jpg",
-            "ShapesVertex_1680x1680.jpg",
-            "HandVertex_1680x1680.jpg",
-            "Polygon_1680x1680.jpg",
+            "mafalda.jpg",
+            # "Ellipsoid_1680x1680.jpg",
+            # "ShapesVertex_1680x1680.jpg",
+            # "HandVertex_1680x1680.jpg",
+            # "Polygon_1680x1680.jpg",
         ],
         angle_threshold=[
             30,
@@ -120,29 +126,42 @@ if __name__ == "__main__":
             (3, 3),
         ]
     )
-    lab.execute(
+    # lab.execute(
+    #     data_manager,
+    #     num_cores=15,
+    #     forget=False,
+    #     save_on_iteration=None,
+    #     num_cells_per_dim=[10, 15, 20, 28, 30, 42],  # 60
+    #     image=[
+    #         # "yoda.jpg",
+    #         # "DarthVader.jpeg",
+    #         "Ellipsoid_1680x1680.jpg",
+    #         "ShapesVertex_1680x1680.jpg",
+    #         "HandVertex_1680x1680.jpg",
+    #         "Polygon_1680x1680.jpg",
+    #     ],
+    #     angle_threshold=[
+    #         30,
+    #         45
+    #     ],
+    #     method=["optim"],
+    #     kernel_size=[
+    #         (3, 3),
+    #         (5, 5)
+    #     ]
+    # )
+    plot_orientation(
         data_manager,
-        num_cores=15,
-        forget=False,
-        save_on_iteration=None,
-        num_cells_per_dim=[10, 15, 20, 28, 30, 42],  # 60
-        image=[
-            # "yoda.jpg",
-            # "DarthVader.jpeg",
-            "Ellipsoid_1680x1680.jpg",
-            "ShapesVertex_1680x1680.jpg",
-            "HandVertex_1680x1680.jpg",
-            "Polygon_1680x1680.jpg",
-        ],
-        angle_threshold=[
-            30,
-            45
-        ],
-        method=["optim"],
-        kernel_size=[
-            (3, 3),
-            (5, 5)
-        ]
+        path=config.subcell_paper_figures_path,
+        method="sobel",
+        num_cells_per_dim=[5, 20],
+        image="mafalda.jpg",
+        angle_threshold=45,
+        alpha=0.5,
+        plot_by=["num_cells_per_dim"],
+        format=".pdf",
+        # trim=((1, 1), (1, 1)),
+        numbers_on=False,
     )
 
     generic_plot(
