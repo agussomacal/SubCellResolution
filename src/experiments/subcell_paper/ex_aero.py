@@ -74,6 +74,7 @@ accepted_models = {
         # ("quadratic_obera_l1", PlotStyle(color=cgray, marker=".", linestyle=":")),
 
         ("cubic_aero", PlotStyle(color=cblue)),
+        ("cubic_aero_stencil4", PlotStyle(color=cgray)),
         # ("cubic_obera", PlotStyle(color=cblue, marker=".", linestyle=":")),
 
         ("quartic_aero", PlotStyle(color=cpurple)),
@@ -140,11 +141,12 @@ names_dict = {
     "quadratic_obera_ml_points_adapt": "OBERA Quadratic ML-ker 3x3 ReParam Adapt S",
     "quadratic_obera_ml_points": "OBERA Quadratic ML-ker 3x3 ReParam",
 
-    "cubic_aero": "AEROS Cubic",
+    "cubic_aero": "AEROS Cubic 5cols",
+    "cubic_aero_stencil4": "AEROS Cubic",
     "cubic_obera": "OBERA Cubic",
 
     "quartic_aero": "AEROS Quartic",
-    "quartic_obera": "OBERA Cubic",
+    "quartic_obera": "OBERA Quartic",
 
     "obera_circle": "OBERA Circle",
     "obera_circle_vander": "OBERA Circle ReParam",
@@ -313,8 +315,12 @@ def plot_reconstruction(fig, ax, image, image4error, num_cells_per_dim, model, s
         prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
     )
 
-    ax.set_xlim((-0.5 + trim[0][0] * model.resolution[0], model.resolution[0] * trim[0][1] - 0.5))
-    ax.set_ylim((model.resolution[1] * trim[1][0] - 0.5, model.resolution[1] * trim[1][1] - 0.5))
+    if np.max(np.ravel(trim)) > 1:  # if we specify the cells
+        ax.set_xlim((-0.5 + trim[0][0], trim[0][1] - 0.5))
+        ax.set_ylim((trim[1][0] - 0.5, trim[1][1] - 0.5))
+    else:  # if we specify a percentage of cut off
+        ax.set_xlim((-0.5 + trim[0][0] * model.resolution[0], model.resolution[0] * trim[0][1] - 0.5))
+        ax.set_ylim((model.resolution[1] * trim[1][0] - 0.5, model.resolution[1] * trim[1][1] - 0.5))
 
 
 @perplex_plot(group_by="models")
@@ -672,6 +678,14 @@ def cubic_aero():
         stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=5))
 
 
+def cubic_aero_stencil4():
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveAveragePolynomial, degree=3, ccew=CCExtraWeight)), 1,
+        "QuadraticAvg", 0, CCExtraWeight, 2,
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=4))
+
+
 def cubic_obera():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator,
@@ -795,6 +809,7 @@ if __name__ == "__main__":
                       quadratic_aero,
 
                       cubic_aero,
+                      cubic_aero_stencil4,
                       cubic_obera,
 
                       quartic_aero,
@@ -910,7 +925,6 @@ if __name__ == "__main__":
         for er in ["l1", "linf"]:
             plot_h_convergence(
                 data_manager,
-                path=config.subcell_paper_figures_path,
                 name=f"HConvergence_{er}_{group}",
                 folder=group,
                 log="xy",
@@ -920,13 +934,12 @@ if __name__ == "__main__":
                 names_dict=names_dict,
                 sorted_models=lambda models: models2plot.index(models),
                 sort_by=["sorted_models"],
-                format=".pdf",
+                # format=".pdf",
                 rateonly=rateonly,
             )
 
         generic_plot(data_manager,
                      name=f"Convergence_{group}",
-                     path=config.subcell_paper_figures_path,
                      folder=group,
                      x="N", y="error_l1", label="models", num_cells_per_dim=num_cells_per_dim,
                      plot_func=NamedPartial(plot_convergence, model_style=model_style, names_dict=names_dict),
@@ -942,7 +955,6 @@ if __name__ == "__main__":
 
         generic_plot(data_manager,
                      name=f"TimeComplexityPerCellBar_{group}",
-                     path=config.subcell_paper_figures_path,
                      folder=group,
                      x="method", y="time", num_cells_per_dim=num_cells_per_dim,
                      plot_func=NamedPartial(sns.boxenplot, palette=palette),
@@ -953,12 +965,11 @@ if __name__ == "__main__":
                      method=lambda models: names_dict[str(models)],
                      sorted_models=lambda models: models2plot.index(models),
                      sort_by=["sorted_models"],
-                     format=".pdf"
+                     # format=".pdf"
                      )
 
         generic_plot(data_manager,
                      name=f"TimeComplexity_{group}",
-                     path=config.subcell_paper_figures_path,
                      folder=group,
                      x="N", y="time", label="method", num_cells_per_dim=num_cells_per_dim,
                      plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--", palette=palette),
@@ -969,11 +980,10 @@ if __name__ == "__main__":
                      method=lambda models: names_dict[str(models)],
                      sorted_models=lambda models: models2plot.index(models),
                      sort_by=['sorted_models'],
-                     format=".pdf"
+                     # format=".pdf"
                      )
         generic_plot(data_manager,
                      name=f"TimeComplexityPerCell_{group}",
-                     path=config.subcell_paper_figures_path,
                      folder=group,
                      x="N", y="time", label="method", num_cells_per_dim=num_cells_per_dim,
                      plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--", palette=palette),
@@ -984,12 +994,11 @@ if __name__ == "__main__":
                      method=lambda models: names_dict[str(models)],
                      sorted_models=lambda models: models2plot.index(models),
                      sort_by=['sorted_models'],
-                     format=".pdf"
+                     # format=".pdf"
                      )
 
         generic_plot(data_manager,
                      name=f"TimeComplexityVSError_{group}",
-                     path=config.subcell_paper_figures_path,
                      folder=group,
                      x="time", y="error_l1", label="method", num_cells_per_dim=num_cells_per_dim,
                      plot_func=NamedPartial(sns.lineplot, marker="o", linestyle="--", palette=palette),
@@ -998,7 +1007,7 @@ if __name__ == "__main__":
                      method=lambda models: names_dict[str(models)],
                      sorted_models=lambda models: models2plot.index(models),
                      sort_by=['sorted_models'],
-                     format=".pdf"
+                     # format=".pdf"
                      )
 
     num_cells_per_dim_2plot = [num_cells_per_dim[0], num_cells_per_dim[5], num_cells_per_dim[10]]
