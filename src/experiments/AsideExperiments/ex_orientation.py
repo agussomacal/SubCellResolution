@@ -1,4 +1,6 @@
+import itertools
 import operator
+from typing import List
 
 import numpy as np
 
@@ -22,8 +24,8 @@ names_dict = {
     "y": "Y independent",
     "mixed": "Mixed",
 }
-orientation_colors = [cgreen, cblue, cred]
-orient_names = ["X independent", "Y independent", "Mixed"]
+ORIENTATION_COLORS = [cgreen, cblue, cred]
+ORIENT_NAMES = ["X independent", "Y independent", "Mixed"]
 
 
 # ========== ========== Experiment definitions ========== ========== #
@@ -51,7 +53,8 @@ def experiment(image, num_cells_per_dim, angle_threshold, method="optim", kernel
 @perplex_plot(legend=False)
 @one_line_iterator
 def plot_orientation(fig, ax, image, num_cells_per_dim, orientations,
-                     alpha=0.5, cmap="Greys_r", trim=((0, 0), (0, 0)), numbers_on=True):
+                     alpha=0.5, cmap="Greys_r", trim=((0, 0), (0, 0)), numbers_on=True,
+                     specific_cells: List[SpecialCellsPlotTuple] = []):
     image = load_image(image)
     mesh_shape = (num_cells_per_dim, num_cells_per_dim)
     plot_cells(ax, colors=image, mesh_shape=mesh_shape, alpha=alpha, cmap=cmap,
@@ -60,14 +63,21 @@ def plot_orientation(fig, ax, image, num_cells_per_dim, orientations,
     directions = [[], [], []]
     for c, o in orientations.items():
         directions[o - 1].append(c)
+    special_coords = set(itertools.chain(*[sc.indexes for sc in specific_cells]))
     plot_specific_cells(
         ax=ax,
         mesh_shape=mesh_shape,
         special_cells=[
-            SpecialCellsPlotTuple(name=name, indexes=coords,
+            SpecialCellsPlotTuple(name=name, indexes=set(coords).difference(special_coords),
                                   color=color, alpha=alpha) for name, color, coords in
-            zip(orient_names, orientation_colors, directions)
+            zip(ORIENT_NAMES, ORIENTATION_COLORS, directions)
         ],
+        rectangle_mode=False)
+
+    plot_specific_cells(
+        ax=ax,
+        mesh_shape=mesh_shape,
+        special_cells=specific_cells,
         rectangle_mode=False)
 
     draw_cell_borders(
@@ -101,17 +111,18 @@ if __name__ == "__main__":
         experiment,
         recalculate=False
     )
-
+    num_cells_per_dim = [5, 10, 15, 20, 28, 30, 42]  # 60
     lab.execute(
         data_manager,
         num_cores=15,
         forget=False,
         save_on_iteration=None,
-        num_cells_per_dim=[5, 10, 15, 20, 28, 30, 42],  # 60
+        num_cells_per_dim=num_cells_per_dim,  # 60
         image=[
             # "yoda.jpg",
             # "DarthVader.jpeg",
-            "mafalda.jpg",
+            "batata.jpg",
+            # "mafalda.jpg",
             # "Ellipsoid_1680x1680.jpg",
             # "ShapesVertex_1680x1680.jpg",
             # "HandVertex_1680x1680.jpg",
@@ -154,23 +165,56 @@ if __name__ == "__main__":
         data_manager,
         path=config.subcell_paper_figures_path,
         method="sobel",
-        num_cells_per_dim=[5, 20],
-        image="mafalda.jpg",
+        num_cells_per_dim=10,
+        image="batata.jpg",
         angle_threshold=45,
         alpha=0.5,
-        plot_by=["num_cells_per_dim"],
         format=".pdf",
+        plot_by=["num_cells_per_dim"],
         # trim=((1, 1), (1, 1)),
-        numbers_on=False,
+        numbers_on=True,
+        specific_cells=[SpecialCellsPlotTuple(name="SpecialCell", indexes=[(7, 8)],
+                                              color=cred, alpha=0.5)]
     )
 
-    generic_plot(
+    plot_orientation(
         data_manager,
-        x="num_cells_per_dim", y="prop_mixed_cells", label="orientator",
-        orientator=lambda kernel_size, angle_threshold, method: f"{method}: {kernel_size} - {angle_threshold}º",
-        prop_mixed_cells=lambda orientations, num_singular_cells: list(orientations.values()).count(
-            3) / num_singular_cells,
-        axes_by=["image"]
+        path=config.subcell_paper_figures_path,
+        method="sobel",
+        num_cells_per_dim=30,
+        image="batata.jpg",
+        angle_threshold=45,
+        alpha=0.5,
+        format=".pdf",
+        plot_by=["num_cells_per_dim"],
+        # trim=((1, 1), (1, 1)),
+        numbers_on=True,
+        # specific_cells=[SpecialCellsPlotTuple(name="SpecialCell", indexes=[(7, 8)],
+        #                                       color=cred, alpha=0.5)]
     )
-    plot_orientation(data_manager, axes_by=["angle_threshold", "kernel_size", "method"],
-                     plot_by=["image", "num_cells_per_dim"])
+
+    # plot_orientation(
+    #     data_manager,
+    #     path=config.subcell_paper_figures_path,
+    #     method="sobel",
+    #     num_cells_per_dim=num_cells_per_dim,
+    #     # image="mafalda.jpg",
+    #     image="batata.jpg",
+    #     angle_threshold=45,
+    #     alpha=0.5,
+    #     plot_by=["num_cells_per_dim"],
+    #     format=".pdf",
+    #     # trim=((1, 1), (1, 1)),
+    #     numbers_on=False,
+    # )
+    #
+    # generic_plot(
+    #     data_manager,
+    #     x="num_cells_per_dim", y="prop_mixed_cells", label="orientator",
+    #     orientator=lambda kernel_size, angle_threshold, method: f"{method}: {kernel_size} - {angle_threshold}º",
+    #     prop_mixed_cells=lambda orientations, num_singular_cells: list(orientations.values()).count(
+    #         3) / num_singular_cells,
+    #     axes_by=["image"]
+    # )
+    # plot_orientation(data_manager, axes_by=["angle_threshold", "kernel_size", "method"],
+    #                  plot_by=["image", "num_cells_per_dim"])
