@@ -129,12 +129,16 @@ if __name__ == "__main__":
             # "Polygon_1680x1680.jpg",
         ],
         angle_threshold=[
-            30,
+            # 30,
             45
         ],
-        method=["sobel"],
+        method=[
+            "sobel",
+            "optim"
+        ],
         kernel_size=[
             (3, 3),
+            (5, 5),
         ]
     )
     # lab.execute(
@@ -161,52 +165,21 @@ if __name__ == "__main__":
     #         (5, 5)
     #     ]
     # )
-    plot_orientation(
-        data_manager,
-        path=config.subcell_paper_figures_path,
-        method="sobel",
-        num_cells_per_dim=10,
-        image="batata.jpg",
-        angle_threshold=45,
-        alpha=0.5,
-        format=".pdf",
-        plot_by=["num_cells_per_dim"],
-        # trim=((1, 1), (1, 1)),
-        numbers_on=True,
-        specific_cells=[SpecialCellsPlotTuple(name="SpecialCell", indexes=[(7, 8)],
-                                              color=cred, alpha=0.5)]
-    )
 
     plot_orientation(
         data_manager,
-        path=config.subcell_paper_figures_path,
-        method="sobel",
-        num_cells_per_dim=30,
+        # method="sobel",
+        num_cells_per_dim=num_cells_per_dim,
+        # image="mafalda.jpg",
         image="batata.jpg",
         angle_threshold=45,
         alpha=0.5,
-        format=".pdf",
         plot_by=["num_cells_per_dim"],
+        axes_by=["method", "kernel_size"],
+        # format=".pdf",
         # trim=((1, 1), (1, 1)),
-        numbers_on=True,
-        # specific_cells=[SpecialCellsPlotTuple(name="SpecialCell", indexes=[(7, 8)],
-        #                                       color=cred, alpha=0.5)]
+        numbers_on=False,
     )
-
-    # plot_orientation(
-    #     data_manager,
-    #     path=config.subcell_paper_figures_path,
-    #     method="sobel",
-    #     num_cells_per_dim=num_cells_per_dim,
-    #     # image="mafalda.jpg",
-    #     image="batata.jpg",
-    #     angle_threshold=45,
-    #     alpha=0.5,
-    #     plot_by=["num_cells_per_dim"],
-    #     format=".pdf",
-    #     # trim=((1, 1), (1, 1)),
-    #     numbers_on=False,
-    # )
     #
     # generic_plot(
     #     data_manager,
