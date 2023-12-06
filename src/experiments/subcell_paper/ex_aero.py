@@ -319,8 +319,8 @@ def plot_reconstruction(fig, ax, image, image4error, num_cells_per_dim, model, s
         ax.set_xlim((-0.5 + trim[0][0], trim[0][1] - 0.5))
         ax.set_ylim((trim[1][0] - 0.5, trim[1][1] - 0.5))
     else:  # if we specify a percentage of cut off
-        ax.set_xlim((-0.5 + trim[0][0] * model.resolution[0], model.resolution[0] * trim[0][1] - 0.5))
-        ax.set_ylim((model.resolution[1] * trim[1][0] - 0.5, model.resolution[1] * trim[1][1] - 0.5))
+        ax.set_xlim((-0.5 + trim[0][0] * model_resolution[0], model_resolution[0] * trim[0][1] - 0.5))
+        ax.set_ylim((model_resolution[1] * trim[1][0] - 0.5, model_resolution[1] * trim[1][1] - 0.5))
 
 
 @perplex_plot(group_by="models")

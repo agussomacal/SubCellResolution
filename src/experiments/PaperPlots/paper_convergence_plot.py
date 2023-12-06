@@ -10,6 +10,7 @@ from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
 from PerplexityLab.visualization import generic_plot, make_data_frames, save_fig
 from experiments.MLTraining.ml_global_params import num_cores
+from experiments.VizReconstructionUtils import plot_image
 from experiments.subcell_paper.ex_aero import obtain_images, obtain_image4error, fit_model, piecewise_constant, \
     quadratic_aero, quartic_aero, PlotStyle, elvira, elvira_w_oriented, linear_obera, linear_obera_w, \
     quadratic_obera_non_adaptive, plot_convergence, plot_reconstruction
@@ -18,9 +19,9 @@ from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUN
 from experiments.subcell_paper.tools import curve_cells_fitting_times
 
 num_cells_per_dim_2plot = [10, 30]
-num_cells_per_dim = np.unique(np.logspace(np.log10(20), np.log10(100), num=20, dtype=int).tolist() +
+num_cells_per_dim = list(map(int, np.unique(np.logspace(np.log10(20), np.log10(100), num=20, dtype=int).tolist() +
                               np.logspace(np.log10(10), np.log10(20), num=5, dtype=int, endpoint=False).tolist() +
-                              num_cells_per_dim_2plot)
+                              num_cells_per_dim_2plot)))
 
 accepted_models = {
     "HighOrderModels": OrderedDict([
@@ -121,6 +122,66 @@ lab.execute(
     ],
     sub_discretization2bound_error=[SUB_CELL_DISCRETIZATION2BOUND_ERROR],
 )
+# ========== =========== ========== =========== #
+#               Experiment Plots                #
+# ========== =========== ========== =========== #
+circle_image = dmfilter(data_manager, names=["image4error"],
+                        num_cells_per_dim=[max(num_cells_per_dim)])["image4error"][0]
+with save_fig(paths=config.subcell_paper_figures_path, filename="Circle.pdf", show=False, dpi=None):
+    plot_image(circle_image, cmap="viridis", vmin=-1, vmax=1, alpha=1)
+
+circle_avg10 = dmfilter(data_manager, names=["image"], num_cells_per_dim=[10])["image"][0]
+with save_fig(paths=config.subcell_paper_figures_path, filename="CircleAvg10.pdf", show=False, dpi=None):
+    plot_image(circle_avg10, cmap="viridis", vmin=-1, vmax=1, alpha=1)
+
+circle_avg30 = dmfilter(data_manager, names=["image"], num_cells_per_dim=[30])["image"][0]
+with save_fig(paths=config.subcell_paper_figures_path, filename="CircleAvg30.pdf", show=False, dpi=None):
+    plot_image(circle_avg30, cmap="viridis", vmin=-1, vmax=1, alpha=1)
+
+for group, model_style in accepted_models.items():
+    models2plot = list(model_style.keys())
+    palette = {names_dict[k]: v.color for k, v in model_style.items()}
+
+    generic_plot(data_manager,
+                 name=f"Convergence_{group}",
+                 path=config.subcell_paper_figures_path,
+                 folder=group,
+                 x="N", y="error_l1", label="models",
+                 # num_cells_per_dim=num_cells_per_dim,
+                 plot_func=NamedPartial(plot_convergence, model_style=model_style, names_dict=names_dict),
+                 log="xy",
+                 N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
+                 models=models2plot,
+                 method=lambda models: names_dict[str(models)],
+                 names_dict=names_dict,
+                 sorted_models=lambda models: models2plot.index(models),
+                 sort_by=['sorted_models'],
+                 format=".pdf",
+                 )
+
+for group, model_style in accepted_models.items():
+    models2plot = list(model_style.keys())
+    plot_reconstruction(
+        data_manager,
+        path=config.subcell_paper_figures_path,
+        folder=group,
+        name=f"{group}",
+        axes_by=['models'],
+        models=models2plot,
+        plot_by=['num_cells_per_dim', "models"],
+        num_cells_per_dim=num_cells_per_dim_2plot,
+        axes_xy_proportions=(15, 15),
+        difference=False,
+        plot_curve=True,
+        plot_curve_winner=False,
+        plot_vh_classification=False,
+        plot_singular_cells=False,
+        plot_original_image=True,
+        numbers_on=True,
+        plot_again=True,
+        num_cores=1,
+        trim=((1 / 10, 5 / 10), (1 / 10, 5 / 10))
+    )
 
 
 # ========== =========== ========== =========== #
@@ -194,65 +255,6 @@ dfstd = next(make_data_frames(
 runsinfo.append_info(
     **{"median-" + k.replace("_", "-") + "-time": np.round(v, decimals=4) for k, v in dfstd.items()}
 )
-
-# ========== =========== ========== =========== #
-#               Experiment Plots                #
-# ========== =========== ========== =========== #
-circle_image = dmfilter(data_manager, names=["image4error"], num_cells_per_dim=max(num_cells_per_dim))["image4error"][0]
-with save_fig(paths=config.subcell_paper_figures_path, filename="Circle.pdf", show=False, dpi=None):
-    plt.imshow(circle_image, cmap="viridis", vmax=1, vmin=-1, alpha=0.8)
-    plt.minorticks_off()
-    plt.tick_params(
-        axis='both',  # changes apply to the x-axis
-        which='both',  # both major and minor ticks are affected
-        bottom=False,  # ticks along the bottom edge are off
-        top=False,  # ticks along the top edge are off
-        left=False,  # ticks along the bottom edge are off
-        right=False,  # ticks along the top edge are off
-        labelbottom=False, labeltop=False, labelleft=False, labelright=False
-    )  # labels along the bottom edge are off
-
-for group, model_style in accepted_models.items():
-    models2plot = list(model_style.keys())
-    palette = {names_dict[k]: v.color for k, v in model_style.items()}
-
-    generic_plot(data_manager,
-                 name=f"Convergence_{group}",
-                 folder=group,
-                 x="N", y="error_l1", label="models", num_cells_per_dim=num_cells_per_dim,
-                 plot_func=NamedPartial(plot_convergence, model_style=model_style, names_dict=names_dict),
-                 log="xy",
-                 N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
-                 models=models2plot,
-                 method=lambda models: names_dict[str(models)],
-                 names_dict=names_dict,
-                 sorted_models=lambda models: models2plot.index(models),
-                 sort_by=['sorted_models'],
-                 format=".pdf",
-                 )
-
-for group, model_style in accepted_models.items():
-    models2plot = list(model_style.keys())
-    plot_reconstruction(
-        data_manager,
-        folder=group,
-        name=f"{group}",
-        axes_by=['models'],
-        models=models2plot,
-        plot_by=['num_cells_per_dim', "models"],
-        num_cells_per_dim=num_cells_per_dim_2plot,
-        axes_xy_proportions=(15, 15),
-        difference=False,
-        plot_curve=True,
-        plot_curve_winner=False,
-        plot_vh_classification=False,
-        plot_singular_cells=False,
-        plot_original_image=True,
-        numbers_on=True,
-        plot_again=True,
-        num_cores=1,
-        trim=((1 / 10, 5 / 10), (1 / 10, 5 / 10))
-    )
 
 print("CO2 consumption: ", data_manager.CO2kg)
 copy_main_script_version(__file__, data_manager.path)

@@ -18,7 +18,7 @@ from collections import namedtuple
 from typing import List, Tuple
 
 import numpy as np
-from matplotlib import patches
+from matplotlib import patches, pyplot as plt
 
 from lib.AuxiliaryStructures.Constants import VERTICAL, HORIZONTAL
 
@@ -246,3 +246,17 @@ def plot_curve_core(ax, curve_cells, color=None):
             c = COLOR_CURVE if color is None else color[str(curve_cell)]
             ax.plot(*transform_points2plot(points).T, '-', c=COLOR_CURVE, alpha=1, linewidth=3.5)
             ax.plot(*transform_points2plot(points).T, '-', c=c, alpha=1, linewidth=2.5)
+
+
+def plot_image(image, cmap="viridis", vmin=-1, vmax=1, alpha=1):
+    plt.imshow(image, cmap=cmap, vmax=vmax, vmin=vmin, alpha=alpha)
+    plt.minorticks_off()
+    plt.tick_params(
+        axis='both',  # changes apply to the x-axis
+        which='both',  # both major and minor ticks are affected
+        bottom=False,  # ticks along the bottom edge are off
+        top=False,  # ticks along the top edge are off
+        left=False,  # ticks along the bottom edge are off
+        right=False,  # ticks along the top edge are off
+        labelbottom=False, labeltop=False, labelleft=False, labelright=False
+    )  # labels along the bottom edge are off
