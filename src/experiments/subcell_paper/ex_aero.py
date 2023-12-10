@@ -263,8 +263,8 @@ def fit_model(sub_cell_model):
 @one_line_iterator
 def plot_reconstruction(fig, ax, image, image4error, num_cells_per_dim, model, sub_discretization2bound_error,
                         alpha=0.5, plot_original_image=True, difference=False, plot_curve=True, plot_curve_winner=False,
-                        plot_vh_classification=True, plot_singular_cells=True, cmap="magma", trim=((0, 1), (0, 1)),
-                        numbers_on=True):
+                        plot_vh_classification=True, plot_singular_cells=True, cmap="viridis", trim=((0, 1), (0, 1)),
+                        numbers_on=True, vmin=None, vmax=None):
     """
 
     :param fig:
@@ -290,12 +290,18 @@ def plot_reconstruction(fig, ax, image, image4error, num_cells_per_dim, model, s
 
     if plot_original_image:
         plot_cells(ax, colors=image4error, mesh_shape=model_resolution, alpha=alpha, cmap="Greys_r",
-                   vmin=np.min(image4error), vmax=np.max(image4error))
+                   vmin=np.min(image4error) if vmin is None else vmin,
+                   vmax=np.max(image4error) if vmax is None else vmax)
     if difference:
-        plot_cells(ax, colors=reconstruction - image4error, mesh_shape=model_resolution, alpha=alpha, cmap=cmap,
-                   vmin=-1, vmax=1)
+        d = reconstruction - image4error
+        plot_cells(ax, colors=d, mesh_shape=model_resolution,
+                   alpha=alpha, cmap=cmap,
+                   vmin=np.min(d) if vmin is None else vmin,
+                   vmax=np.max(d) if vmax is None else vmax)
     else:
-        plot_cells(ax, colors=reconstruction, mesh_shape=model_resolution, alpha=alpha, cmap=cmap, vmin=-1, vmax=1)
+        plot_cells(ax, colors=reconstruction, mesh_shape=model_resolution, alpha=alpha, cmap=cmap,
+                   vmin=np.min(reconstruction) if vmin is None else vmin,
+                   vmax=np.max(reconstruction) if vmax is None else vmax)
 
     if plot_curve:
         if plot_curve_winner:

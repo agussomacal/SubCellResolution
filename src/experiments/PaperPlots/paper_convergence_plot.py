@@ -18,10 +18,11 @@ from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUN
     cpurple, cpink
 from experiments.subcell_paper.tools import curve_cells_fitting_times
 
-num_cells_per_dim_2plot = [10, 30]
+num_cells_per_dim_2plot = [10, 15, 30] + [14, 21, 28]
 num_cells_per_dim = list(map(int, np.unique(np.logspace(np.log10(20), np.log10(100), num=20, dtype=int).tolist() +
-                              np.logspace(np.log10(10), np.log10(20), num=5, dtype=int, endpoint=False).tolist() +
-                              num_cells_per_dim_2plot)))
+                                            np.logspace(np.log10(10), np.log10(20), num=5, dtype=int,
+                                                        endpoint=False).tolist() +
+                                            num_cells_per_dim_2plot)))
 
 accepted_models = {
     "HighOrderModels": OrderedDict([
@@ -44,11 +45,11 @@ names_dict = {
     "piecewise_constant": "Piecewise Constant",
 
     "elvira": "ELVIRA",
-    "elvira_w": "ELVIRA-W",
-    "elvira_w_oriented": "ELVIRA-W Oriented l2",
+    # "elvira_w": "ELVIRA-W",
+    "elvira_w_oriented": "ELVIRA-WO",
 
-    "linear_obera": "OBERA Linear l1",
-    "linear_obera_w": "OBERA-W Linear l1",
+    "linear_obera": "OBERA Linear",  # l1
+    "linear_obera_w": "OBERA-W Linear",  # l1
 
     "quadratic_obera_non_adaptive": "OBERA Quadratic",
     "quadratic_aero": "AEROS Quadratic",
@@ -138,6 +139,14 @@ circle_avg30 = dmfilter(data_manager, names=["image"], num_cells_per_dim=[30])["
 with save_fig(paths=config.subcell_paper_figures_path, filename="CircleAvg30.pdf", show=False, dpi=None):
     plot_image(circle_avg30, cmap="viridis", vmin=-1, vmax=1, alpha=1)
 
+# ----------- Color for model ---------- #
+for group, model_style in accepted_models.items():
+    runsinfo.append_info(
+        **{f'color-{k.replace("_", "-")}': str(np.round(v.color, decimals=2).tolist())[1:-1] for k, v in
+           model_style.items()}
+    )
+
+# ----------- Convergence ---------- #
 for group, model_style in accepted_models.items():
     models2plot = list(model_style.keys())
     palette = {names_dict[k]: v.color for k, v in model_style.items()}
@@ -157,14 +166,17 @@ for group, model_style in accepted_models.items():
                  sorted_models=lambda models: models2plot.index(models),
                  sort_by=['sorted_models'],
                  format=".pdf",
+                 axes_xy_proportions=(12, 8),
                  )
 
+# ----------- Reconstruction ---------- #
 for group, model_style in accepted_models.items():
     models2plot = list(model_style.keys())
     plot_reconstruction(
         data_manager,
         path=config.subcell_paper_figures_path,
         folder=group,
+        format=".pdf",
         name=f"{group}",
         axes_by=['models'],
         models=models2plot,
@@ -180,7 +192,9 @@ for group, model_style in accepted_models.items():
         numbers_on=True,
         plot_again=True,
         num_cores=1,
-        trim=((1 / 10, 5 / 10), (1 / 10, 5 / 10))
+        trim=((2 / 10, 5 / 10), (2 / 10, 5 / 10)),
+        cmap="viridis",
+        vmin=-1, vmax=1
     )
 
 
