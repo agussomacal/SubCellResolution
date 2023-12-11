@@ -18,11 +18,13 @@ from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUN
     cpurple, cpink
 from experiments.subcell_paper.tools import curve_cells_fitting_times
 
-num_cells_per_dim_2plot = [10, 15, 30] + [14, 21, 28]
+num_cells_per_dim_2plot_1 = [10, 15, 20, 25, 30]
+num_cells_per_dim_2plot_2 = [14, 21, 28]
+num_cells_per_dim_2plot_3 = [12, 24]
 num_cells_per_dim = list(map(int, np.unique(np.logspace(np.log10(20), np.log10(100), num=20, dtype=int).tolist() +
                                             np.logspace(np.log10(10), np.log10(20), num=5, dtype=int,
                                                         endpoint=False).tolist() +
-                                            num_cells_per_dim_2plot)))
+                                            num_cells_per_dim_2plot_1 + num_cells_per_dim_2plot_2 + num_cells_per_dim_2plot_3)))
 
 accepted_models = {
     "HighOrderModels": OrderedDict([
@@ -172,30 +174,33 @@ for group, model_style in accepted_models.items():
 # ----------- Reconstruction ---------- #
 for group, model_style in accepted_models.items():
     models2plot = list(model_style.keys())
-    plot_reconstruction(
-        data_manager,
-        path=config.subcell_paper_figures_path,
-        folder=group,
-        format=".pdf",
-        name=f"{group}",
-        axes_by=['models'],
-        models=models2plot,
-        plot_by=['num_cells_per_dim', "models"],
-        num_cells_per_dim=num_cells_per_dim_2plot,
-        axes_xy_proportions=(15, 15),
-        difference=False,
-        plot_curve=True,
-        plot_curve_winner=False,
-        plot_vh_classification=False,
-        plot_singular_cells=False,
-        plot_original_image=True,
-        numbers_on=True,
-        plot_again=True,
-        num_cores=1,
-        trim=((2 / 10, 5 / 10), (2 / 10, 5 / 10)),
-        cmap="viridis",
-        vmin=-1, vmax=1
-    )
+    for ncpdg in [num_cells_per_dim_2plot_1, num_cells_per_dim_2plot_2, num_cells_per_dim_2plot_3]:
+        for ncpd in ncpdg:
+            plot_reconstruction(
+                data_manager,
+                path=config.subcell_paper_figures_path,
+                folder=group,
+                format=".pdf",
+                name=f"{group}",
+                # axes_by=['models'],
+                models=models2plot,
+                plot_by=['num_cells_per_dim', "models"],
+                num_cells_per_dim=ncpd,
+                axes_xy_proportions=(15, 15),
+                difference=False,
+                plot_curve=True,
+                plot_curve_winner=False,
+                plot_vh_classification=False,
+                plot_singular_cells=False,
+                plot_original_image=True,
+                numbers_on=True,
+                plot_again=True,
+                num_cores=1,
+                trim=((2 * ncpdg[0] / ncpdg[-1], 5 * ncpdg[0] / ncpdg[-1]),
+                      (2 * ncpdg[0] / ncpdg[-1], 5 * ncpdg[0] / ncpdg[-1])),
+                cmap="viridis",
+                vmin=-1, vmax=1
+            )
 
 
 # ========== =========== ========== =========== #
