@@ -174,7 +174,8 @@ for group, model_style in accepted_models.items():
 # ----------- Reconstruction ---------- #
 for group, model_style in accepted_models.items():
     models2plot = list(model_style.keys())
-    for ncpdg in [num_cells_per_dim_2plot_1, num_cells_per_dim_2plot_2, num_cells_per_dim_2plot_3]:
+    for limits, ncpdg in zip([(2, 5), (3, 6), (3, 6)],
+                             [num_cells_per_dim_2plot_1, num_cells_per_dim_2plot_2, num_cells_per_dim_2plot_3]):
         for ncpd in ncpdg:
             plot_reconstruction(
                 data_manager,
@@ -196,8 +197,8 @@ for group, model_style in accepted_models.items():
                 numbers_on=True,
                 plot_again=True,
                 num_cores=1,
-                trim=((2 * ncpdg[0] / ncpdg[-1], 5 * ncpdg[0] / ncpdg[-1]),
-                      (2 * ncpdg[0] / ncpdg[-1], 5 * ncpdg[0] / ncpdg[-1])),
+                trim=((limits[0] / ncpdg[0], limits[1] / ncpdg[0]),
+                      (limits[0] / ncpdg[0], limits[1] / ncpdg[0])),
                 cmap="viridis",
                 vmin=-1, vmax=1
             )
