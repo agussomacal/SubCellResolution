@@ -93,14 +93,15 @@ def draw_cell_borders(ax, mesh_shape, color='black', refinement=1, prop_ticks=1,
         )  # labels along the bottom edge are off
 
 
-def plot_cells(ax, colors, mesh_shape=None, cmap=None, alpha=None, vmin=None, vmax=None):
+def plot_cells(ax, colors, mesh_shape=None, cmap=None, alpha=None, vmin=None, vmax=None, labels=True):
     extent = np.array([0, mesh_shape[0], mesh_shape[1], 0]) - 0.5 if mesh_shape is not None else mesh_shape
     # extent = np.array([0, mesh_shape[1], mesh_shape[0], 0]) - 0.5 if mesh_shape is not None else mesh_shape
     ax.imshow(colors, interpolation=None, origin='upper', extent=extent, cmap=cmap, alpha=alpha, vmin=vmin, vmax=vmax)
-    ax.set_xlabel('y')
-    ax.set_ylabel('x')
-    ax.xaxis.tick_top()
-    ax.yaxis.tick_left()
+    if labels:
+        ax.set_xlabel('y')
+        ax.set_ylabel('x')
+        ax.xaxis.tick_top()
+        ax.yaxis.tick_left()
 
 
 def plot_specific_cells(ax, mesh_shape: Tuple[int, ...], special_cells: List[SpecialCellsPlotTuple],

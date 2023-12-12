@@ -156,9 +156,9 @@ names_dict = {
 }
 
 rateonly = list(filter(lambda x: "circle" not in x, names_dict.keys()))
-runsinfo.append_info(
-    **{k.replace("_", "-"): v for k, v in names_dict.items()}
-)
+# runsinfo.append_info(
+#     **{k.replace("_", "-"): v for k, v in names_dict.items()}
+# )
 
 # ========== =========== ========== =========== #
 #            Experiments definition             #
@@ -262,9 +262,11 @@ def fit_model(sub_cell_model):
 @perplex_plot(legend=False)
 @one_line_iterator
 def plot_reconstruction(fig, ax, image, image4error, num_cells_per_dim, model, sub_discretization2bound_error,
-                        alpha=0.5, plot_original_image=True, difference=False, plot_curve=True, plot_curve_winner=False,
-                        plot_vh_classification=True, plot_singular_cells=True, cmap="viridis", trim=((0, 1), (0, 1)),
-                        numbers_on=True, vmin=None, vmax=None):
+                        alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True, plot_curve_winner=False,
+                        plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
+                        cmap_true_image="Greys_r",
+                        trim=((0, 1), (0, 1)),
+                        numbers_on=True, vmin=None, vmax=None, labels=True):
     """
 
     :param fig:
@@ -274,7 +276,6 @@ def plot_reconstruction(fig, ax, image, image4error, num_cells_per_dim, model, s
     :param model:
     :param reconstruction:
     :param alpha:
-    :param plot_original_image:
     :param difference:
     :param plot_curve:
     :param plot_curve_winner:
@@ -288,20 +289,23 @@ def plot_reconstruction(fig, ax, image, image4error, num_cells_per_dim, model, s
     model_resolution = np.array(model.resolution)
     reconstruction, t_reconstruct = efficient_reconstruction(model, image, sub_discretization2bound_error)
 
-    if plot_original_image:
-        plot_cells(ax, colors=image4error, mesh_shape=model_resolution, alpha=alpha, cmap="Greys_r",
+    if alpha_true_image > 0:
+        plot_cells(ax, colors=image4error, mesh_shape=model_resolution, alpha=alpha_true_image, cmap=cmap_true_image,
                    vmin=np.min(image4error) if vmin is None else vmin,
-                   vmax=np.max(image4error) if vmax is None else vmax)
+                   vmax=np.max(image4error) if vmax is None else vmax,
+                   labels=labels)
     if difference:
         d = reconstruction - image4error
         plot_cells(ax, colors=d, mesh_shape=model_resolution,
                    alpha=alpha, cmap=cmap,
                    vmin=np.min(d) if vmin is None else vmin,
-                   vmax=np.max(d) if vmax is None else vmax)
+                   vmax=np.max(d) if vmax is None else vmax,
+                   labels=labels)
     else:
         plot_cells(ax, colors=reconstruction, mesh_shape=model_resolution, alpha=alpha, cmap=cmap,
                    vmin=np.min(reconstruction) if vmin is None else vmin,
-                   vmax=np.max(reconstruction) if vmax is None else vmax)
+                   vmax=np.max(reconstruction) if vmax is None else vmax,
+                   labels=labels)
 
     if plot_curve:
         if plot_curve_winner:
@@ -379,8 +383,8 @@ def plot_convergence(data, x, y, hue, ax, threshold=np.sqrt(1000), rateonly=None
             linestyle=model_style[method].linestyle if model_style is not None else None,
         )
         # ax.plot(df[x], df[y], marker=".", linestyle=":", c=model_color[method], label=name)
-    ax.set_xlabel(fr"${{{x}}}$")
-    ax.set_ylabel(r"$||u-\tilde u ||_{L^1}$")
+    # ax.set_xlabel(fr"${{{x}}}$")
+    # ax.set_ylabel(r"$||u-\tilde u ||_{L^1}$")
 
     # n = np.sort(np.unique(data[x]))
     # ax.plot(n, 1 / n, ":", c=cgray, linewidth=2, alpha=0.5, label=r"$O(h^{-1})$")
@@ -864,62 +868,62 @@ if __name__ == "__main__":
         return sgn * np.floor(abs(n) * factor) / factor
 
 
-    # times to fit cell
-    df = next(make_data_frames(
-        data_manager,
-        var_names=["models", "time"],
-        group_by=[],
-        # models=models2plot,
-        time=curve_cells_fitting_times,
-    ))[1].groupby("models").apply(lambda x: np.nanmean(list(chain(*x["time"].values.tolist()))))
-    runsinfo.append_info(
-        **{k.replace("_", "-") + "-time": np.round(v, decimals=4) for k, v in df.items()}
-    )
-
-    # times to fit cell std
-    dfstd = next(make_data_frames(
-        data_manager,
-        var_names=["models", "time"],
-        group_by=[],
-        # models=models2plot,
-        time=curve_cells_fitting_times,
-    ))[1].groupby("models").apply(lambda x: np.nanstd(list(chain(*x["time"].values.tolist()))))
-    runsinfo.append_info(
-        **{"std-" + k.replace("_", "-") + "-time": np.round(v, decimals=4) for k, v in dfstd.items()}
-    )
-
-    dfstd = next(make_data_frames(
-        data_manager,
-        var_names=["models", "time"],
-        group_by=[],
-        # models=models2plot,
-        time=curve_cells_fitting_times,
-    ))[1].groupby("models").apply(lambda x: np.nanquantile(list(chain(*x["time"].values.tolist())), 0.05))
-    runsinfo.append_info(
-        **{"qlow-" + k.replace("_", "-") + "-time": np.round(v, decimals=4) for k, v in dfstd.items()}
-    )
-
-    dfstd = next(make_data_frames(
-        data_manager,
-        var_names=["models", "time"],
-        group_by=[],
-        # models=models2plot,
-        time=curve_cells_fitting_times,
-    ))[1].groupby("models").apply(lambda x: np.nanquantile(list(chain(*x["time"].values.tolist())), 0.95))
-    runsinfo.append_info(
-        **{"qhigh-" + k.replace("_", "-") + "-time": np.round(v, decimals=4) for k, v in dfstd.items()}
-    )
-
-    dfstd = next(make_data_frames(
-        data_manager,
-        var_names=["models", "time"],
-        group_by=[],
-        # models=models2plot,
-        time=curve_cells_fitting_times,
-    ))[1].groupby("models").apply(lambda x: np.nanquantile(list(chain(*x["time"].values.tolist())), 0.5))
-    runsinfo.append_info(
-        **{"median-" + k.replace("_", "-") + "-time": np.round(v, decimals=4) for k, v in dfstd.items()}
-    )
+    # # times to fit cell
+    # df = next(make_data_frames(
+    #     data_manager,
+    #     var_names=["models", "time"],
+    #     group_by=[],
+    #     # models=models2plot,
+    #     time=curve_cells_fitting_times,
+    # ))[1].groupby("models").apply(lambda x: np.nanmean(list(chain(*x["time"].values.tolist()))))
+    # runsinfo.append_info(
+    #     **{k.replace("_", "-") + "-time": np.round(v, decimals=4) for k, v in df.items()}
+    # )
+    #
+    # # times to fit cell std
+    # dfstd = next(make_data_frames(
+    #     data_manager,
+    #     var_names=["models", "time"],
+    #     group_by=[],
+    #     # models=models2plot,
+    #     time=curve_cells_fitting_times,
+    # ))[1].groupby("models").apply(lambda x: np.nanstd(list(chain(*x["time"].values.tolist()))))
+    # runsinfo.append_info(
+    #     **{"std-" + k.replace("_", "-") + "-time": np.round(v, decimals=4) for k, v in dfstd.items()}
+    # )
+    #
+    # dfstd = next(make_data_frames(
+    #     data_manager,
+    #     var_names=["models", "time"],
+    #     group_by=[],
+    #     # models=models2plot,
+    #     time=curve_cells_fitting_times,
+    # ))[1].groupby("models").apply(lambda x: np.nanquantile(list(chain(*x["time"].values.tolist())), 0.05))
+    # runsinfo.append_info(
+    #     **{"qlow-" + k.replace("_", "-") + "-time": np.round(v, decimals=4) for k, v in dfstd.items()}
+    # )
+    #
+    # dfstd = next(make_data_frames(
+    #     data_manager,
+    #     var_names=["models", "time"],
+    #     group_by=[],
+    #     # models=models2plot,
+    #     time=curve_cells_fitting_times,
+    # ))[1].groupby("models").apply(lambda x: np.nanquantile(list(chain(*x["time"].values.tolist())), 0.95))
+    # runsinfo.append_info(
+    #     **{"qhigh-" + k.replace("_", "-") + "-time": np.round(v, decimals=4) for k, v in dfstd.items()}
+    # )
+    #
+    # dfstd = next(make_data_frames(
+    #     data_manager,
+    #     var_names=["models", "time"],
+    #     group_by=[],
+    #     # models=models2plot,
+    #     time=curve_cells_fitting_times,
+    # ))[1].groupby("models").apply(lambda x: np.nanquantile(list(chain(*x["time"].values.tolist())), 0.5))
+    # runsinfo.append_info(
+    #     **{"median-" + k.replace("_", "-") + "-time": np.round(v, decimals=4) for k, v in dfstd.items()}
+    # )
 
     # ========== =========== ========== =========== #
     #               Experiment Plots                #
@@ -956,7 +960,9 @@ if __name__ == "__main__":
                      names_dict=names_dict,
                      sorted_models=lambda models: models2plot.index(models),
                      sort_by=['sorted_models'],
-                     format=".pdf",
+                     format=".png",
+                     xlabel=r"$N$",
+                     ylabel=r"$||u-\tilde u ||_{L^1}$"
                      )
 
         generic_plot(data_manager,

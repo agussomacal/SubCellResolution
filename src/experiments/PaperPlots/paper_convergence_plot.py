@@ -133,13 +133,10 @@ circle_image = dmfilter(data_manager, names=["image4error"],
 with save_fig(paths=config.subcell_paper_figures_path, filename="Circle.pdf", show=False, dpi=None):
     plot_image(circle_image, cmap="viridis", vmin=-1, vmax=1, alpha=1)
 
-circle_avg10 = dmfilter(data_manager, names=["image"], num_cells_per_dim=[10])["image"][0]
-with save_fig(paths=config.subcell_paper_figures_path, filename="CircleAvg10.pdf", show=False, dpi=None):
-    plot_image(circle_avg10, cmap="viridis", vmin=-1, vmax=1, alpha=1)
-
-circle_avg30 = dmfilter(data_manager, names=["image"], num_cells_per_dim=[30])["image"][0]
-with save_fig(paths=config.subcell_paper_figures_path, filename="CircleAvg30.pdf", show=False, dpi=None):
-    plot_image(circle_avg30, cmap="viridis", vmin=-1, vmax=1, alpha=1)
+for N in [12, 24]:
+    with save_fig(paths=config.subcell_paper_figures_path, filename=f"CircleAvg{N}.pdf", show=False, dpi=None):
+        plot_image(dmfilter(data_manager, names=["image"], num_cells_per_dim=[N])["image"][0],
+                   cmap="viridis", vmin=-1, vmax=1, alpha=1)
 
 # ----------- Color for model ---------- #
 for group, model_style in accepted_models.items():
@@ -169,6 +166,11 @@ for group, model_style in accepted_models.items():
                  sort_by=['sorted_models'],
                  format=".pdf",
                  axes_xy_proportions=(12, 8),
+                 axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 20},
+                 legend_font_dict={'weight': 'normal', "size": 17, 'stretch': 'normal'},
+                 font_family="amssymb",
+                 xlabel=r"$N$",
+                 ylabel=r"$||u-\tilde u ||_{L^1}$"
                  )
 
 # ----------- Reconstruction ---------- #
@@ -193,14 +195,17 @@ for group, model_style in accepted_models.items():
                 plot_curve_winner=False,
                 plot_vh_classification=False,
                 plot_singular_cells=False,
-                plot_original_image=True,
-                numbers_on=True,
+                alpha_true_image=1,
+                alpha=0.65,
+                numbers_on=False,
                 plot_again=True,
                 num_cores=1,
                 trim=((limits[0] / ncpdg[0], limits[1] / ncpdg[0]),
                       (limits[0] / ncpdg[0], limits[1] / ncpdg[0])),
                 cmap="viridis",
-                vmin=-1, vmax=1
+                cmap_true_image="Greys_r",
+                vmin=-1, vmax=1,
+                labels=False,
             )
 
 
