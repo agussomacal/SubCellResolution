@@ -1,8 +1,8 @@
 from collections import OrderedDict
 from itertools import chain
 
-import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB, dmfilter
@@ -13,7 +13,7 @@ from experiments.MLTraining.ml_global_params import num_cores
 from experiments.VizReconstructionUtils import plot_image
 from experiments.subcell_paper.ex_aero import obtain_images, obtain_image4error, fit_model, piecewise_constant, \
     quadratic_aero, quartic_aero, PlotStyle, elvira, elvira_w_oriented, linear_obera, linear_obera_w, \
-    quadratic_obera_non_adaptive, plot_convergence, plot_reconstruction
+    quadratic_obera_non_adaptive, plot_reconstruction
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, runsinfo, cblue, cgreen, cred, \
     cpurple, cpink
 from experiments.subcell_paper.tools import curve_cells_fitting_times
@@ -145,7 +145,30 @@ for group, model_style in accepted_models.items():
            model_style.items()}
     )
 
+
 # ----------- Convergence ---------- #
+def plot_convergence(data, x, y, hue, ax, threshold=30, rateonly=None, model_style=None, names_dict=None,
+                     vlines=None, *args, **kwargs):
+    for method, df in data.groupby(hue, sort=False):
+        name = f"{names_dict[str(method)]}"
+        if rateonly is None or method in rateonly:
+            hinv = df[x].values
+            valid_ix = hinv > threshold
+            rate, origin = np.ravel(np.linalg.lstsq(
+                np.vstack([np.log(hinv[valid_ix]), np.ones(np.sum(valid_ix))]).T,
+                np.log(df[y].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
+            name = name + f": O({abs(rate):.1f})"
+        sns.lineplot(
+            x=df[x], y=df[y], label=name, ax=ax, alpha=1,
+            color=model_style[method].color if model_style is not None else None,
+            marker=model_style[method].marker if model_style is not None else None,
+            linestyle=model_style[method].linestyle if model_style is not None else None,
+        )
+    if vlines is not None:
+        ax.vlines(vlines, linestyles=(0, (1, 8)), ymin=np.min(data[y]), ymax=np.max(data[y]),
+                  colors='k', alpha=0.5)
+
+
 for group, model_style in accepted_models.items():
     models2plot = list(model_style.keys())
     palette = {names_dict[k]: v.color for k, v in model_style.items()}
@@ -154,14 +177,15 @@ for group, model_style in accepted_models.items():
                  name=f"Convergence_{group}",
                  path=config.subcell_paper_figures_path,
                  folder=group,
-                 x="N", y="error_l1", label="models",
+                 x="num_cells_per_dim", y="error_l1", label="models",
                  # num_cells_per_dim=num_cells_per_dim,
-                 plot_func=NamedPartial(plot_convergence, model_style=model_style, names_dict=names_dict),
+                 plot_func=NamedPartial(plot_convergence, model_style=model_style, names_dict=names_dict,
+                                        vlines=[12, 24],
+                                        threshold=30),
                  log="xy",
-                 N=lambda num_cells_per_dim: num_cells_per_dim ** 2,
                  models=models2plot,
                  method=lambda models: names_dict[str(models)],
-                 names_dict=names_dict,
+                 # names_dict=names_dict,
                  sorted_models=lambda models: models2plot.index(models),
                  sort_by=['sorted_models'],
                  format=".pdf",
@@ -169,8 +193,9 @@ for group, model_style in accepted_models.items():
                  axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 20},
                  legend_font_dict={'weight': 'normal', "size": 17, 'stretch': 'normal'},
                  font_family="amssymb",
-                 xlabel=r"$N$",
-                 ylabel=r"$||u-\tilde u ||_{L^1}$"
+                 xlabel=r"$1/h$",
+                 ylabel=r"$||u-\tilde u ||_{L^1}$",
+                 xticks=[10, 12, 24, 100],
                  )
 
 # ----------- Reconstruction ---------- #

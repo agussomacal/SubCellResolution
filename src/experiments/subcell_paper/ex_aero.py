@@ -362,8 +362,8 @@ def plot_h_convergence(fig, ax, num_cells_per_dim, models, error_l1, error_linf,
     ax.set_yscale("log")
 
 
-def plot_convergence(data, x, y, hue, ax, threshold=np.sqrt(1000), rateonly=None, model_style=None, names_dict=None,
-                     *args, **kwargs):
+def plot_convergence(data, x, y, hue, ax, threshold=30, rateonly=None, model_style=None, names_dict=None,
+                     vlines=None, *args, **kwargs):
     # sns.scatterplot(data=data, x=x, y=y, hue=label, ax=ax)
     for method, df in data.groupby(hue, sort=False):
         name = f"{names_dict[str(method)]}"
@@ -382,7 +382,10 @@ def plot_convergence(data, x, y, hue, ax, threshold=np.sqrt(1000), rateonly=None
             marker=model_style[method].marker if model_style is not None else None,
             linestyle=model_style[method].linestyle if model_style is not None else None,
         )
-        # ax.plot(df[x], df[y], marker=".", linestyle=":", c=model_color[method], label=name)
+    if vlines is not None:
+        ax.vlines(vlines, linestyles="dotted", ymin=np.min(data[y]), ymax=np.max(data[y]),
+                  colors='k', alpha=0.5)
+    # ax.plot(df[x], df[y], marker=".", linestyle=":", c=model_color[method], label=name)
     # ax.set_xlabel(fr"${{{x}}}$")
     # ax.set_ylabel(r"$||u-\tilde u ||_{L^1}$")
 
