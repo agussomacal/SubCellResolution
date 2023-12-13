@@ -4,7 +4,7 @@ import numpy as np
 
 from PerplexityLab.visualization import perplex_plot, one_line_iterator
 from experiments.VizReconstructionUtils import plot_cells, plot_cells_identity, plot_cells_vh_classification_core, \
-    plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders
+    plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders, draw_numbers
 from experiments.subcell_paper.global_params import EVALUATIONS
 from experiments.subcell_paper.tools import load_image, calculate_averages_from_image, reconstruct, singular_cells_mask, \
     make_image_high_resolution
@@ -28,9 +28,10 @@ def efficient_reconstruction(model, avg_values, sub_discretization2bound_error):
     reconstruction[edge_mask_hr] = \
         reconstruct(image=avg_values, cells=model.cells, model_resolution=model.resolution,
                     cells2reconstruct=cells2reconstruct,
-                              resolution_factor=sub_discretization2bound_error)[edge_mask_hr]
+                    resolution_factor=sub_discretization2bound_error)[edge_mask_hr]
     t_reconstruct = time.time() - t0
     return reconstruction, t_reconstruct
+
 
 def fit_model(sub_cell_model):
     def decorated_func(image, noise, num_cells_per_dim, reconstruction_factor, refinement, angle_threshold=25):
@@ -65,24 +66,36 @@ def fit_model(sub_cell_model):
 
 @perplex_plot(legend=False)
 @one_line_iterator
-def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction, alpha=0.5, plot_original_image=True,
-                        difference=False, plot_curve=True, plot_curve_winner=False, plot_vh_classification=True,
-                        plot_singular_cells=True, cmap="magma", cmapoi="Greys_r", alphaio=0.5, trim=((0, 0), (0, 0)),
-                        numbers_on=True, winner_color_dict=None, draw_cells=True):
+def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction,
+                        alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True, plot_curve_winner=False,
+                        plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
+                        cmap_true_image="Greys_r", draw_mesh=True,
+                        trim=((0, 1), (0, 1)),
+                        numbers_on=True, vmin=None, vmax=None, labels=True, winner_color_dict=None):
     model_resolution = np.array(model.resolution)
     image = load_image(image)
 
-    if plot_original_image:
-        plot_cells(ax, colors=image, mesh_shape=model_resolution, alpha=alphaio, cmap=cmapoi,
-                   vmin=np.min(image), vmax=np.max(image))
+    if alpha_true_image > 0:
+        plot_cells(ax, colors=image, mesh_shape=model_resolution, alpha=alpha_true_image, cmap=cmap_true_image,
+                   vmin=np.min(image) if vmin is None else vmin,
+                   vmax=np.max(image) if vmax is None else vmax,
+                   labels=labels)
 
     if difference:
         # TODO: should be the evaluations not the averages.
         image = calculate_averages_from_image(image, num_cells_per_dim=np.shape(reconstruction))
-        plot_cells(ax, colors=reconstruction - image, mesh_shape=model.resolution, alpha=alpha, cmap=cmap, vmin=-1,
-                   vmax=1)
+        d = reconstruction - image
+        plot_cells(ax, colors=d, mesh_shape=model_resolution,
+                   alpha=alpha, cmap=cmap,
+                   vmin=np.min(d) if vmin is None else vmin,
+                   vmax=np.max(d) if vmax is None else vmax,
+                   labels=labels)
     else:
-        plot_cells(ax, colors=reconstruction, mesh_shape=model.resolution, alpha=alpha, cmap=cmap, vmin=-1, vmax=1)
+        plot_cells(ax, colors=reconstruction, mesh_shape=model_resolution,
+                   alpha=alpha, cmap=cmap,
+                   vmin=np.min(reconstruction) if vmin is None else vmin,
+                   vmax=np.max(reconstruction) if vmax is None else vmax,
+                   labels=labels)
 
     if plot_curve:
         if plot_curve_winner:
@@ -95,12 +108,18 @@ def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction
         plot_curve_core(ax, curve_cells=[cell for cell in model.cells.values() if
                                          cell.CELL_TYPE != REGULAR_CELL_TYPE], color=winner_color_dict)
 
-    if draw_cells:
+    if draw_mesh:
         draw_cell_borders(
             ax, mesh_shape=num_cells_per_dim,
             refinement=model_resolution // num_cells_per_dim,
-            numbers_on=numbers_on,
-            prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
         )
-    ax.set_xlim((-0.5 + trim[0][0], model.resolution[0] - trim[0][1] - 0.5))
-    ax.set_ylim((model.resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
+
+    ax.set_ylim((model.resolution[1] - trim[0][1] - 0.5, -0.5 + trim[0][0]))
+    ax.set_xlim((trim[1][0] - 0.5, model.resolution[0] - trim[1][1] - 0.5))
+
+    draw_numbers(
+        ax, mesh_shape=num_cells_per_dim,
+        refinement=model_resolution // num_cells_per_dim,
+        numbers_on=numbers_on,
+        prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
+    )

@@ -60,7 +60,7 @@ def get_ticks_positions(N, refinement, prop_ticks):
         dtype=int)
 
 
-def draw_cell_borders(ax, mesh_shape, color='black', refinement=1, prop_ticks=1, numbers_on=True):
+def draw_cell_borders(ax, mesh_shape, color='black', refinement=1):
     # TODO: axis show 1 2 3 not 1.5 etc
     mesh_shape = (mesh_shape, mesh_shape) if isinstance(mesh_shape, int) else mesh_shape
     refinement = (refinement, refinement) if isinstance(refinement, int) else refinement
@@ -71,6 +71,10 @@ def draw_cell_borders(ax, mesh_shape, color='black', refinement=1, prop_ticks=1,
     ax.vlines(x=np.arange(Nx * refinement[0], step=refinement[0]) - 0.5, ymin=-0.5, ymax=Ny * refinement[1],
               colors=color, linestyles='solid', linewidth=linewidth)
 
+
+def draw_numbers(ax, mesh_shape, refinement=1, prop_ticks=1, numbers_on=True):
+    mesh_shape = (mesh_shape, mesh_shape) if isinstance(mesh_shape, int) else mesh_shape
+    Nx, Ny = mesh_shape
     ax.minorticks_off()
     if numbers_on:
         x_ticks = get_ticks_positions(Nx, refinement[0], prop_ticks)
@@ -95,7 +99,6 @@ def draw_cell_borders(ax, mesh_shape, color='black', refinement=1, prop_ticks=1,
 
 def plot_cells(ax, colors, mesh_shape=None, cmap=None, alpha=None, vmin=None, vmax=None, labels=True):
     extent = np.array([0, mesh_shape[0], mesh_shape[1], 0]) - 0.5 if mesh_shape is not None else mesh_shape
-    # extent = np.array([0, mesh_shape[1], mesh_shape[0], 0]) - 0.5 if mesh_shape is not None else mesh_shape
     ax.imshow(colors, interpolation=None, origin='upper', extent=extent, cmap=cmap, alpha=alpha, vmin=vmin, vmax=vmax)
     if labels:
         ax.set_xlabel('y')

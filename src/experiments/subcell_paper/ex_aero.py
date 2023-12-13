@@ -18,7 +18,7 @@ from experiments.MLTraining.ml_curve_params import lines_ml_model, quadratics7_p
     quadratics7_params_ml_model, quadratics_ml_model
 from experiments.MLTraining.ml_global_params import num_cores
 from experiments.VizReconstructionUtils import plot_cells, plot_cells_identity, plot_cells_vh_classification_core, \
-    plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders
+    plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders, draw_numbers
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, OBERA_ITERS, \
     CCExtraWeight, runsinfo, cblue, corange, cgreen, cred, cpurple, cbrown, cpink, cgray, cyellow, ccyan
 from experiments.subcell_paper.tools import calculate_averages_from_curve, \
@@ -59,6 +59,22 @@ accepted_models = {
         ("linear_aero", PlotStyle(color=cgray)),
         ("linear_aero_w", PlotStyle(color=cgreen)),
         ("linear_aero_consistent", PlotStyle(color=cpink)),
+    ]),
+    "OBERAQuadratic": OrderedDict([
+        ("quadratic_aero", PlotStyle(color=cgreen, marker="o", linestyle="-")),
+        ("quadratic_obera_non_adaptive_l1", PlotStyle(color=cyellow, marker="*", linestyle=":")),
+        ("quadratic_obera_non_adaptive", PlotStyle(color=corange, marker=".", linestyle=":")),
+        ("quadratic_obera", PlotStyle(color=cred, marker=".", linestyle=":")),
+        ("quadratic_obera_l1", PlotStyle(color=cpurple, marker="*", linestyle=":")),
+        ("quadratic_obera_params", PlotStyle(color=cyellow, marker=".", linestyle="--")),
+        ("quadratic_obera_l1_params", PlotStyle(color=cgray, marker="*", linestyle="--")),
+        ("quadratic_obera_non_adaptive_params", PlotStyle(color=ccyan, marker=".", linestyle="--")),
+        ("quadratic_obera_non_adaptive_l1_params", PlotStyle(color=cpink, marker="*", linestyle="--")),
+
+        ("quartic_aero", PlotStyle(color=cblue, marker="o", linestyle="-")),
+        ("quartic_obera", PlotStyle(color=cblue, marker=".", linestyle=":")),
+        ("quartic_obera_l1_params", PlotStyle(color=cblue, marker="*", linestyle=":")),
+
     ]),
     "HighOrderModels": OrderedDict([
         ("piecewise_constant", PlotStyle(color=cpink)),
@@ -132,10 +148,17 @@ names_dict = {
     "linear_obera_w_ml": "OBERA-W Linear ML-ker l1",
 
     "quadratic_obera_non_adaptive": "OBERA Quadratic 3x3 l2",
+    "quadratic_obera_non_adaptive_params": "OBERA Quadratic 3x3 l2 params",
     "quadratic_obera_non_adaptive_l1": "OBERA Quadratic 3x3 l1",
+    "quadratic_obera_non_adaptive_l1_params": "OBERA Quadratic 3x3 l1 params",
+
     "quadratic_obera": "OBERA Quadratic l2",
+    "quadratic_obera_params": "OBERA Quadratic l2 params",
     "quadratic_obera_l1": "OBERA Quadratic l1",
+    "quadratic_obera_l1_params": "OBERA Quadratic l1 params",
+
     "quadratic_obera_ml": "OBERA Quadratic ML-ker",
+
     "quadratic_aero": "AEROS Quadratic",
     "quadratic_obera_ml_params": "OBERA Quadratic ML-ker 3x3",
     "quadratic_obera_ml_points_adapt": "OBERA Quadratic ML-ker 3x3 ReParam Adapt S",
@@ -147,6 +170,7 @@ names_dict = {
 
     "quartic_aero": "AEROS Quartic",
     "quartic_obera": "OBERA Quartic",
+    "quartic_obera_l1_params": "OBERA Quartic l1 params",
 
     "obera_circle": "OBERA Circle",
     "obera_circle_vander": "OBERA Circle ReParam",
@@ -264,7 +288,7 @@ def fit_model(sub_cell_model):
 def plot_reconstruction(fig, ax, image, image4error, num_cells_per_dim, model, sub_discretization2bound_error,
                         alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True, plot_curve_winner=False,
                         plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
-                        cmap_true_image="Greys_r",
+                        cmap_true_image="Greys_r", draw_mesh=True,
                         trim=((0, 1), (0, 1)),
                         numbers_on=True, vmin=None, vmax=None, labels=True):
     """
@@ -302,7 +326,8 @@ def plot_reconstruction(fig, ax, image, image4error, num_cells_per_dim, model, s
                    vmax=np.max(d) if vmax is None else vmax,
                    labels=labels)
     else:
-        plot_cells(ax, colors=reconstruction, mesh_shape=model_resolution, alpha=alpha, cmap=cmap,
+        plot_cells(ax, colors=reconstruction, mesh_shape=model_resolution,
+                   alpha=alpha, cmap=cmap,
                    vmin=np.min(reconstruction) if vmin is None else vmin,
                    vmax=np.max(reconstruction) if vmax is None else vmax,
                    labels=labels)
@@ -318,19 +343,21 @@ def plot_reconstruction(fig, ax, image, image4error, num_cells_per_dim, model, s
         plot_curve_core(ax, curve_cells=[cell for cell in model.cells.values() if
                                          cell.CELL_TYPE == CURVE_CELL_TYPE])
 
-    draw_cell_borders(
+    if draw_mesh:
+        draw_cell_borders(
+            ax, mesh_shape=num_cells_per_dim,
+            refinement=model_resolution // num_cells_per_dim,
+        )
+
+    ax.set_ylim((model.resolution[1] - trim[0][1] - 0.5, -0.5 + trim[0][0]))
+    ax.set_xlim((trim[1][0] - 0.5, model.resolution[0] - trim[1][1] - 0.5))
+
+    draw_numbers(
         ax, mesh_shape=num_cells_per_dim,
         refinement=model_resolution // num_cells_per_dim,
         numbers_on=numbers_on,
         prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
     )
-
-    if np.max(np.ravel(trim)) > 1:  # if we specify the cells
-        ax.set_xlim((-0.5 + trim[0][0], trim[0][1] - 0.5))
-        ax.set_ylim((trim[1][0] - 0.5, trim[1][1] - 0.5))
-    else:  # if we specify a percentage of cut off
-        ax.set_xlim((-0.5 + trim[0][0] * model_resolution[0], model_resolution[0] * trim[0][1] - 0.5))
-        ax.set_ylim((model_resolution[1] * trim[1][0] - 0.5, model_resolution[1] * trim[1][1] - 0.5))
 
 
 @perplex_plot(group_by="models")
@@ -605,6 +632,22 @@ def quadratic_obera_non_adaptive_l1():
         "QuadraticOptNonAdaptive", OBERA_ITERS, CCExtraWeight, 1)
 
 
+def quadratic_obera_non_adaptive_params():
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveVandermondePolynomial, degree=2, ccew=CCExtraWeight),
+                natural_params=True), 1,
+        "QuadraticOptNonAdaptive", OBERA_ITERS, CCExtraWeight, 2)
+
+
+def quadratic_obera_non_adaptive_l1_params():
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveVandermondePolynomial, degree=2, ccew=CCExtraWeight),
+                natural_params=True), 1,
+        "QuadraticOptNonAdaptive", OBERA_ITERS, CCExtraWeight, 1)
+
+
 def quadratic_obera():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator,
@@ -617,6 +660,24 @@ def quadratic_obera_l1():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator,
                 vander_curve=partial(CurveVandermondePolynomial, degree=2, ccew=CCExtraWeight)), 1,
+        "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 1,
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3))
+
+
+def quadratic_obera_params():
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveVandermondePolynomial, degree=2, ccew=CCExtraWeight),
+                natural_params=True), 1,
+        "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 2,
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3))
+
+
+def quadratic_obera_l1_params():
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveVandermondePolynomial, degree=2, ccew=CCExtraWeight),
+                natural_params=True), 1,
         "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 1,
         stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=3))
 
@@ -725,6 +786,16 @@ def quartic_obera():
     )
 
 
+def quartic_obera_l1_params():
+    return get_sub_cell_model(
+        partial(ValuesCurveCellCreator,
+                vander_curve=partial(CurveVandermondePolynomial, degree=4, ccew=CCExtraWeight),
+                natural_params=True), 1,
+        "QuadraticOpt", OBERA_ITERS, CCExtraWeight, 1,
+        stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL, independent_dim_stencil_size=5)
+    )
+
+
 def quadratic_aero_ref2():
     return get_sub_cell_model(
         partial(ValuesCurveCellCreator,
@@ -813,9 +884,13 @@ if __name__ == "__main__":
                       # nn_quadratic_3x7_params_adapt,
 
                       quadratic_obera_non_adaptive,
+                      quadratic_obera_non_adaptive_params,
                       quadratic_obera_non_adaptive_l1,
+                      quadratic_obera_non_adaptive_l1_params,
                       quadratic_obera,
                       quadratic_obera_l1,
+                      quadratic_obera_params,
+                      quadratic_obera_l1_params,
                       quadratic_obera_ml_params,
                       # quadratic_obera_ml_points_adapt,
                       quadratic_obera_ml_points,
@@ -827,6 +902,7 @@ if __name__ == "__main__":
 
                       quartic_aero,
                       quartic_obera,
+                      quartic_obera_l1_params,
 
                       # elvira_go100_ref2,
                       # quadratic_aero_ref2,
