@@ -4,7 +4,8 @@ import numpy as np
 
 from PerplexityLab.visualization import perplex_plot, one_line_iterator
 from experiments.VizReconstructionUtils import plot_cells, plot_cells_identity, plot_cells_vh_classification_core, \
-    plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders, draw_numbers
+    plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders, draw_numbers, \
+    plot_cells_type_of_curve_core
 from experiments.subcell_paper.global_params import EVALUATIONS
 from experiments.subcell_paper.tools import load_image, calculate_averages_from_image, reconstruct, singular_cells_mask, \
     make_image_high_resolution
@@ -99,8 +100,8 @@ def plot_reconstruction(fig, ax, image, num_cells_per_dim, model, reconstruction
 
     if plot_curve:
         if plot_curve_winner:
-            plot_cells_identity(ax, model.resolution, model.cells, alpha=0.8, color_dict=winner_color_dict)
-            # plot_cells_type_of_curve_core(ax, model.resolution, model.cells, alpha=0.8)
+            # plot_cells_identity(ax, model.resolution, model.cells, alpha=0.8, color_dict=winner_color_dict)
+            plot_cells_type_of_curve_core(ax, model.resolution, model.cells, alpha=0.8)
         elif plot_vh_classification:
             plot_cells_vh_classification_core(ax, model.resolution, model.cells, alpha=0.8)
         elif plot_singular_cells:

@@ -72,12 +72,11 @@ piecewise01 = CellCreatorPipeline(
 )
 
 
-def elvira_cc(angle_threshold,
-              reconstruction_error_measure: ReconstructionErrorMeasure = reconstruction_error_measure_w):
+def elvira_cc(angle_threshold, reconstruction_error_measure: ReconstructionErrorMeasure = reconstruction_error_measure_w):
     return CellCreatorPipeline(
         cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                               condition=operator.eq),
-        orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, method="optim",
+        orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2, method="sobel",
                                     angle_threshold=angle_threshold),
         stencil_creator=StencilCreatorFixedShape((3, 3)),
         cell_creator=ELVIRACurveCellCreator(
@@ -90,7 +89,7 @@ def aero_l(angle_threshold, reconstruction_error_measure: ReconstructionErrorMea
     return CellCreatorPipeline(
         cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                               condition=operator.eq),
-        orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, method="optim",
+        orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2, method="sobel",
                                     angle_threshold=angle_threshold),
         stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
                                                independent_dim_stencil_size=3),
@@ -104,7 +103,7 @@ def aero_q(angle_threshold, reconstruction_error_measure: ReconstructionErrorMea
     return CellCreatorPipeline(
         cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                               condition=operator.eq),
-        orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, method="optim",
+        orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2, method="sobel",
                                     angle_threshold=angle_threshold),
         stencil_creator=StencilCreatorAdaptive(smoothness_threshold=REGULAR_CELL,
                                                independent_dim_stencil_size=3),
@@ -130,7 +129,7 @@ tem = CellCreatorPipeline(
 def nn(learning_manager):
     return CellCreatorPipeline(
         cell_iterator=partial(iterate_by_condition_on_smoothness, value=CURVE_CELL, condition=operator.eq),
-        orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, method="optim",
+        orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2, method="sobel",
                                     angle_threshold=45),
         stencil_creator=StencilCreatorFixedShape(stencil_shape=(3, 3)),
         cell_creator=LearningFluxRegularCellCreator(learning_manager=learning_manager,
@@ -261,7 +260,7 @@ def aero_lq(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshol
     )
 
 
-def aero_qelvira_vertex(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=0, *args, **kwargs):
+def aero_qelvira_vertex(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=45, *args, **kwargs):
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=smoothness_calculator,
@@ -277,17 +276,33 @@ def aero_qelvira_vertex(smoothness_calculator=naive_piece_wise, refinement=1, an
             CellCreatorPipeline(
                 cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                                       condition=operator.eq),
-                orientator=OrientByGradient(kernel_size=(5, 5), dimensionality=2, method="optim",
+                orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2, method="sobel",
                                             angle_threshold=angle_threshold),
                 stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=4),
                 cell_creator=LinearVertexCellCurveCellCreator(
                     regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax),
-                reconstruction_error_measure=reconstruction_error_measure_3x3_w()
+                reconstruction_error_measure=reconstruction_error_measure_w
             )
         ],
         obera_iterations=0
     )
 
+
+def aero_qelvira_tem(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=45, *args, **kwargs):
+    return SubCellReconstruction(
+        name="All",
+        smoothness_calculator=smoothness_calculator,
+        reconstruction_error_measure=reconstruction_error_measure_default,
+        refinement=refinement,
+        cell_creators=
+        [
+            piecewise01,
+            elvira_cc(angle_threshold),
+            tem,
+            aero_q(angle_threshold=angle_threshold),
+        ],
+        obera_iterations=0
+    )
 
 # def ml_vql(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=0, *args, **kwargs):
 #     return SubCellReconstruction(
