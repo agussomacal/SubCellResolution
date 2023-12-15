@@ -97,9 +97,9 @@ def aero_qelvira_vertex(smoothness_calculator=naive_piece_wise, refinement=1, ob
         cell_creators=
         [
             piecewise01,
-            elvira_cc(angle_threshold=0),
-            tem,
+            elvira_cc(angle_threshold=45),
             aero_q(angle_threshold=45),
+            tem,
             # ------------ AVRO ------------ #
             CellCreatorPipeline(
                 cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
@@ -110,7 +110,7 @@ def aero_qelvira_vertex(smoothness_calculator=naive_piece_wise, refinement=1, ob
                 cell_creator=LinearVertexCellCurveCellCreator(
                     regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax),
                 reconstruction_error_measure=reconstruction_error_measure_w
-            )
+            ),
         ],
         obera_iterations=obera_iterations
     )
@@ -152,9 +152,9 @@ def aero_qelvira_tem(smoothness_calculator=naive_piece_wise, refinement=1, obera
         cell_creators=
         [
             piecewise01,
-            elvira_cc(angle_threshold=0),
-            tem,
+            elvira_cc(angle_threshold=45),
             aero_q(angle_threshold=45),
+            tem,
         ],
         obera_iterations=obera_iterations
     )
@@ -187,9 +187,9 @@ if __name__ == "__main__":
     )
 
     names_dict = {
-        "aero_qelvira_vertex": "ELVIRA + TEM + AEROS Quadratic + AVROS",
-        "aero_qelvira_tem": "ELVIRA + TEM + AEROS Quadratic",
-        "aero_qvertex": "AEROS Quadratic + TEM + AVROS",
+        "aero_qelvira_vertex": "ELVIRA-WO + AEROS Quadratic + TEM + AEROS Vertex",
+        "aero_qelvira_tem": "ELVIRA-WO + AEROS Quadratic + TEM",
+        "aero_qvertex": "AEROS Quadratic + TEM + AEROS Vertex",
         "aero_qtem": "AEROS Quadratic + TEM",
         "obera_qtem": "OBERA Quadratic + TEM",
     }
@@ -207,19 +207,19 @@ if __name__ == "__main__":
             aero_qtem,
             # NamedPartial(aero_qtem, obera_iterations=500).add_sufix_to_name("_obera"),
 
-            piecewise_constant,
-            elvira,
-            elvira_w_oriented,
-
-            linear_obera,
-            linear_obera_w,
-
-            quadratic_obera_non_adaptive,
+            # piecewise_constant,
+            # elvira,
+            # elvira_w_oriented,
+            #
+            # linear_obera,
+            # linear_obera_w,
+            #
+            # quadratic_obera_non_adaptive,
             quadratic_aero,
-
-            quartic_aero,
+            #
+            # quartic_aero,
         ]),
-        recalculate=False
+        recalculate=True
     )
     lab.execute(
         data_manager,
