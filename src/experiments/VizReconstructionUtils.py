@@ -212,29 +212,22 @@ def get_curve(curve_cell: CellCurveBase, coords2=None):
 
 
 def get_curve_vertex(curve_cell: CurveVertexPolynomial, coords2=None):
-    if vertex_in_cell(curve_cell.coords, curve_cell.independent_axis, curve_cell.curve.vertex):
-        for point in map(np.array, [curve_cell.curve.point1, curve_cell.curve.point2]):
-            points = point + (np.array(curve_cell.curve.vertex) - point) * \
-                     np.linspace(0, 1, num=CURVE_PLOT_RESOLUTION).reshape((-1, 1))
-            points = points[:, [curve_cell.independent_axis, curve_cell.dependent_axis]]  # correct order x, y.
-            square = [curve_cell.coords.coords, coords2 if coords2 is not None else curve_cell.coords.coords + 1]
-            points_inside_cell = list(map(partial(is_in_square, square=square), points))
-            yield points[np.ravel(points_inside_cell), :]
-    else:
-        for point in map(np.array, [curve_cell.curve.point1, curve_cell.curve.point2]):
-            versor = (point - np.array(curve_cell.curve.vertex))
-            versor /= np.sqrt(np.sum(versor ** 2))
-            points = point + versor * np.linspace(0, 2, num=CURVE_PLOT_RESOLUTION * 2).reshape((-1, 1))
-            points = points[:, [curve_cell.independent_axis, curve_cell.dependent_axis]]  # correct order x, y.
-            square = [curve_cell.coords.coords, coords2 if coords2 is not None else curve_cell.coords.coords + 1]
-            points_inside_cell = list(map(partial(is_in_square, square=square), points))
-            yield points[np.ravel(points_inside_cell), :]
+    for point in map(np.array, [curve_cell.curve.point1, curve_cell.curve.point2]):
+        versor = (point - np.array(curve_cell.curve.vertex))
+        versor /= np.sqrt(np.sum(versor ** 2))
+        vertex_cell_coords = np.array(curve_cell.curve.vertex, dtype=int)
+        prolongation = 2 * np.sqrt(np.sum((curve_cell.coords.array - vertex_cell_coords + 1) ** 2))
+        points = (np.array(curve_cell.curve.vertex) +
+                  versor * np.linspace(0, prolongation,
+                                       num=CURVE_PLOT_RESOLUTION * int(prolongation)).reshape((-1, 1)))
+        points = points[:, [curve_cell.independent_axis, curve_cell.dependent_axis]]  # correct order x, y.
+        square = [curve_cell.coords.coords, coords2 if coords2 is not None else curve_cell.coords.coords + 1]
+        points_inside_cell = list(map(partial(is_in_square, square=square), points))
+        yield points[np.ravel(points_inside_cell), :]
 
 
 def plot_curve_core(ax, curve_cells, color=None):
     for curve_cell in curve_cells:
-        # for points in (get_curve_vertex(curve_cell) if
-        # isinstance(curve_cell.curve, VertexLinearExtended) else get_curve(curve_cell)):
         for points in get_curve(curve_cell) if curve_cell.CELL_TYPE == CURVE_CELL_TYPE else get_curve_vertex(
                 curve_cell):
             c = COLOR_CURVE if color is None else color[str(curve_cell)]

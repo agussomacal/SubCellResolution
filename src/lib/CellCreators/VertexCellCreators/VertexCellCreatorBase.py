@@ -192,27 +192,25 @@ class VertexCellCreatorUsingNeighboursLines(VertexCellCreatorUsingNeighbours):
 
         if point1 is not None and point2 is not None:  # happens if no intersection of curve with cell
             a = np.transpose([versor1, -versor2])
-            if np.linalg.det(a) == 0:
-                vertex = (point1 + point2) / 2
-            else:
+            if np.linalg.det(a) != 0: # if lines don't intersect
                 l = np.linalg.solve(a=np.transpose([versor1, -versor2]), b=point2 - point1)
                 vertex = point1 + l[0] * versor1
-            angle1 = vector2angle(point1 - vertex)
-            angle2 = vector2angle(point2 - vertex)
-            # TODO: the NaN appears when point1==point2, avoid here or where?
-            if not np.isnan(angle2 + angle1):
-                value_up = regular_opposite_cells[1].evaluate(coords.coords)
-                value_down = regular_opposite_cells[0].evaluate(coords.coords)
-                yield VertexLinearExtended(
-                    point1=point1,
-                    vertex=vertex,
-                    point2=point2,
-                    angle1=angle1,
-                    angle2=angle2 - angle1,
-                    x0=vertex[0], y0=vertex[1],
-                    value_up=value_up,
-                    value_down=value_down
-                )
+                angle1 = vector2angle(point1 - vertex)
+                angle2 = vector2angle(point2 - vertex)
+                # TODO: the NaN appears when point1==point2, avoid here or where?
+                if not np.isnan(angle2 + angle1):
+                    value_up = regular_opposite_cells[1].evaluate(coords.coords)
+                    value_down = regular_opposite_cells[0].evaluate(coords.coords)
+                    yield VertexLinearExtended(
+                        point1=point1,
+                        vertex=vertex,
+                        point2=point2,
+                        angle1=angle1,
+                        angle2=angle2 - angle1,
+                        x0=vertex[0], y0=vertex[1],
+                        value_up=value_up,
+                        value_down=value_down
+                    )
 
 
 if __name__ == "__main__":

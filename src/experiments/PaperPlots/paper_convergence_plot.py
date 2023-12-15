@@ -155,12 +155,12 @@ if __name__ == "__main__":
     circle_image = dmfilter(data_manager, names=["image4error"],
                             num_cells_per_dim=[max(num_cells_per_dim)])["image4error"][0]
     with save_fig(paths=config.subcell_paper_figures_path, filename="Circle.pdf", show=False, dpi=None):
-        plot_image(circle_image, cmap="viridis", vmin=-1, vmax=1, alpha=1)
+        plot_image(circle_image, cmap="viridis", vmin=-1, vmax=1, alpha=0.65)
 
     for N in [10, 20]:
         with save_fig(paths=config.subcell_paper_figures_path, filename=f"CircleAvg{N}.pdf", show=False, dpi=None):
             plot_image(dmfilter(data_manager, names=["image"], num_cells_per_dim=[N])["image"][0],
-                       cmap="viridis", vmin=-1, vmax=1, alpha=1)
+                       cmap="viridis", vmin=-1, vmax=1, alpha=0.65)
 
     # ----------- Color for model ---------- #
     for group, model_style in accepted_models.items():
@@ -250,7 +250,7 @@ if __name__ == "__main__":
     ))[1].groupby("models").apply(lambda x: np.nanmean(list(chain(*x["time"].values.tolist()))))
     runsinfo.append_info(
         **{k.replace("_", "-") + "-time": f"{v:.1g}" for k, v in df.items()}
-    )
+      )
 
     # times to fit cell std
     dfstd = next(make_data_frames(

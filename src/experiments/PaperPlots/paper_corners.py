@@ -1,18 +1,22 @@
 import operator
 from functools import partial
+from itertools import chain
 
+import numpy as np
 import seaborn as sns
 
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
-from PerplexityLab.miscellaneous import NamedPartial
+from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
+from PerplexityLab.visualization import make_data_frames
 from experiments.PaperPlots.paper_smooth_domains import fit_model
 from experiments.subcell_paper.ex_aero import piecewise_constant, \
     quadratic_aero, quartic_aero, elvira, elvira_w_oriented, linear_obera, linear_obera_w, \
     quadratic_obera_non_adaptive
 from experiments.subcell_paper.global_params import CurveAverageQuadraticCC, CCExtraWeight, cgray, cblue, cgreen, cred, \
     corange, cpurple, runsinfo
+from experiments.subcell_paper.tools import curve_cells_fitting_times
 from experiments.subcell_paper.tools4binary_images import plot_reconstruction
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
@@ -202,7 +206,7 @@ if __name__ == "__main__":
         "models",
         *map(fit_model, [
             aero_qelvira_vertex,
-            aero_qelvira_tem,
+            # aero_qelvira_tem,
             aero_qvertex,
             aero_qtem,
             # NamedPartial(aero_qtem, obera_iterations=500).add_sufix_to_name("_obera"),
@@ -219,7 +223,7 @@ if __name__ == "__main__":
             #
             # quartic_aero,
         ]),
-        recalculate=True
+        recalculate=False
     )
     lab.execute(
         data_manager,
@@ -284,3 +288,21 @@ if __name__ == "__main__":
         yticks=None,
         # winner_color_dict=winner_color_dict
     )
+
+    # ========== =========== ========== =========== #
+    #               Experiment Times                #
+    # ========== =========== ========== =========== #
+    # times to fit cell
+    df = next(make_data_frames(
+        data_manager,
+        var_names=["models", "time"],
+        group_by=[],
+        # models=models2plot,
+        time=curve_cells_fitting_times,
+    ))[1].groupby("models").apply(lambda x: np.nanmean(list(chain(*x["time"].values.tolist()))))
+    runsinfo.append_info(
+        **{"corners-" + k.replace("_", "-") + "-time": f"{v:.1g}" for k, v in df.items()}
+    )
+
+    print("CO2 consumption: ", data_manager.CO2kg)
+    copy_main_script_version(__file__, data_manager.path)
