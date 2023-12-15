@@ -45,12 +45,15 @@ plot_orientation(
     num_cells_per_dim=10,
     image="batata.jpg",
     angle_threshold=45,
-    alpha=0.5,
+    alpha=0.4,
     format=".pdf",
     plot_by=["num_cells_per_dim"],
-    numbers_on=True,
+    numbers_on=False,
     specific_cells=[SpecialCellsPlotTuple(name="SpecialCell", indexes=[(7, 8)],
-                                          color=cred, alpha=0.5)]
+                                          color=cred, alpha=0.5),
+                    ],
+    mesh_linewidth=1,
+    trim=((0, 1), (0, 0)),
 )
 
 plot_orientation(
@@ -60,8 +63,10 @@ plot_orientation(
     num_cells_per_dim=30,
     image="batata.jpg",
     angle_threshold=45,
-    alpha=0.5,
+    alpha=0.4,
     format=".pdf",
     plot_by=["num_cells_per_dim"],
-    numbers_on=True,
+    numbers_on=False,
+    mesh_linewidth=1,
+    trim=((0, 1), (0, 0)),
 )

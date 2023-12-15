@@ -7,9 +7,9 @@ import numpy as np
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
-from PerplexityLab.visualization import generic_plot, one_line_iterator, perplex_plot
+from PerplexityLab.visualization import one_line_iterator, perplex_plot
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, plot_specific_cells, \
-    SpecialCellsPlotTuple
+    SpecialCellsPlotTuple, draw_numbers
 from experiments.subcell_paper.global_params import cblue, cgreen, cred
 from experiments.subcell_paper.tools import calculate_averages_from_image, load_image, \
     singular_cells_mask
@@ -54,7 +54,7 @@ def experiment(image, num_cells_per_dim, angle_threshold, method="optim", kernel
 @one_line_iterator
 def plot_orientation(fig, ax, image, num_cells_per_dim, orientations,
                      alpha=0.5, cmap="Greys_r", trim=((0, 0), (0, 0)), numbers_on=True,
-                     specific_cells: List[SpecialCellsPlotTuple] = []):
+                     specific_cells: List[SpecialCellsPlotTuple] = [], mesh_linewidth=0):
     image = load_image(image)
     mesh_shape = (num_cells_per_dim, num_cells_per_dim)
     plot_cells(ax, colors=image, mesh_shape=mesh_shape, alpha=alpha, cmap=cmap,
@@ -80,14 +80,24 @@ def plot_orientation(fig, ax, image, num_cells_per_dim, orientations,
         special_cells=specific_cells,
         rectangle_mode=False)
 
-    draw_cell_borders(
+    if mesh_linewidth > 0:
+        draw_cell_borders(
+            ax, mesh_shape=num_cells_per_dim,
+            refinement=np.array(mesh_shape) // num_cells_per_dim,
+            default_linewidth=mesh_linewidth,
+            mesh_style=":",
+            color="gray"
+        )
+
+    ax.set_ylim((np.array(mesh_shape)[1] - trim[0][1] - 0.5, -0.5 + trim[0][0]))
+    ax.set_xlim((trim[1][0] - 0.5, np.array(mesh_shape)[0] - trim[1][1] - 0.5))
+
+    draw_numbers(
         ax, mesh_shape=num_cells_per_dim,
         refinement=np.array(mesh_shape) // num_cells_per_dim,
         numbers_on=numbers_on,
         prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
     )
-    ax.set_xlim((-0.5 + trim[0][0], mesh_shape[0] - trim[0][1] - 0.5))
-    ax.set_ylim((mesh_shape[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
 
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)

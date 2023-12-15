@@ -77,7 +77,7 @@ if __name__ == "__main__":
         "linear_obera": "OBERA Linear",  # l1
         "linear_obera_w": "OBERA-W Linear",  # l1
 
-        "quadratic_obera_non_adaptive": "OBERA-W Quadratic",
+        "quadratic_obera_non_adaptive": "OBERA Quadratic",
         "quadratic_aero": "AEROS Quadratic",
 
         "cubic_aero": "AEROS Cubic",
@@ -201,36 +201,41 @@ if __name__ == "__main__":
     # ----------- Reconstruction ---------- #
     for group, model_style in accepted_models.items():
         models2plot = list(model_style.keys())
-        for limits, ncpdg in zip([(2, 5), (3, 6), (3, 6)],
-                                 [num_cells_per_dim_2plot_1, num_cells_per_dim_2plot_2, num_cells_per_dim_2plot_3]):
-            for ncpd in ncpdg:
-                plot_reconstruction(
-                    data_manager,
-                    path=config.subcell_paper_figures_path,
-                    folder=group,
-                    format=".pdf",
-                    name=f"{group}",
-                    models=models2plot,
-                    plot_by=['num_cells_per_dim', "models"],
-                    num_cells_per_dim=ncpd,
-                    axes_xy_proportions=(15, 15),
-                    difference=False,
-                    plot_curve=True,
-                    plot_curve_winner=False,
-                    plot_vh_classification=False,
-                    plot_singular_cells=False,
-                    alpha_true_image=1,
-                    alpha=0.65,
-                    numbers_on=False,
-                    plot_again=True,
-                    num_cores=1,
-                    trim=((limits[0] * ncpd / ncpdg[0], limits[1] * ncpd / ncpdg[0]),
-                          (limits[0] * ncpd / ncpdg[0], limits[1] * ncpd / ncpdg[0])),
-                    cmap="viridis",
-                    cmap_true_image="Greys_r",
-                    vmin=-1, vmax=1,
-                    labels=False,
-                )
+
+        # for limits, ncpdg in zip([(2, 5), (3, 6), (3, 6)], [num_cells_per_dim_2plot_1, num_cells_per_dim_2plot_2, num_cells_per_dim_2plot_3]):
+        # for limits, ncpdg in zip([(2, 5), (3, 6), (3, 6)],
+        #                          [num_cells_per_dim_2plot_1, num_cells_per_dim_2plot_2, num_cells_per_dim_2plot_3]):
+        #     for ncpd in ncpdg:
+        limits = [2, 5]
+        ncpdg = [10, 20]
+        for ncpd in ncpdg:
+            plot_reconstruction(
+                data_manager,
+                path=config.subcell_paper_figures_path,
+                folder=group,
+                format=".pdf",
+                name=f"{group}",
+                models=models2plot,
+                plot_by=['num_cells_per_dim', "models"],
+                num_cells_per_dim=ncpd,
+                axes_xy_proportions=(15, 15),
+                difference=False,
+                plot_curve=True,
+                plot_curve_winner=False,
+                plot_vh_classification=False,
+                plot_singular_cells=False,
+                alpha_true_image=1,
+                alpha=0.65,
+                numbers_on=False,
+                plot_again=True,
+                num_cores=1,
+                trim=((limits[0] * ncpd / ncpdg[0], limits[1] * ncpd / ncpdg[0]),
+                      (limits[0] * ncpd / ncpdg[0], limits[1] * ncpd / ncpdg[0])),
+                cmap="viridis",
+                cmap_true_image="Greys_r",
+                vmin=-1, vmax=1,
+                labels=False,
+            )
 
     # ========== =========== ========== =========== #
     #               Experiment Times                #

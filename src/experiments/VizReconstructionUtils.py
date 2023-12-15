@@ -48,9 +48,9 @@ def transform_points2plot(points):
     return (np.array(points) - 0.5)[:, [1, 0]]
 
 
-def calculate_proportional_linewith(mesh_shape):
+def calculate_proportional_linewith(mesh_shape, default_linewidth=5):
     Nx, Ny = mesh_shape
-    linewidth = 5 / np.sqrt(Nx * Ny)
+    linewidth = default_linewidth / np.sqrt(Nx * Ny)
     return linewidth
 
 
@@ -60,16 +60,16 @@ def get_ticks_positions(N, refinement, prop_ticks):
         dtype=int)
 
 
-def draw_cell_borders(ax, mesh_shape, color='black', refinement=1):
+def draw_cell_borders(ax, mesh_shape, color='gray', refinement=1, default_linewidth=5, mesh_style=":"):
     # TODO: axis show 1 2 3 not 1.5 etc
     mesh_shape = (mesh_shape, mesh_shape) if isinstance(mesh_shape, int) else mesh_shape
     refinement = (refinement, refinement) if isinstance(refinement, int) else refinement
     Nx, Ny = mesh_shape
-    linewidth = calculate_proportional_linewith(mesh_shape)
+    linewidth = calculate_proportional_linewith(mesh_shape, default_linewidth)
     ax.hlines(y=np.arange(Ny * refinement[1], step=refinement[1]) - 0.5, xmin=-0.5, xmax=Nx * refinement[0],
-              colors=color, linestyles='solid', linewidth=linewidth)
+              colors=color, linestyles=mesh_style, linewidth=linewidth)
     ax.vlines(x=np.arange(Nx * refinement[0], step=refinement[0]) - 0.5, ymin=-0.5, ymax=Ny * refinement[1],
-              colors=color, linestyles='solid', linewidth=linewidth)
+              colors=color, linestyles=mesh_style, linewidth=linewidth)
 
 
 def draw_numbers(ax, mesh_shape, refinement=1, prop_ticks=1, numbers_on=True):
@@ -108,7 +108,7 @@ def plot_cells(ax, colors, mesh_shape=None, cmap=None, alpha=None, vmin=None, vm
 
 
 def plot_specific_cells(ax, mesh_shape: Tuple[int, ...], special_cells: List[SpecialCellsPlotTuple],
-                        rectangle_mode=False):
+                        rectangle_mode=False, default_linewidth=1):
     """
 
     :param ax:
@@ -117,22 +117,12 @@ def plot_specific_cells(ax, mesh_shape: Tuple[int, ...], special_cells: List[Spe
     :return:
     """
     # ----- plot special cells -----
-    linewidth = calculate_proportional_linewith(mesh_shape) * 20
+    linewidth = calculate_proportional_linewith(mesh_shape, default_linewidth)
     for cells_name, cells_indexes, color, alpha in special_cells:
         for coords in cells_indexes:
             rect = patches.Rectangle(np.array(coords)[::-1] - 0.5, 1, 1, angle=0, linewidth=linewidth,
                                      edgecolor=color, facecolor="none" if rectangle_mode else color, alpha=alpha)
             ax.add_patch(rect)
-    # if rectangle_mode:
-    #
-    # else:
-    #     all_cells = np.zeros(np.append(mesh_shape, 4))
-    #     for cells_name, cells_indexes, color, alpha in special_cells:
-    #         on_color = colors.to_rgba(color, alpha)
-    #         for s in cells_indexes:
-    #             all_cells[s] = on_color
-    #         add_legend_to_imshow(ax, color=on_color, label=cells_name)
-    #     plot_cells(ax, colors=all_cells)
 
 
 def is_in_square(cell_coords, square):

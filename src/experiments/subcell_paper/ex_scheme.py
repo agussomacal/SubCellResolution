@@ -152,7 +152,7 @@ def plot_time_i(fig, ax, true_solution, solution, num_cells_per_dim, i=0, alpha=
     ax.set_ylim((model_resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
 
 
-@perplex_plot()
+@perplex_plot(legend=False)
 @one_line_iterator
 def plot_reconstruction_time_i(fig, ax, true_reconstruction, num_cells_per_dim, resolution, reconstruction, cells, i=0,
                                alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True,

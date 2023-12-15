@@ -347,6 +347,9 @@ def plot_reconstruction(fig, ax, image, image4error, num_cells_per_dim, model, s
         draw_cell_borders(
             ax, mesh_shape=num_cells_per_dim,
             refinement=model_resolution // num_cells_per_dim,
+            color='black',
+            default_linewidth=2,
+            mesh_style=":"
         )
 
     ax.set_ylim((model.resolution[1] - trim[0][1] - 0.5, -0.5 + trim[0][0]))
