@@ -12,7 +12,7 @@ from PerplexityLab.visualization import generic_plot, one_line_iterator, perplex
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, plot_cells_identity, \
     plot_cells_vh_classification_core, plot_cells_not_regular_classification_core, plot_curve_core, draw_numbers
 from experiments.subcell_paper.global_params import cpink, corange, cyellow, \
-    cblue, cgreen, runsinfo, EVALUATIONS, cpurple, cred, ccyan, cgray
+    cblue, cgreen, runsinfo, EVALUATIONS, cpurple, cred, ccyan, cgray, RESOLUTION_FACTOR, num_cores
 from experiments.subcell_paper.models2compare import qelvira, upwind, qelvira_kml
 from experiments.subcell_paper.tools import calculate_averages_from_image, load_image, \
     reconstruct, singular_cells_mask, get_reconstruction_error
@@ -136,20 +136,27 @@ def fit_model(subcell_reconstruction):
 @one_line_iterator
 def plot_time_i(fig, ax, true_solution, solution, num_cells_per_dim, i=0, alpha=0.5, cmap="Greys_r",
                 trim=((0, 0), (0, 0)),
-                numbers_on=True, error=False):
+                numbers_on=True, error=False, draw_mesh=True):
     model_resolution = np.array([num_cells_per_dim, num_cells_per_dim])
     colors = (solution[i] - true_solution[i]) if error else solution[i]
     plot_cells(ax, colors=colors, mesh_shape=model_resolution, alpha=alpha, cmap=cmap,
                vmin=np.min(true_solution), vmax=np.max(true_solution))
 
-    draw_cell_borders(
+    if draw_mesh:
+        draw_cell_borders(
+            ax, mesh_shape=num_cells_per_dim,
+            refinement=model_resolution // num_cells_per_dim,
+        )
+
+    ax.set_ylim((model_resolution[1] - trim[0][1] - 0.5, -0.5 + trim[0][0]))
+    ax.set_xlim((trim[1][0] - 0.5, model_resolution[0] - trim[1][1] - 0.5))
+
+    draw_numbers(
         ax, mesh_shape=num_cells_per_dim,
         refinement=model_resolution // num_cells_per_dim,
         numbers_on=numbers_on,
         prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
     )
-    ax.set_xlim((-0.5 + trim[0][0], model_resolution[0] - trim[0][1] - 0.5))
-    ax.set_ylim((model_resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
 
 
 @perplex_plot(legend=False)
@@ -262,7 +269,7 @@ if __name__ == "__main__":
     ntimes = 20
     lab.execute(
         data_manager,
-        num_cores=15,
+        num_cores=num_cores,
         forget=False,
         save_on_iteration=None,
         refinement=[1],
@@ -278,8 +285,7 @@ if __name__ == "__main__":
             # "HandVertex_1680x1680.jpg",
             # "Polygon_1680x1680.jpg",
         ],
-        reconstruction_factor=[5],
-        # reconstruction_factor=[1],
+        reconstruction_factor=[RESOLUTION_FACTOR],
     )
     print(set(data_manager["models"]))
 
@@ -333,6 +339,15 @@ if __name__ == "__main__":
                  method=lambda models: names_dict[models],
                  )
 
+    for i in range(ntimes):
+        plot_time_i(data_manager, folder="Solution", name=f"Time{i}", i=i, alpha=0.8, cmap="viridis",
+                    trim=((0, 0), (0, 0)), folder_by=['image', 'num_cells_per_dim'],
+                    plot_by=[],
+                    axes_by=["method"],
+                    models=list(model_color.keys()),
+                    method=lambda models: names_dict[models],
+                    numbers_on=True, error=True)
+
     for i in range(0, ntimes, SAVE_EACH):
         plot_reconstruction_time_i(
             data_manager,
@@ -355,12 +370,3 @@ if __name__ == "__main__":
             plot_again=True,
             num_cores=1,
         )
-
-    for i in range(ntimes):
-        plot_time_i(data_manager, folder="Solution", name=f"Time{i}", i=i, alpha=0.8, cmap="viridis",
-                    trim=((0, 0), (0, 0)), folder_by=['image', 'num_cells_per_dim'],
-                    plot_by=[],
-                    axes_by=["method"],
-                    models=list(model_color.keys()),
-                    method=lambda models: names_dict[models],
-                    numbers_on=True, error=True)

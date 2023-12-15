@@ -7,8 +7,8 @@ from tqdm import tqdm
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
-from PerplexityLab.miscellaneous import NamedPartial
-from PerplexityLab.visualization import generic_plot
+from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
+from PerplexityLab.visualization import generic_plot, make_data_frames
 from experiments.PaperPlots.paper_corners import aero_qelvira_vertex
 from experiments.subcell_paper.ex_aero import piecewise_constant, \
     quadratic_aero, quartic_aero, elvira, elvira_w_oriented, linear_obera, linear_obera_w, \
@@ -16,7 +16,7 @@ from experiments.subcell_paper.ex_aero import piecewise_constant, \
 from experiments.subcell_paper.ex_scheme import scheme_error, plot_reconstruction_time_i, scheme_reconstruction_error, \
     plot_time_i, calculate_true_solution, fit_model
 from experiments.subcell_paper.global_params import cpink, corange, cyellow, \
-    cblue, cgreen, runsinfo, EVALUATIONS, cpurple, cred, ccyan, cgray
+    cblue, cgreen, runsinfo, EVALUATIONS, cpurple, cred, ccyan, cgray, RESOLUTION_FACTOR, num_cores, running_in
 from experiments.subcell_paper.models2compare import upwind
 from experiments.subcell_paper.tools import calculate_averages_from_image, load_image, \
     reconstruct, singular_cells_mask
@@ -35,12 +35,12 @@ names_dict = {
     # "obera_qtem": "OBERA Quadratic + TEM",
 
     "elvira": "ELVIRA",
-    "elvira_w_oriented": "ELVIRA W-Oriented",
+    "elvira_w_oriented": "ELVIRA-WO",
 
-    "linear_obera": "LINEAR OBERA",
-    "linear_obera_w": "LINEAR OBERA WO",
+    "linear_obera": "OBERA Linear",
+    "linear_obera_w": "OBERA-W Linear",
 
-    "quadratic_obera_non_adaptive": "OBERA QUADRATIC",
+    "quadratic_obera_non_adaptive": "OBERA Quadratic",
     "quadratic_aero": "AEROS Quadratic",
 
     "upwind": "UpWind",
@@ -90,32 +90,18 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "models",
         *map(fit_model, [
-            # aero_qelvira_vertex,
-            # aero_qelvira_tem,
-            # aero_qvertex,
-            # aero_qtem,
-
-            # piecewise_constant,
-            # elvira,
-            elvira_w,
-            # elvira_w_oriented,
-
-            # linear_obera,
-            # linear_obera_w,
-
-            # quadratic_obera_non_adaptive,
+            aero_qelvira_vertex,
+            elvira_w_oriented,
             quadratic_aero,
-
-            # quartic_aero,
             upwind,
         ]),
         recalculate=False
     )
 
-    ntimes = 20
+    ntimes = 120 if running_in == "server" else 20
     lab.execute(
         data_manager,
-        num_cores=15,
+        num_cores=num_cores,
         forget=False,
         save_on_iteration=None,
         refinement=[1],
@@ -124,20 +110,18 @@ if __name__ == "__main__":
         num_cells_per_dim=[30],  # 60
         noise=[0],
         image=[
-            "batata.jpg"
-            # "ShapesVertex_1680x1680.jpg",
+            "batata.jpg",
+            "ShapesVertex_1680x1680.jpg",
         ],
-        reconstruction_factor=[5],
-        # reconstruction_factor=[1],
+        reconstruction_factor=[RESOLUTION_FACTOR],
     )
     print(set(data_manager["models"]))
 
     generic_plot(data_manager,
                  name="ErrorInTime",
                  format=".pdf", ntimes=ntimes,
-                 # path=config.subcell_paper_figures_path,
+                 path=config.subcell_paper_figures_path,
                  x="times", y="scheme_error", label="method", plot_by=["num_cells_per_dim", "image"],
-                 # models=["elvira", "quadratic"],
                  times=lambda ntimes: np.arange(1, ntimes + 1),
                  scheme_error=scheme_error,
                  plot_func=NamedPartial(
@@ -148,12 +132,11 @@ if __name__ == "__main__":
                  method=lambda models: names_dict[models],
                  log="y",
                  )
-    #
-    # new_times = np.array([1, 7, 13, 19, 26, 32, 38, 44, 51, 57, 63, 69, 76, 82, 88, 94, 101, 107, 113, 119])
+
     generic_plot(data_manager,
                  name="ReconstructionErrorInTime",
                  format=".pdf",
-                 # path=config.subcell_paper_figures_path,
+                 path=config.subcell_paper_figures_path,
                  x="times", y="scheme_error", label="method", plot_by=["num_cells_per_dim", "image"],
                  # models=["elvira", "quadratic"],
                  times=lambda ntimes: np.arange(0, ntimes, SAVE_EACH),
@@ -171,7 +154,6 @@ if __name__ == "__main__":
     generic_plot(data_manager,
                  name="Time2Fit",
                  x="image", y="time_to_fit", label="method", plot_by=["num_cells_per_dim", "image"],
-                 # models=["elvira", "quadratic"],
                  times=lambda ntimes: np.arange(ntimes),
                  plot_func=NamedPartial(
                      sns.barplot,
@@ -182,21 +164,28 @@ if __name__ == "__main__":
                  method=lambda models: names_dict[models],
                  )
 
+    for i in range(ntimes):
+        plot_time_i(data_manager, folder="Solution", name=f"Time{i}", i=i, alpha=0.8, cmap="viridis",
+                    trim=((0, 0), (0, 0)), folder_by=['image', 'num_cells_per_dim'],
+                    plot_by=[],
+                    axes_by=["method"],
+                    models=list(model_color.keys()),
+                    method=lambda models: names_dict[models],
+                    numbers_on=True, error=True)
+
     for i in range(0, ntimes, SAVE_EACH):
         plot_reconstruction_time_i(
             data_manager,
-            # path=config.subcell_paper_figures_path,
-            # format=".pdf",
+            path=config.subcell_paper_figures_path,
+            format=".pdf",
             i=i // SAVE_EACH,
             name=f"Reconstruction{i}",
             folder='Reconstruction',
             folder_by=['image', 'num_cells_per_dim'],
-            plot_by=[],
-            axes_by=["method"],
-            models=[model for model in model_color.keys() if "flux" not in model],
+            plot_by=["method"],
+            axes_by=[],
+            # models=[model for model in model_color.keys() if "flux" not in model],
             method=lambda models: names_dict[models],
-            # plot_by=['image', 'models', 'num_cells_per_dim'],
-            # folder_by=["image"],
             axes_xy_proportions=(15, 15),
             difference=False,
             plot_curve=True,
@@ -208,7 +197,6 @@ if __name__ == "__main__":
             plot_again=True,
             num_cores=1,
             num_cells_per_dim=[30],
-            # trim=((3, 3), (3, 3)),
             cmap=sns.color_palette("viridis", as_cmap=True),
             cmap_true_image=sns.color_palette("Greys_r", as_cmap=True),
             vmin=-1, vmax=1,
@@ -221,14 +209,20 @@ if __name__ == "__main__":
             ylabel=None,
             xticks=None,
             yticks=None,
-            # winner_color_dict=winner_color_dict
         )
 
-    for i in range(ntimes):
-        plot_time_i(data_manager, folder="Solution", name=f"Time{i}", i=i, alpha=0.8, cmap="viridis",
-                    trim=((0, 0), (0, 0)), folder_by=['image', 'num_cells_per_dim'],
-                    plot_by=[],
-                    axes_by=["method"],
-                    models=list(model_color.keys()),
-                    method=lambda models: names_dict[models],
-                    numbers_on=True, error=True)
+    # ========== =========== ========== =========== #
+    #               Experiment Times                #
+    # ========== =========== ========== =========== #
+    # times to fit cell
+    df = next(make_data_frames(
+        data_manager,
+        var_names=["models", "time_to_fit"],
+        group_by=[],
+    ))[1].groupby("models").mean()["time_to_fit"]/ntimes
+    runsinfo.append_info(
+        **{"scheme-" + k.replace("_", "-") + "-time": f"{v:.1g}" for k, v in df.items()}
+    )
+
+    print("CO2 consumption: ", data_manager.CO2kg)
+    copy_main_script_version(__file__, data_manager.path)

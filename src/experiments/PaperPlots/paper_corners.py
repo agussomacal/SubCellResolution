@@ -180,6 +180,17 @@ def aero_qtem(smoothness_calculator=naive_piece_wise, refinement=1, obera_iterat
     )
 
 
+names_dict = {
+    "aero_qelvira_vertex": "ELVIRA-WO + AEROS Quadratic + TEM + AEROS Vertex",
+    "aero_qelvira_tem": "ELVIRA-WO + AEROS Quadratic + TEM",
+    "aero_qvertex": "AEROS Quadratic + TEM + AEROS Vertex",
+    "aero_qtem": "AEROS Quadratic + TEM",
+    "obera_qtem": "OBERA Quadratic + TEM",
+}
+runsinfo.append_info(
+    **{k.replace("_", "-"): v for k, v in names_dict.items()}
+)
+
 if __name__ == "__main__":
     data_manager = DataManager(
         path=config.paper_results_path,
@@ -188,17 +199,6 @@ if __name__ == "__main__":
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
-    )
-
-    names_dict = {
-        "aero_qelvira_vertex": "ELVIRA-WO + AEROS Quadratic + TEM + AEROS Vertex",
-        "aero_qelvira_tem": "ELVIRA-WO + AEROS Quadratic + TEM",
-        "aero_qvertex": "AEROS Quadratic + TEM + AEROS Vertex",
-        "aero_qtem": "AEROS Quadratic + TEM",
-        "obera_qtem": "OBERA Quadratic + TEM",
-    }
-    runsinfo.append_info(
-        **{k.replace("_", "-"): v for k, v in names_dict.items()}
     )
 
     lab = LabPipeline()
