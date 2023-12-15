@@ -38,7 +38,7 @@ def get_neighbouring_singular_coords_under_condition(coords: CellCoords, indexer
     :param max_num_nodes:
     :return:
     """
-    # look in the 2 distance neighborhood.
+    # look in the 2-distance neighborhood and retain only cells that are singular.
     visited_nodes = [
         indexer[new_coords.coords] for new_coords in coords + NEIGHBOURHOOD_16_MANHATTAN
         if indexer[new_coords.tuple] in cells and cells[indexer[new_coords.tuple]].CELL_TYPE == CURVE_CELL_TYPE
@@ -46,10 +46,12 @@ def get_neighbouring_singular_coords_under_condition(coords: CellCoords, indexer
 
     singular_cells = []
     if len(visited_nodes) >= 2:
+        # start with one singular cell
         nodes2visit = [[visited_nodes.pop(0)]]
+        # the second singular cell to visit should be the farthest from the first
         visited_nodes = sorted(visited_nodes, key=lambda c: np.sum(np.abs(np.array(c) - np.array(nodes2visit[0][0]))))
         nodes2visit.append([visited_nodes.pop(-1)])
-        # add as visited the nodes neighbouring the cell
+        # add as visited the nodes the original singular cell and its 8 1-distance neighbours to avoid searching there
         visited_nodes = visited_nodes + [
             indexer[new_coords.coords] for new_coords in coords + NEIGHBOURHOOD_8_MANHATTAN
             if indexer[new_coords.tuple] in cells and
@@ -84,7 +86,7 @@ def get_neighbouring_singular_coords_under_condition(coords: CellCoords, indexer
 
 def get_neighbouring_singular_cells(coords: CellCoords, cell_mask: np.ndarray, indexer: ArrayIndexerNd,
                                     cells: Dict[Tuple[int], CellBase], stencils: Dict[Tuple, List[Tuple[int, ...]]]):
-    # the condition is to search cells at least at 2 of distance (not the immediate ones.
+    # the condition is to search cells at least at 2 of distance (not the immediate ones) that are singular.
     singular_neighbours_stencil = [
         cell_coords for cell_coords in
         get_neighbouring_singular_coords_under_condition(
@@ -152,18 +154,15 @@ class VertexCellCreatorUsingNeighbours(CurveCellCreatorBase):
 
 
 def eval_neighbour_in_border(coords: CellCoords, singular_neighbour: CellCurveBase, independent_axis):
-    versor = singular_neighbour.coords.array - coords.array
-    crossing_axis = np.ravel(np.where(versor))[0]
-    crossing = coords[crossing_axis] + 0.5 + np.sign(versor[crossing_axis]) / 2
-    if singular_neighbour.independent_axis == crossing_axis:
-        # TODO: evaluation is not a value, needs an array, what to do with nans, filter before?
-        evals = np.ravel(singular_neighbour.curve(np.array([crossing])))
-        point = (crossing, evals[~np.isnan(evals)][0])
-    else:
-        inverse = np.ravel(np.array(singular_neighbour.curve.function_inverse(crossing)))
-        if len(inverse) == 0:  # when there is no intersection
-            return None, None
-        point = (inverse[~np.isnan(inverse)][0], crossing)
+    # TODO: evaluation is not a value, needs an array, what to do with nans, filter before?
+    # strange problems with regions.
+    # crossing = coords[singular_neighbour.independent_axis] + 0.5
+    # crossing = singular_neighbour.coords[singular_neighbour.independent_axis] + 0.5
+    crossing = (singular_neighbour.coords[singular_neighbour.independent_axis] + coords[
+        singular_neighbour.independent_axis]) / 2 + 0.5
+
+    evals = np.ravel(singular_neighbour.curve(np.array([crossing])))
+    point = (crossing, evals[~np.isnan(evals)][0])
     der_evals = np.ravel(singular_neighbour.curve.derivative(point[0]))
     der_evals = der_evals[~np.isnan(der_evals)]
     if len(der_evals) >= 1:
