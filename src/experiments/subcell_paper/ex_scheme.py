@@ -10,14 +10,14 @@ from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial
 from PerplexityLab.visualization import generic_plot, one_line_iterator, perplex_plot
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, plot_cells_identity, \
-    plot_cells_vh_classification_core, plot_cells_not_regular_classification_core, plot_curve_core
+    plot_cells_vh_classification_core, plot_cells_not_regular_classification_core, plot_curve_core, draw_numbers
 from experiments.subcell_paper.global_params import cpink, corange, cyellow, \
     cblue, cgreen, runsinfo, EVALUATIONS, cpurple, cred, ccyan, cgray
 from experiments.subcell_paper.models2compare import qelvira, upwind, qelvira_kml
 from experiments.subcell_paper.tools import calculate_averages_from_image, load_image, \
     reconstruct, singular_cells_mask, get_reconstruction_error
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
-from lib.CellCreators.CellCreatorBase import REGULAR_CELL_TYPE
+from lib.CellCreators.CellCreatorBase import REGULAR_CELL_TYPE, CURVE_CELL_TYPE
 from lib.CellCreators.LearningFluxRegularCellCreator import CellLearnedFlux
 from lib.SubCellScheme import SubCellScheme
 
@@ -155,44 +155,60 @@ def plot_time_i(fig, ax, true_solution, solution, num_cells_per_dim, i=0, alpha=
 @perplex_plot()
 @one_line_iterator
 def plot_reconstruction_time_i(fig, ax, true_reconstruction, num_cells_per_dim, resolution, reconstruction, cells, i=0,
-                               alpha=0.5,
-                               plot_original_image=True,
-                               difference=False, plot_curve=True, plot_curve_winner=False, plot_vh_classification=True,
-                               plot_singular_cells=True, cmap="magma", trim=((0, 0), (0, 0)), numbers_on=True):
+                               alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True,
+                               plot_curve_winner=False,
+                               plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
+                               cmap_true_image="Greys_r", draw_mesh=True,
+                               trim=((0, 1), (0, 1)),
+                               numbers_on=True, vmin=None, vmax=None, labels=True):
     model_resolution = np.array(resolution)
     image = true_reconstruction[i]
 
-    if plot_original_image:
-        plot_cells(ax, colors=image, mesh_shape=model_resolution, alpha=alpha, cmap="Greys_r",
-                   vmin=np.min(image), vmax=np.max(image))
+    if alpha_true_image > 0:
+        plot_cells(ax, colors=image, mesh_shape=model_resolution, alpha=alpha_true_image, cmap=cmap_true_image,
+                   vmin=np.min(image) if vmin is None else vmin,
+                   vmax=np.max(image) if vmax is None else vmax,
+                   labels=labels)
 
     if difference:
-        # TODO: should be the evaluations not the averages.
-        image = calculate_averages_from_image(image, num_cells_per_dim=np.shape(reconstruction))
-        plot_cells(ax, colors=reconstruction[i] - image, mesh_shape=resolution, alpha=alpha, cmap=cmap, vmin=-1,
-                   vmax=1)
+        d = reconstruction[i] - image
+        plot_cells(ax, colors=d, mesh_shape=model_resolution,
+                   alpha=alpha, cmap=cmap,
+                   vmin=np.min(d) if vmin is None else vmin,
+                   vmax=np.max(d) if vmax is None else vmax,
+                   labels=labels)
     else:
-        plot_cells(ax, colors=reconstruction[i], mesh_shape=resolution, alpha=alpha, cmap=cmap, vmin=-1, vmax=1)
-
+        plot_cells(ax, colors=reconstruction[i], mesh_shape=model_resolution,
+                   alpha=alpha, cmap=cmap,
+                   vmin=np.min(reconstruction[i]) if vmin is None else vmin,
+                   vmax=np.max(reconstruction[i]) if vmax is None else vmax,
+                   labels=labels)
     if plot_curve:
         if plot_curve_winner:
-            plot_cells_identity(ax, resolution, cells[i], alpha=0.8)
-            # plot_cells_type_of_curve_core(ax, resolution, model.cells, alpha=0.8)
+            plot_cells_identity(ax, model_resolution, cells[i], alpha=0.8)
+            # plot_cells_type_of_curve_core(ax, model.resolution, model.cells, alpha=0.8)
         elif plot_vh_classification:
-            plot_cells_vh_classification_core(ax, resolution, cells[i], alpha=0.8)
+            plot_cells_vh_classification_core(ax, model_resolution, cells[i], alpha=0.8)
         elif plot_singular_cells:
-            plot_cells_not_regular_classification_core(ax, resolution, cells[i], alpha=0.8)
+            plot_cells_not_regular_classification_core(ax, model_resolution, cells[i], alpha=0.8)
         plot_curve_core(ax, curve_cells=[cell for cell in cells[i].values() if
-                                         cell.CELL_TYPE != REGULAR_CELL_TYPE])
+                                         cell.CELL_TYPE == CURVE_CELL_TYPE])
 
-    draw_cell_borders(
+    if draw_mesh:
+        draw_cell_borders(
+            ax, mesh_shape=num_cells_per_dim,
+            refinement=model_resolution // num_cells_per_dim,
+        )
+
+    ax.set_ylim((model_resolution[1] - trim[0][1] - 0.5, -0.5 + trim[0][0]))
+    ax.set_xlim((trim[1][0] - 0.5, model_resolution[0] - trim[1][1] - 0.5))
+
+    draw_numbers(
         ax, mesh_shape=num_cells_per_dim,
         refinement=model_resolution // num_cells_per_dim,
         numbers_on=numbers_on,
         prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
     )
-    ax.set_xlim((-0.5 + trim[0][0], resolution[0] - trim[0][1] - 0.5))
-    ax.set_ylim((resolution[1] - trim[1][0] - 0.5, trim[1][1] - 0.5))
 
 
 # ========== ========== Error definitions ========== ========== #
