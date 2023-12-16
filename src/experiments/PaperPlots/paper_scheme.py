@@ -28,7 +28,7 @@ SAVE_EACH = 1
 
 # ========== ========== Names and colors to present ========== ========== #
 names_dict = {
-    "aero_qelvira_vertex": "ELVIRA + TEM + AEROS Quadratic + AVROS",
+    "aero_qelvira_vertex": "ELVIRA-WO + AEROS Quadratic + TEM + AEROS Vertex",
     # "aero_qelvira_tem": "ELVIRA + TEM + AEROS Quadratic",
     # "aero_qvertex": "AEROS Quadratic + TEM + AVROS",
     # "aero_qtem": "AEROS Quadratic + TEM",
@@ -110,7 +110,8 @@ if __name__ == "__main__":
         num_cells_per_dim=[30],  # 60
         noise=[0],
         image=[
-            "batata.jpg",
+            # "batata.jpg",
+            # "Ellipsoid_1680x1680.jpg",
             "ShapesVertex_1680x1680.jpg",
         ],
         reconstruction_factor=[RESOLUTION_FACTOR],
@@ -143,12 +144,21 @@ if __name__ == "__main__":
                  # times=lambda ntimes: new_times,
                  scheme_error=scheme_reconstruction_error,
                  plot_func=NamedPartial(
-                     sns.lineplot, marker="o", linestyle="--",
+                     sns.lineplot,
+                     marker="o", linestyle="--",
+                     markers=True, linewidth=3,
                      palette={v: model_color[k] for k, v in names_dict.items()}
                  ),
                  log="y",
                  models=list(model_color.keys()),
                  method=lambda models: names_dict[models],
+                 axes_xy_proportions=(12, 8),
+                 axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 20},
+                 legend_font_dict={'weight': 'normal', "size": 17, 'stretch': 'normal'},
+                 font_family="amssymb",
+                 xlabel=r"Iterations",
+                 ylabel=r"$||u-\tilde u ||_{L^1}$",
+                 xticks=np.arange(0, ntimes, ntimes//10, dtype=int),
                  )
 
     generic_plot(data_manager,
@@ -164,24 +174,16 @@ if __name__ == "__main__":
                  method=lambda models: names_dict[models],
                  )
 
-    for i in range(ntimes):
-        plot_time_i(data_manager, folder="Solution", name=f"Time{i}", i=i, alpha=0.8, cmap="viridis",
-                    trim=((0, 0), (0, 0)), folder_by=['image', 'num_cells_per_dim'],
-                    plot_by=[],
-                    axes_by=["method"],
-                    models=list(model_color.keys()),
-                    method=lambda models: names_dict[models],
-                    numbers_on=True, error=True)
-
     for i in range(0, ntimes, SAVE_EACH):
         plot_reconstruction_time_i(
             data_manager,
-            path=config.subcell_paper_figures_path,
-            format=".pdf",
+            # path=config.subcell_paper_figures_path,
+            # format=".pdf",
             i=i // SAVE_EACH,
             name=f"Reconstruction{i}",
             folder='Reconstruction',
             folder_by=['image', 'num_cells_per_dim'],
+            models=["aero_qelvira_vertex"],
             plot_by=["method"],
             axes_by=[],
             # models=[model for model in model_color.keys() if "flux" not in model],
@@ -211,6 +213,14 @@ if __name__ == "__main__":
             yticks=None,
         )
 
+    for i in range(ntimes):
+        plot_time_i(data_manager, folder="Solution", name=f"Time{i}", i=i, alpha=0.8, cmap="viridis",
+                    trim=((0, 0), (0, 0)), folder_by=['image', 'num_cells_per_dim'],
+                    plot_by=[],
+                    axes_by=["method"],
+                    models=list(model_color.keys()),
+                    method=lambda models: names_dict[models],
+                    numbers_on=True, error=True)
     # ========== =========== ========== =========== #
     #               Experiment Times                #
     # ========== =========== ========== =========== #
@@ -219,7 +229,7 @@ if __name__ == "__main__":
         data_manager,
         var_names=["models", "time_to_fit"],
         group_by=[],
-    ))[1].groupby("models").mean()["time_to_fit"]/ntimes
+    ))[1].groupby("models").mean()["time_to_fit"] / ntimes
     runsinfo.append_info(
         **{"scheme-" + k.replace("_", "-") + "-time": f"{v:.1g}" for k, v in df.items()}
     )

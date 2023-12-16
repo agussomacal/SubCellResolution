@@ -49,5 +49,5 @@ else:
     running_in = "local"
     print("running in local machine")
     N = int(1e4)
-    num_cores = workers = 1
+    num_cores = workers = 3
     RESOLUTION_FACTOR = 5

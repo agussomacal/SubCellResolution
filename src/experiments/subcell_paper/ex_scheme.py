@@ -190,6 +190,7 @@ def plot_reconstruction_time_i(fig, ax, true_reconstruction, num_cells_per_dim, 
                    vmin=np.min(reconstruction[i]) if vmin is None else vmin,
                    vmax=np.max(reconstruction[i]) if vmax is None else vmax,
                    labels=labels)
+
     if plot_curve:
         if plot_curve_winner:
             plot_cells_identity(ax, model_resolution, cells[i], alpha=0.8)
@@ -205,6 +206,9 @@ def plot_reconstruction_time_i(fig, ax, true_reconstruction, num_cells_per_dim, 
         draw_cell_borders(
             ax, mesh_shape=num_cells_per_dim,
             refinement=model_resolution // num_cells_per_dim,
+            color='black',
+            default_linewidth=2,
+            mesh_style=":"
         )
 
     ax.set_ylim((model_resolution[1] - trim[0][1] - 0.5, -0.5 + trim[0][0]))
