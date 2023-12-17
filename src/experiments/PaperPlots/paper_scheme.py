@@ -1,8 +1,5 @@
-import time
-
 import numpy as np
 import seaborn as sns
-from tqdm import tqdm
 
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
@@ -10,29 +7,18 @@ from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
 from PerplexityLab.visualization import generic_plot, make_data_frames
 from experiments.PaperPlots.paper_corners import aero_qelvira_vertex
-from experiments.subcell_paper.ex_aero import piecewise_constant, \
-    quadratic_aero, quartic_aero, elvira, elvira_w_oriented, linear_obera, linear_obera_w, \
-    quadratic_obera_non_adaptive, elvira_w
+from experiments.subcell_paper.ex_aero import quadratic_aero, elvira_w_oriented
 from experiments.subcell_paper.ex_scheme import scheme_error, plot_reconstruction_time_i, scheme_reconstruction_error, \
     plot_time_i, calculate_true_solution, fit_model
-from experiments.subcell_paper.global_params import cpink, corange, cyellow, \
-    cblue, cgreen, runsinfo, EVALUATIONS, cpurple, cred, ccyan, cgray, RESOLUTION_FACTOR, num_cores, running_in
+from experiments.subcell_paper.global_params import cpink, corange, cblue, cgreen, runsinfo, cpurple, cred, cgray, \
+    RESOLUTION_FACTOR, num_cores, running_in
 from experiments.subcell_paper.models2compare import upwind
-from experiments.subcell_paper.tools import calculate_averages_from_image, load_image, \
-    reconstruct, singular_cells_mask
-from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
-from lib.CellCreators.LearningFluxRegularCellCreator import CellLearnedFlux
-from lib.SubCellScheme import SubCellScheme
 
 SAVE_EACH = 1
 
 # ========== ========== Names and colors to present ========== ========== #
 names_dict = {
     "aero_qelvira_vertex": "ELVIRA-WO + AEROS Quadratic + TEM + AEROS Vertex",
-    # "aero_qelvira_tem": "ELVIRA + TEM + AEROS Quadratic",
-    # "aero_qvertex": "AEROS Quadratic + TEM + AVROS",
-    # "aero_qtem": "AEROS Quadratic + TEM",
-    # "obera_qtem": "OBERA Quadratic + TEM",
 
     "elvira": "ELVIRA",
     "elvira_w_oriented": "ELVIRA-WO",
@@ -47,10 +33,6 @@ names_dict = {
 }
 model_color = {
     "aero_qelvira_vertex": cblue,
-    # "aero_qelvira_tem": "ELVIRA + TEM + AEROS Quadratic",
-    # "aero_qvertex": "AEROS Quadratic + TEM + AVROS",
-    # "aero_qtem": "AEROS Quadratic + TEM",
-    # "obera_qtem": "OBERA Quadratic + TEM",
 
     "elvira": corange,
     "elvira_w_oriented": cred,
@@ -107,72 +89,64 @@ if __name__ == "__main__":
         refinement=[1],
         ntimes=[ntimes],
         velocity=[(0, 1 / 4)],
-        num_cells_per_dim=[30],  # 60
+        num_cells_per_dim=[15, 30],  # 60
         noise=[0],
         image=[
-            # "batata.jpg",
-            # "Ellipsoid_1680x1680.jpg",
-            "ShapesVertex_1680x1680.jpg",
+            "batata.jpg",
+            "ShapesVertex.jpg",
         ],
         reconstruction_factor=[RESOLUTION_FACTOR],
     )
     print(set(data_manager["models"]))
 
-    generic_plot(data_manager,
-                 name="ErrorInTime",
-                 format=".pdf", ntimes=ntimes,
-                 path=config.subcell_paper_figures_path,
-                 x="times", y="scheme_error", label="method", plot_by=["num_cells_per_dim", "image"],
-                 times=lambda ntimes: np.arange(1, ntimes + 1),
-                 scheme_error=scheme_error,
-                 plot_func=NamedPartial(
-                     sns.lineplot, marker="o", linestyle="--",
-                     palette={v: model_color[k] for k, v in names_dict.items()}
-                 ),
-                 models=list(model_color.keys()),
-                 method=lambda models: names_dict[models],
-                 log="y",
-                 )
+    num_ticks = 5
+    for log, xticks in zip(["", "x"], [np.arange(0, ntimes, ntimes // num_ticks, dtype=int),
+                               np.logspace(0, np.log10(ntimes), num_ticks, dtype=int)]):
+        generic_plot(data_manager,
+                     name="ErrorInTime"+log,
+                     format=".pdf", ntimes=ntimes,
+                     path=config.subcell_paper_figures_path,
+                     x="times", y="scheme_error", label="method",
+                     plot_by=["num_cells_per_dim", "image"],
+                     times=lambda ntimes: np.arange(1, ntimes + 1),
+                     scheme_error=scheme_error,
+                     plot_func=NamedPartial(
+                         sns.lineplot, marker="o", linestyle="--",
+                         palette={v: model_color[k] for k, v in names_dict.items()}
+                     ),
+                     models=list(model_color.keys()),
+                     method=lambda models: names_dict[models],
+                     xlabel=r"Iterations",
+                     ylabel=r"$||a-\tilde a ||_{\ell^1}$",
+                     log="y"+log,
+                     xticks=xticks,
+                     )
 
-    generic_plot(data_manager,
-                 name="ReconstructionErrorInTime",
-                 format=".pdf",
-                 path=config.subcell_paper_figures_path,
-                 x="times", y="scheme_error", label="method", plot_by=["num_cells_per_dim", "image"],
-                 # models=["elvira", "quadratic"],
-                 times=lambda ntimes: np.arange(0, ntimes, SAVE_EACH),
-                 # times=lambda ntimes: new_times,
-                 scheme_error=scheme_reconstruction_error,
-                 plot_func=NamedPartial(
-                     sns.lineplot,
-                     marker="o", linestyle="--",
-                     markers=True, linewidth=3,
-                     palette={v: model_color[k] for k, v in names_dict.items()}
-                 ),
-                 log="y",
-                 models=list(model_color.keys()),
-                 method=lambda models: names_dict[models],
-                 axes_xy_proportions=(12, 8),
-                 axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 20},
-                 legend_font_dict={'weight': 'normal', "size": 17, 'stretch': 'normal'},
-                 font_family="amssymb",
-                 xlabel=r"Iterations",
-                 ylabel=r"$||u-\tilde u ||_{L^1}$",
-                 xticks=np.arange(0, ntimes, ntimes//10, dtype=int),
-                 )
-
-    generic_plot(data_manager,
-                 name="Time2Fit",
-                 x="image", y="time_to_fit", label="method", plot_by=["num_cells_per_dim", "image"],
-                 times=lambda ntimes: np.arange(ntimes),
-                 plot_func=NamedPartial(
-                     sns.barplot,
-                     palette={v: model_color[k] for k, v in names_dict.items()}
-                 ),
-                 log="y",
-                 models=list(model_color.keys()),
-                 method=lambda models: names_dict[models],
-                 )
+        generic_plot(data_manager,
+                     name="ReconstructionErrorInTime"+log,
+                     format=".pdf",
+                     path=config.subcell_paper_figures_path,
+                     x="times", y="scheme_error", label="method",
+                     plot_by=["num_cells_per_dim", "image"],
+                     times=lambda ntimes: np.arange(0, ntimes, SAVE_EACH) + 1,
+                     scheme_error=scheme_reconstruction_error,
+                     plot_func=NamedPartial(
+                         sns.lineplot,
+                         marker="o", linestyle="--",
+                         markers=True, linewidth=3,
+                         palette={v: model_color[k] for k, v in names_dict.items()}
+                     ),
+                     log="yx",
+                     models=list(model_color.keys()),
+                     method=lambda models: names_dict[models],
+                     axes_xy_proportions=(12, 8),
+                     axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 20},
+                     legend_font_dict={'weight': 'normal', "size": 17, 'stretch': 'normal'},
+                     font_family="amssymb",
+                     xlabel=r"Iterations",
+                     ylabel=r"$||u-\tilde u ||_{L^1}$",
+                     xticks=xticks,
+                     )
 
     for i in range(0, ntimes, SAVE_EACH):
         plot_reconstruction_time_i(

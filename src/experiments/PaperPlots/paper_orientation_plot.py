@@ -49,11 +49,11 @@ plot_orientation(
     format=".pdf",
     plot_by=["num_cells_per_dim"],
     numbers_on=False,
-    specific_cells=[SpecialCellsPlotTuple(name="SpecialCell", indexes=[(7, 8)],
+    specific_cells=[SpecialCellsPlotTuple(name="SpecialCell", indexes=[(8, 8)],
                                           color=cred, alpha=0.5),
                     ],
     mesh_linewidth=1,
-    trim=((0, 1), (0, 0)),
+    trim=((0, 0), (0, 0)),
 )
 
 plot_orientation(
@@ -68,5 +68,5 @@ plot_orientation(
     plot_by=["num_cells_per_dim"],
     numbers_on=False,
     mesh_linewidth=1,
-    trim=((0, 1), (0, 0)),
+    trim=((0, 0), (0, 0)),
 )

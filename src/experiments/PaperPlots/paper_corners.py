@@ -8,12 +8,10 @@ import seaborn as sns
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
-from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
+from PerplexityLab.miscellaneous import copy_main_script_version
 from PerplexityLab.visualization import make_data_frames
 from experiments.PaperPlots.paper_smooth_domains import fit_model
-from experiments.subcell_paper.ex_aero import piecewise_constant, \
-    quadratic_aero, quartic_aero, elvira, elvira_w_oriented, linear_obera, linear_obera_w, \
-    quadratic_obera_non_adaptive
+from experiments.subcell_paper.ex_aero import quadratic_aero
 from experiments.subcell_paper.global_params import CurveAverageQuadraticCC, CCExtraWeight, cgray, cblue, cgreen, cred, \
     corange, cpurple, runsinfo
 from experiments.subcell_paper.tools import curve_cells_fitting_times
@@ -206,22 +204,9 @@ if __name__ == "__main__":
         "models",
         *map(fit_model, [
             aero_qelvira_vertex,
-            # aero_qelvira_tem,
             aero_qvertex,
             aero_qtem,
-            # NamedPartial(aero_qtem, obera_iterations=500).add_sufix_to_name("_obera"),
-
-            # piecewise_constant,
-            # elvira,
-            # elvira_w_oriented,
-            #
-            # linear_obera,
-            # linear_obera_w,
-            #
-            # quadratic_obera_non_adaptive,
             quadratic_aero,
-            #
-            # quartic_aero,
         ]),
         recalculate=False
     )
@@ -232,13 +217,8 @@ if __name__ == "__main__":
         save_on_iteration=None,
         num_cells_per_dim=[30],  # 20, 42, 84 168 , 84 4220,, 42
         image=[
-            # "batata.jpg"
-            # "yoda.jpg",
-            # "DarthVader.jpeg",
-            # "Ellipsoid_1680x1680.jpg",
-            "ShapesVertex_1680x1680.jpg",
-            # "HandVertex_1680x1680.jpg",
-            # "Polygon_1680x1680.jpg",
+            "batata.jpg"
+            "ShapesVertex.jpg",
         ],
         reconstruction_factor=[1],
     )
@@ -286,7 +266,6 @@ if __name__ == "__main__":
         ylabel=None,
         xticks=None,
         yticks=None,
-        # winner_color_dict=winner_color_dict
     )
 
     # ========== =========== ========== =========== #
@@ -297,7 +276,6 @@ if __name__ == "__main__":
         data_manager,
         var_names=["models", "time"],
         group_by=[],
-        # models=models2plot,
         time=curve_cells_fitting_times,
     ))[1].groupby("models").apply(lambda x: np.nanmean(list(chain(*x["time"].values.tolist()))))
     runsinfo.append_info(
