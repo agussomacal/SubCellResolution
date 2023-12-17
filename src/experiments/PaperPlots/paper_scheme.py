@@ -99,9 +99,36 @@ if __name__ == "__main__":
     )
     print(set(data_manager["models"]))
 
-    num_ticks = 5
+    num_ticks = 10
     for log, xticks in zip(["", "x"], [np.arange(0, ntimes, ntimes // num_ticks, dtype=int),
                                np.logspace(0, np.log10(ntimes), num_ticks, dtype=int)]):
+
+        generic_plot(data_manager,
+                     name="ReconstructionErrorInTime"+log,
+                     format=".pdf",
+                     path=config.subcell_paper_figures_path,
+                     x="times", y="scheme_error", label="method",
+                     plot_by=["num_cells_per_dim", "image"],
+                     times=lambda ntimes: np.arange(0, ntimes, SAVE_EACH) + 1,
+                     scheme_error=scheme_reconstruction_error,
+                     plot_func=NamedPartial(
+                         sns.lineplot,
+                         marker="o", linestyle="--",
+                         markers=True, linewidth=3,
+                         palette={v: model_color[k] for k, v in names_dict.items()}
+                     ),
+                     log="y"+log,
+                     models=list(model_color.keys()),
+                     method=lambda models: names_dict[models],
+                     axes_xy_proportions=(12, 8),
+                     axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 20},
+                     legend_font_dict={'weight': 'normal', "size": 17, 'stretch': 'normal'},
+                     font_family="amssymb",
+                     xlabel=r"Iterations",
+                     ylabel=r"$||u-\tilde u ||_{L^1}$",
+                     xticks=xticks,
+                     )
+
         generic_plot(data_manager,
                      name="ErrorInTime"+log,
                      format=".pdf", ntimes=ntimes,
@@ -122,31 +149,6 @@ if __name__ == "__main__":
                      xticks=xticks,
                      )
 
-        generic_plot(data_manager,
-                     name="ReconstructionErrorInTime"+log,
-                     format=".pdf",
-                     path=config.subcell_paper_figures_path,
-                     x="times", y="scheme_error", label="method",
-                     plot_by=["num_cells_per_dim", "image"],
-                     times=lambda ntimes: np.arange(0, ntimes, SAVE_EACH) + 1,
-                     scheme_error=scheme_reconstruction_error,
-                     plot_func=NamedPartial(
-                         sns.lineplot,
-                         marker="o", linestyle="--",
-                         markers=True, linewidth=3,
-                         palette={v: model_color[k] for k, v in names_dict.items()}
-                     ),
-                     log="yx",
-                     models=list(model_color.keys()),
-                     method=lambda models: names_dict[models],
-                     axes_xy_proportions=(12, 8),
-                     axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 20},
-                     legend_font_dict={'weight': 'normal', "size": 17, 'stretch': 'normal'},
-                     font_family="amssymb",
-                     xlabel=r"Iterations",
-                     ylabel=r"$||u-\tilde u ||_{L^1}$",
-                     xticks=xticks,
-                     )
 
     for i in range(0, ntimes, SAVE_EACH):
         plot_reconstruction_time_i(
