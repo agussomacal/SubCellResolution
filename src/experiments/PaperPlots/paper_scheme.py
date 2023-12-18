@@ -11,7 +11,7 @@ from experiments.subcell_paper.ex_aero import quadratic_aero, elvira_w_oriented
 from experiments.subcell_paper.ex_scheme import scheme_error, plot_reconstruction_time_i, scheme_reconstruction_error, \
     plot_time_i, calculate_true_solution, fit_model
 from experiments.subcell_paper.global_params import cpink, corange, cblue, cgreen, runsinfo, cpurple, cred, cgray, \
-    RESOLUTION_FACTOR, num_cores, running_in
+    RESOLUTION_FACTOR, num_cores, running_in, only_create_preimage_data
 from experiments.subcell_paper.models2compare import upwind
 
 SAVE_EACH = 1
@@ -99,10 +99,11 @@ if __name__ == "__main__":
     )
     print(set(data_manager["models"]))
 
+    ntimes = 120
     num_ticks = 10
-    for log, xticks in zip(["", "x"], [np.arange(0, ntimes, ntimes // num_ticks, dtype=int),
+    for log, xticks in zip(["x", ""], [[1, 2, 4, 8, 16, 24, 40, 70, 120],
+                                       np.arange(0, ntimes, ntimes // num_ticks, dtype=int),
                                        # np.logspace(0, np.log10(ntimes), num_ticks, dtype=int),
-                                       [1, 2, 4, 8, 16, 24, 40, 70, 120]
                                        ]):
         generic_plot(data_manager,
                      name="ReconstructionErrorInTime" + log,
@@ -128,7 +129,8 @@ if __name__ == "__main__":
                      xlabel=r"Iterations",
                      ylabel=r"$||u-\tilde u ||_{L^1}$",
                      xticks=xticks,
-                     create_preimage_data=True
+                     create_preimage_data=True,
+                     only_create_preimage_data=only_create_preimage_data
                      )
 
         generic_plot(data_manager,
@@ -152,7 +154,8 @@ if __name__ == "__main__":
                      log="y" + log,
                      xticks=xticks,
                      uselatex=False if running_in == "server" else True,
-                     create_preimage_data=True
+                     create_preimage_data=True,
+                     only_create_preimage_data=only_create_preimage_data
                      )
 
     for i in range(0, ntimes, SAVE_EACH):
@@ -193,7 +196,8 @@ if __name__ == "__main__":
             xticks=None,
             yticks=None,
             uselatex=False if running_in == "server" else True,
-            create_preimage_data=True
+            create_preimage_data=True,
+            only_create_preimage_data=only_create_preimage_data
         )
 
     for i in range(ntimes):
@@ -203,7 +207,9 @@ if __name__ == "__main__":
                     axes_by=["method"],
                     models=list(model_color.keys()),
                     method=lambda models: names_dict[models],
-                    numbers_on=True, error=True)
+                    numbers_on=True, error=True,
+                    only_create_preimage_data=only_create_preimage_data
+                    )
     # ========== =========== ========== =========== #
     #               Experiment Times                #
     # ========== =========== ========== =========== #

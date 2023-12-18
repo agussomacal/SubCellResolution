@@ -15,7 +15,7 @@ from experiments.subcell_paper.ex_aero import obtain_images, obtain_image4error,
     quadratic_aero, quartic_aero, PlotStyle, elvira, elvira_w_oriented, linear_obera, linear_obera_w, \
     quadratic_obera_non_adaptive, plot_reconstruction
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, runsinfo, cblue, cgreen, cred, \
-    cpurple, cpink, running_in
+    cpurple, cpink, running_in, only_create_preimage_data
 from experiments.subcell_paper.tools import curve_cells_fitting_times
 
 
@@ -174,7 +174,7 @@ if __name__ == "__main__":
         models2plot = list(model_style.keys())
         palette = {names_dict[k]: v.color for k, v in model_style.items()}
 
-        for vlines in [[12, 24], [10, 20]]:
+        for vlines in [[10, 20], [12, 24]]:
             generic_plot(data_manager,
                          name=f"Convergence_{group}_{'_'.join(map(str, vlines))}",
                          path=config.subcell_paper_figures_path,
@@ -197,7 +197,8 @@ if __name__ == "__main__":
                          xlabel=r"$1/h$",
                          ylabel=r"$||u-\tilde u ||_{L^1}$",
                          xticks=[10, 30, 100] + vlines,
-                         create_preimage_data=True
+                         create_preimage_data=True,
+                         only_create_preimage_data=only_create_preimage_data
                          )
 
     # ----------- Reconstruction ---------- #
@@ -238,7 +239,8 @@ if __name__ == "__main__":
                 vmin=-1, vmax=1,
                 labels=False,
                 uselatex=False if running_in == "server" else True,
-                create_preimage_data=True
+                create_preimage_data=True,
+                only_create_preimage_data=only_create_preimage_data
             )
 
     # ========== =========== ========== =========== #

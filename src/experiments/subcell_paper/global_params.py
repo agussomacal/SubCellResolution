@@ -32,6 +32,7 @@ runsinfo.append_info(
     cceweight=CCExtraWeight
 )
 
+only_create_preimage_data = False
 RAM = psutil.virtual_memory().total / 1000000000  # in GB
 if RAM > 70:  # if run in server
     running_in = "server"
@@ -39,6 +40,7 @@ if RAM > 70:  # if run in server
     N = int(1e6)
     num_cores = workers = 50
     RESOLUTION_FACTOR = 1
+    only_create_preimage_data = True
 elif RAM > 40:
     running_in = "local-power"
     print("running in local power machine")
