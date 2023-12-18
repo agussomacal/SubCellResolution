@@ -193,6 +193,7 @@ if __name__ == "__main__":
                          axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
                          legend_font_dict={'weight': 'normal', "size": 19, 'stretch': 'normal'},
                          font_family="amssymb",
+                         uselatex=False if running_in == "server" else True,
                          xlabel=r"$1/h$",
                          ylabel=r"$||u-\tilde u ||_{L^1}$",
                          xticks=[10, 30, 100] + vlines,
@@ -235,6 +236,7 @@ if __name__ == "__main__":
                 cmap_true_image="Greys_r",
                 vmin=-1, vmax=1,
                 labels=False,
+                uselatex=False if running_in == "server" else True,
             )
 
     # ========== =========== ========== =========== #

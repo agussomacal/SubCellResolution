@@ -107,7 +107,7 @@ if __name__ == "__main__":
         generic_plot(data_manager,
                      name="ReconstructionErrorInTime" + log,
                      format=".pdf",
-                     path=config.subcell_paper_figures_path,
+                     # path=config.subcell_paper_figures_path,
                      x="times", y="scheme_error", label="method",
                      plot_by=["num_cells_per_dim", "image"],
                      times=lambda ntimes: np.arange(0, ntimes, SAVE_EACH) + (1 if log else 0),
@@ -124,7 +124,7 @@ if __name__ == "__main__":
                      axes_xy_proportions=(12, 8),
                      axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
                      legend_font_dict={'weight': 'normal', "size": 20, 'stretch': 'normal'},
-                     font_family="amssymb",
+                     uselatex=False if running_in == "server" else True,
                      xlabel=r"Iterations",
                      ylabel=r"$||u-\tilde u ||_{L^1}$",
                      xticks=xticks,
@@ -150,6 +150,7 @@ if __name__ == "__main__":
                      ylabel=r"$||a-\tilde a ||_{\ell^1}$",
                      log="y" + log,
                      xticks=xticks,
+                     uselatex=False if running_in == "server" else True,
                      )
 
     for i in range(0, ntimes, SAVE_EACH):
@@ -189,6 +190,7 @@ if __name__ == "__main__":
             ylabel=None,
             xticks=None,
             yticks=None,
+            uselatex=False if running_in == "server" else True,
         )
 
     for i in range(ntimes):
