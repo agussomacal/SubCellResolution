@@ -197,6 +197,7 @@ if __name__ == "__main__":
                          xlabel=r"$1/h$",
                          ylabel=r"$||u-\tilde u ||_{L^1}$",
                          xticks=[10, 30, 100] + vlines,
+                         create_preimage_data=True
                          )
 
     # ----------- Reconstruction ---------- #
@@ -237,6 +238,7 @@ if __name__ == "__main__":
                 vmin=-1, vmax=1,
                 labels=False,
                 uselatex=False if running_in == "server" else True,
+                create_preimage_data=True
             )
 
     # ========== =========== ========== =========== #

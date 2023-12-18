@@ -128,6 +128,7 @@ if __name__ == "__main__":
                      xlabel=r"Iterations",
                      ylabel=r"$||u-\tilde u ||_{L^1}$",
                      xticks=xticks,
+                     create_preimage_data=True
                      )
 
         generic_plot(data_manager,
@@ -151,6 +152,7 @@ if __name__ == "__main__":
                      log="y" + log,
                      xticks=xticks,
                      uselatex=False if running_in == "server" else True,
+                     create_preimage_data=True
                      )
 
     for i in range(0, ntimes, SAVE_EACH):
@@ -191,6 +193,7 @@ if __name__ == "__main__":
             xticks=None,
             yticks=None,
             uselatex=False if running_in == "server" else True,
+            create_preimage_data=True
         )
 
     for i in range(ntimes):
