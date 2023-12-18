@@ -15,7 +15,7 @@ from experiments.subcell_paper.ex_aero import obtain_images, obtain_image4error,
     quadratic_aero, quartic_aero, PlotStyle, elvira, elvira_w_oriented, linear_obera, linear_obera_w, \
     quadratic_obera_non_adaptive, plot_reconstruction
 from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, runsinfo, cblue, cgreen, cred, \
-    cpurple, cpink
+    cpurple, cpink, running_in
 from experiments.subcell_paper.tools import curve_cells_fitting_times
 
 
@@ -45,10 +45,11 @@ if __name__ == "__main__":
     num_cells_per_dim_2plot_1 = [10, 15, 20, 25, 30]
     num_cells_per_dim_2plot_2 = [14, 21, 28]
     num_cells_per_dim_2plot_3 = [12, 24]
-    num_cells_per_dim = list(map(int, np.unique(np.logspace(np.log10(20), np.log10(100), num=20, dtype=int).tolist() +
-                                                np.logspace(np.log10(10), np.log10(20), num=5, dtype=int,
-                                                            endpoint=False).tolist() +
-                                                num_cells_per_dim_2plot_1 + num_cells_per_dim_2plot_2 + num_cells_per_dim_2plot_3)))
+    num_cells_per_dim = list(map(int, np.unique(
+        np.logspace(np.log10(20), np.log10(100), num=40 if running_in == "server" else 20, dtype=int).tolist() +
+        np.logspace(np.log10(10), np.log10(20), num=5, dtype=int,
+                    endpoint=False).tolist() +
+        num_cells_per_dim_2plot_1 + num_cells_per_dim_2plot_2 + num_cells_per_dim_2plot_3)))
 
     accepted_models = {
         "HighOrderModels": OrderedDict([
@@ -71,7 +72,6 @@ if __name__ == "__main__":
         "piecewise_constant": "Piecewise Constant",
 
         "elvira": "ELVIRA",
-        # "elvira_w": "ELVIRA-W",
         "elvira_w_oriented": "ELVIRA-WO",
 
         "linear_obera": "OBERA Linear",  # l1
@@ -250,7 +250,7 @@ if __name__ == "__main__":
     ))[1].groupby("models").apply(lambda x: np.nanmean(list(chain(*x["time"].values.tolist()))))
     runsinfo.append_info(
         **{k.replace("_", "-") + "-time": f"{v:.1g}" for k, v in df.items()}
-      )
+    )
 
     # times to fit cell std
     dfstd = next(make_data_frames(
