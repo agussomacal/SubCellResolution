@@ -14,4 +14,5 @@ tensorflow
 torch
 cma
 scikeras
+git+https://github.com/agussomacal/PerplexityLab
 # python -m ipykernel install --user --name venv --display-name "SubCell-venv"

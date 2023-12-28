@@ -29,7 +29,7 @@ def plot_convergence(data, x, y, hue, ax, threshold=30, rateonly=None, model_sty
             rate, origin = np.ravel(np.linalg.lstsq(
                 np.vstack([np.log(hinv[valid_ix]), np.ones(np.sum(valid_ix))]).T,
                 np.log(df[y].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
-            name = name + f": O({abs(rate):.1f})"
+            name = fr"{name}: $\cal{{O}}$({abs(rate):.1f})"
         sns.lineplot(
             x=df[x], y=df[y], label=name, ax=ax, alpha=1,
             color=model_style[method].color if model_style is not None else None,
@@ -174,32 +174,33 @@ if __name__ == "__main__":
         models2plot = list(model_style.keys())
         palette = {names_dict[k]: v.color for k, v in model_style.items()}
 
-        for vlines in [[10, 20], [12, 24]]:
-            generic_plot(data_manager,
-                         name=f"Convergence_{group}_{'_'.join(map(str, vlines))}",
-                         path=config.subcell_paper_figures_path,
-                         folder=group,
-                         x="num_cells_per_dim", y="error_l1", label="models",
-                         plot_func=NamedPartial(plot_convergence, model_style=model_style, names_dict=names_dict,
-                                                vlines=vlines,
-                                                threshold=30),
-                         log="xy",
-                         models=models2plot,
-                         method=lambda models: names_dict[str(models)],
-                         sorted_models=lambda models: models2plot.index(models),
-                         sort_by=['sorted_models'],
-                         format=".pdf",
-                         axes_xy_proportions=(12, 8),
-                         axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
-                         legend_font_dict={'weight': 'normal', "size": 19, 'stretch': 'normal'},
-                         font_family="amssymb",
-                         uselatex=False if running_in == "server" else True,
-                         xlabel=r"$1/h$",
-                         ylabel=r"$||u-\tilde u ||_{L^1}$",
-                         xticks=[10, 30, 100] + vlines,
-                         create_preimage_data=True,
-                         only_create_preimage_data=only_create_preimage_data
-                         )
+        vlines = [10, 20]
+        generic_plot(data_manager,
+                     name=f"Convergence_{group}_{'_'.join(map(str, vlines))}",
+                     path=config.subcell_paper_figures_path,
+                     folder=group,
+                     x="num_cells_per_dim", y="error_l1", label="models",
+                     plot_func=NamedPartial(plot_convergence, model_style=model_style, names_dict=names_dict,
+                                            vlines=vlines,
+                                            threshold=30),
+                     log="xy",
+                     models=models2plot,
+                     method=lambda models: names_dict[str(models)],
+                     sorted_models=lambda models: models2plot.index(models),
+                     sort_by=['sorted_models'],
+                     format=".pdf",
+                     axes_xy_proportions=(12, 8),
+                     axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
+                     labels_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
+                     legend_font_dict={'weight': 'normal', "size": 19, 'stretch': 'normal'},
+                     font_family="amssymb",
+                     uselatex=False if running_in == "server" else True,
+                     xlabel=r"$1/h$",
+                     ylabel=r"$\|u-\tilde u \|_{L^1}$",
+                     xticks=[10, 30, 100] + vlines,
+                     create_preimage_data=True,
+                     only_create_preimage_data=only_create_preimage_data
+                     )
 
     # ----------- Reconstruction ---------- #
     for group, model_style in accepted_models.items():

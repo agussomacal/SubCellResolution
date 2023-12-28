@@ -5,7 +5,7 @@ import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
-from PerplexityLab.visualization import generic_plot, make_data_frames
+from PerplexityLab.visualization import generic_plot, make_data_frames, LegendOutsidePlot
 from experiments.PaperPlots.paper_corners import aero_qelvira_vertex
 from experiments.subcell_paper.ex_aero import quadratic_aero, elvira_w_oriented
 from experiments.subcell_paper.ex_scheme import scheme_error, plot_reconstruction_time_i, scheme_reconstruction_error, \
@@ -100,6 +100,42 @@ if __name__ == "__main__":
     print(set(data_manager["models"]))
 
     ntimes = 120
+    # ---------------- Paper plots ---------------- #
+    generic_plot(data_manager,
+                 name="ReconstructionErrorInTimex",
+                 format=".pdf",
+                 path=config.subcell_paper_figures_path,
+                 x="times", y="scheme_error", label="method",
+                 plot_by=["num_cells_per_dim", "image"],
+                 times=lambda ntimes: np.arange(0, ntimes, SAVE_EACH) + (1 if log else 0),
+                 scheme_error=scheme_reconstruction_error,
+                 plot_func=NamedPartial(
+                     sns.lineplot,
+                     marker="o", linestyle="--",
+                     markers=True, linewidth=3,
+                     palette={v: model_color[k] for k, v in names_dict.items()}
+                 ),
+                 log="yx",
+                 models=list(model_color.keys()),
+                 method=lambda models: names_dict[models],
+                 # num_cells_per_dim=[30],
+                 axes_xy_proportions=(12, 8),
+                 axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
+                 labels_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
+                 legend_font_dict={'weight': 'normal', "size": 20, 'stretch': 'normal'},
+                 uselatex=False if running_in == "server" else True,
+                 xlabel=r"Iterations",
+                 ylabel=r"$\|u-\tilde u \|_{L^1}$",
+                 xticks=[1, 2, 4, 8, 16, 24, 40, 70, 120],
+                 create_preimage_data=True if running_in == "server" else False,
+                 use_preimage_data=True,
+                 only_create_preimage_data=True if running_in == "server" else False,
+                 legend_outside_plot=LegendOutsidePlot(loc="lower center",
+                                                       extra_y_top=0.01, extra_y_bottom=0.3,
+                                                       extra_x_left=0.125, extra_x_right=0.075),
+                 )
+
+    # ---------------- Other plots ---------------- #
     num_ticks = 10
     for log, xticks in zip(["x", ""], [[1, 2, 4, 8, 16, 24, 40, 70, 120],
                                        np.arange(0, ntimes, ntimes // num_ticks, dtype=int),
@@ -107,7 +143,7 @@ if __name__ == "__main__":
                                        ]):
         generic_plot(data_manager,
                      name="ReconstructionErrorInTime" + log,
-                     format=".pdf",
+                     # format=".pdf",
                      # path=config.subcell_paper_figures_path,
                      x="times", y="scheme_error", label="method",
                      plot_by=["num_cells_per_dim", "image"],
@@ -124,13 +160,17 @@ if __name__ == "__main__":
                      method=lambda models: names_dict[models],
                      axes_xy_proportions=(12, 8),
                      axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
+                     labels_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
                      legend_font_dict={'weight': 'normal', "size": 20, 'stretch': 'normal'},
                      uselatex=False if running_in == "server" else True,
                      xlabel=r"Iterations",
-                     ylabel=r"$||u-\tilde u ||_{L^1}$",
+                     ylabel=r"$\|u-\tilde u \|_{L^1}$",
                      xticks=xticks,
                      create_preimage_data=True,
-                     only_create_preimage_data=only_create_preimage_data
+                     only_create_preimage_data=only_create_preimage_data,
+                     legend_outside_plot=LegendOutsidePlot(loc="lower center",
+                                                           extra_y_top=0.01, extra_y_bottom=0.25,
+                                                           extra_x_left=0.125, extra_x_right=0.075),
                      )
 
         generic_plot(data_manager,
@@ -148,6 +188,7 @@ if __name__ == "__main__":
                      models=list(model_color.keys()),
                      method=lambda models: names_dict[models],
                      axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
+                     labels_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
                      legend_font_dict={'weight': 'normal', "size": 20, 'stretch': 'normal'},
                      xlabel=r"Iterations",
                      ylabel=r"$||a-\tilde a ||_{\ell^1}$",
@@ -155,7 +196,10 @@ if __name__ == "__main__":
                      xticks=xticks,
                      uselatex=False if running_in == "server" else True,
                      create_preimage_data=True,
-                     only_create_preimage_data=only_create_preimage_data
+                     only_create_preimage_data=only_create_preimage_data,
+                     legend_outside_plot=LegendOutsidePlot(loc="lower center",
+                                                           extra_y_top=0.01, extra_y_bottom=0.25,
+                                                           extra_x_left=0.125, extra_x_right=0.075),
                      )
 
     for i in range(0, ntimes, SAVE_EACH):
