@@ -217,7 +217,7 @@ if __name__ == "__main__":
         save_on_iteration=None,
         num_cells_per_dim=[30],  # 20, 42, 84 168 , 84 4220,, 42
         image=[
-            "batata.jpg"
+            # "batata.jpg",
             "ShapesVertex.jpg",
         ],
         reconstruction_factor=[1],
