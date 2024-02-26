@@ -2,8 +2,7 @@
 
 This repository has the python implementation of papers:
 1. **Nonlinear approximation spaces for inverse problems**: [arXiv-preprint](https://arxiv.org/abs/2209.09314) | [Analysis and ApplicationsVol. 21, No. 01, pp. 217-253 (2023)](https://www.worldscientific.com/doi/10.1142/S0219530522400140)
-<br>
-<sub>
+<br><sub>
 This paper is concerned with the ubiquitous inverse problem of recovering an
 unknown function $u$ from finitely many measurements 
 possibly affected by noise. In recent years, inversion methods based
