@@ -9,14 +9,13 @@ from PerplexityLab.DataManager import DataManager, JOBLIB, dmfilter
 from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
 from PerplexityLab.visualization import generic_plot, make_data_frames, save_fig
-from experiments.MLTraining.ml_global_params import num_cores
+from experiments.PaperPlots.exploring_methods_convergence import obtain_images, obtain_image4error, fit_model, \
+    piecewise_constant, quadratic_aero, quartic_aero, PlotStyle, elvira, elvira_w_oriented, linear_obera, \
+    linear_obera_w, quadratic_obera_non_adaptive, plot_reconstruction
 from experiments.VizReconstructionUtils import plot_image
-from experiments.subcell_paper.ex_aero import obtain_images, obtain_image4error, fit_model, piecewise_constant, \
-    quadratic_aero, quartic_aero, PlotStyle, elvira, elvira_w_oriented, linear_obera, linear_obera_w, \
-    quadratic_obera_non_adaptive, plot_reconstruction
-from experiments.subcell_paper.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, runsinfo, cblue, cgreen, cred, \
-    cpurple, cpink, running_in, only_create_preimage_data
-from experiments.subcell_paper.tools import curve_cells_fitting_times
+from experiments.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, runsinfo, cblue, cgreen, cred, \
+    cpurple, cpink, running_in, only_create_preimage_data, image_format
+from experiments.tools import curve_cells_fitting_times
 
 
 def plot_convergence(data, x, y, hue, ax, threshold=30, rateonly=None, model_style=None, names_dict=None,
@@ -131,7 +130,6 @@ if __name__ == "__main__":
                       quadratic_aero,
 
                       quartic_aero,
-                      # quartic_obera,
                   ]
                   )),
         recalculate=False
@@ -139,7 +137,7 @@ if __name__ == "__main__":
 
     lab.execute(
         data_manager,
-        num_cores=num_cores,
+        num_cores=-1,
         forget=False,
         save_on_iteration=100,
         num_cells_per_dim=num_cells_per_dim,
@@ -154,11 +152,12 @@ if __name__ == "__main__":
     # ========== =========== ========== =========== #
     circle_image = dmfilter(data_manager, names=["image4error"],
                             num_cells_per_dim=[max(num_cells_per_dim)])["image4error"][0]
-    with save_fig(paths=config.subcell_paper_figures_path, filename="Circle.pdf", show=False, dpi=None):
+    with save_fig(paths=config.subcell_paper_figures_path, filename=f"Circle{image_format}", show=False, dpi=None):
         plot_image(circle_image, cmap="viridis", vmin=-1, vmax=1, alpha=0.65)
 
     for N in [10, 20]:
-        with save_fig(paths=config.subcell_paper_figures_path, filename=f"CircleAvg{N}.pdf", show=False, dpi=None):
+        with save_fig(paths=config.subcell_paper_figures_path, filename=f"CircleAvg{N}{image_format}", show=False,
+                      dpi=None):
             plot_image(dmfilter(data_manager, names=["image"], num_cells_per_dim=[N])["image"][0],
                        cmap="viridis", vmin=-1, vmax=1, alpha=0.65)
 
@@ -188,7 +187,7 @@ if __name__ == "__main__":
                      method=lambda models: names_dict[str(models)],
                      sorted_models=lambda models: models2plot.index(models),
                      sort_by=['sorted_models'],
-                     format=".pdf",
+                     format=image_format,
                      axes_xy_proportions=(12, 8),
                      axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
                      labels_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
@@ -217,7 +216,7 @@ if __name__ == "__main__":
                 data_manager,
                 path=config.subcell_paper_figures_path,
                 folder=group,
-                format=".pdf",
+                format=image_format,
                 name=f"{group}",
                 models=models2plot,
                 plot_by=['num_cells_per_dim', "models"],

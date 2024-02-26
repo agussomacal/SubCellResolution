@@ -10,7 +10,7 @@ from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.visualization import one_line_iterator, perplex_plot
 from experiments.VizReconstructionUtils import plot_cells, draw_cell_borders, plot_specific_cells, \
     SpecialCellsPlotTuple, draw_numbers
-from experiments.global_params import cblue, cgreen, cred, image_format
+from experiments.global_params import cblue, cgreen, cred
 from experiments.tools import calculate_averages_from_image, load_image, \
     singular_cells_mask
 from lib.AuxiliaryStructures.Constants import CURVE_CELL
@@ -105,68 +105,99 @@ def plot_orientation(fig, ax, image, num_cells_per_dim, orientations,
     ax.get_yaxis().set_ticks([])
 
 
-data_manager = DataManager(
-    path=config.paper_results_path,
-    emissions_path=config.results_path,
-    name='PaperOrientation',
-    format=JOBLIB,
-    trackCO2=True,
-    country_alpha_code="FR"
-)
+if __name__ == "__main__":
+    data_manager = DataManager(
+        path=config.results_path,
+        name='Orientation',
+        format=JOBLIB,
+        trackCO2=True,
+        country_alpha_code="FR"
+    )
 
-lab = LabPipeline()
+    lab = LabPipeline()
 
-lab.define_new_block_of_functions(
-    "experiment_orientation",
-    experiment,
-    recalculate=False
-)
-lab.execute(
-    data_manager,
-    num_cores=15,
-    forget=False,
-    save_on_iteration=None,
-    num_cells_per_dim=[10, 30],  # 60
-    image=[
-        "batata.jpg",
-    ],
-    angle_threshold=[
-        45
-    ],
-    method=["sobel"],
-    kernel_size=[
-        (3, 3),
-    ]
-)
-plot_orientation(
-    data_manager,
-    path=config.subcell_paper_figures_path,
-    method="sobel",
-    num_cells_per_dim=10,
-    image="batata.jpg",
-    angle_threshold=45,
-    alpha=0.4,
-    format=image_format,
-    plot_by=["num_cells_per_dim"],
-    numbers_on=False,
-    specific_cells=[SpecialCellsPlotTuple(name="SpecialCell", indexes=[(8, 8)],
-                                          color=cred, alpha=0.5),
-                    ],
-    mesh_linewidth=1,
-    trim=((0, 0), (0, 0)),
-)
+    lab.define_new_block_of_functions(
+        "experiment_orientation",
+        experiment,
+        recalculate=False
+    )
+    num_cells_per_dim = [5, 10, 15, 20, 28, 30, 42]  # 60
+    lab.execute(
+        data_manager,
+        num_cores=15,
+        forget=False,
+        save_on_iteration=None,
+        num_cells_per_dim=num_cells_per_dim,  # 60
+        image=[
+            # "yoda.jpg",
+            # "DarthVader.jpeg",
+            "batata.jpg",
+            # "mafalda.jpg",
+            # "Ellipsoid_1680x1680.jpg",
+            # "ShapesVertex_1680x1680.jpg",
+            # "HandVertex_1680x1680.jpg",
+            # "Polygon_1680x1680.jpg",
+        ],
+        angle_threshold=[
+            # 30,
+            45
+        ],
+        method=[
+            "sobel",
+            "optim"
+        ],
+        kernel_size=[
+            (3, 3),
+            (5, 5),
+        ]
+    )
+    # lab.execute(
+    #     data_manager,
+    #     num_cores=15,
+    #     forget=False,
+    #     save_on_iteration=None,
+    #     num_cells_per_dim=[10, 15, 20, 28, 30, 42],  # 60
+    #     image=[
+    #         # "yoda.jpg",
+    #         # "DarthVader.jpeg",
+    #         "Ellipsoid_1680x1680.jpg",
+    #         "ShapesVertex_1680x1680.jpg",
+    #         "HandVertex_1680x1680.jpg",
+    #         "Polygon_1680x1680.jpg",
+    #     ],
+    #     angle_threshold=[
+    #         30,
+    #         45
+    #     ],
+    #     method=["optim"],
+    #     kernel_size=[
+    #         (3, 3),
+    #         (5, 5)
+    #     ]
+    # )
 
-plot_orientation(
-    data_manager,
-    path=config.subcell_paper_figures_path,
-    method="sobel",
-    num_cells_per_dim=30,
-    image="batata.jpg",
-    angle_threshold=45,
-    alpha=0.4,
-    format=image_format,
-    plot_by=["num_cells_per_dim"],
-    numbers_on=False,
-    mesh_linewidth=1,
-    trim=((0, 0), (0, 0)),
-)
+    plot_orientation(
+        data_manager,
+        # method="sobel",
+        num_cells_per_dim=num_cells_per_dim,
+        # image="mafalda.jpg",
+        image="batata.jpg",
+        angle_threshold=45,
+        alpha=0.5,
+        plot_by=["num_cells_per_dim"],
+        axes_by=["method", "kernel_size"],
+        # format=".pdf",
+        # trim=((1, 1), (1, 1)),
+        numbers_on=False,
+    )
+    #
+    # generic_plot(
+    #     data_manager,
+    #     x="num_cells_per_dim", y="prop_mixed_cells", label="orientator",
+    #     orientator=lambda kernel_size, angle_threshold, method: f"{method}: {kernel_size} - {angle_threshold}º",
+    #     prop_mixed_cells=lambda orientations, num_singular_cells: list(orientations.values()).count(
+    #         3) / num_singular_cells,
+    #     axes_by=["image"]
+    # )
+    # plot_orientation(data_manager, axes_by=["angle_threshold", "kernel_size", "method"],
+    #                  plot_by=["image", "num_cells_per_dim"])
