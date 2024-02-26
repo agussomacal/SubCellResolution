@@ -1,7 +1,8 @@
 
 
 This repository has the python implementation of papers:
-1. **Nonlinear approximation spaces for inverse problems**: [arXiv-preprint](https://arxiv.org/abs/2209.09314) | [Analysis and ApplicationsVol. 21, No. 01, pp. 217-253 (2023)](https://www.worldscientific.com/doi/10.1142/S0219530522400140)\
+1. **Nonlinear approximation spaces for inverse problems**: [arXiv-preprint](https://arxiv.org/abs/2209.09314) | [Analysis and ApplicationsVol. 21, No. 01, pp. 217-253 (2023)](https://www.worldscientific.com/doi/10.1142/S0219530522400140)
+<br>
 <sub>
 This paper is concerned with the ubiquitous inverse problem of recovering an
 unknown function $u$ from finitely many measurements 
@@ -16,11 +17,10 @@ bounds for inversion procedures based on nonlinear approximation spaces. The sec
 is the application of this framework
 to the recovery of general bidimensional shapes from cell-average data. 
 We also discuss how the application of our results to $n$-term approximation relates to classical results in compressed sensing.
-</sub> 
-<p></p> 
+</sub> <br><br>
 
-2. **High order recovery of geometric interfaces from cell-average data**: [arXiv-preprint](http://arxiv.org/abs/2402.00946)\
-<sub>
+2. **High order recovery of geometric interfaces from cell-average data**: [arXiv-preprint](http://arxiv.org/abs/2402.00946)
+<br><sub> 
 We consider the problem of recovering multivariate characteristic functions u := χΩ from cell-average
 data on a coarse grid, motivated in particular by the accurate treatment of interfaces in finite volume
 schemes. While linear recovery methods are known to perform poorly, nonlinear strategies based on local
@@ -31,8 +31,7 @@ the data, which yields simpler numerical computations and high order geometric f
 we derive a general theoretical framework which allows us to control the recovery error by the error of
 best approximation up to a fixed multiplicative constant. Numerical tests in 2d illustrate the expected
 approximation order of these strategies. Several extensions are discussed, in particular the treatment of
-piecewise smooth interfaces with corners.
-</sub>
+piecewise smooth interfaces with corners. </sub>
 
 
 ## Running experiments
