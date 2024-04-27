@@ -54,8 +54,8 @@ def calculate_averages_from_curve(curve: Curve, resolution: Tuple[int, int], dep
     return averages * num_squares
 
 
-def load_image(image_name):
-    image = plt.imread(f"{config.images_path}/{image_name}", format=image_name.split(".")[-1])
+def load_image(image_name, other_path=None):
+    image = plt.imread(f"{config.images_path if other_path is None else other_path}/{image_name}", format=image_name.split(".")[-1])
     image = np.mean(image, axis=tuple(np.arange(2, len(np.shape(image)), dtype=int)))
     image -= np.min(image)
     image /= np.max(image)
