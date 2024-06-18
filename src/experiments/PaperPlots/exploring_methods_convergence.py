@@ -275,7 +275,7 @@ def fit_model(sub_cell_model):
 def plot_reconstruction(fig, ax, image, image4error, num_cells_per_dim, model, sub_discretization2bound_error,
                         alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True, plot_curve_winner=False,
                         plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
-                        cmap_true_image="Greys_r", draw_mesh=True,
+                        cmap_true_image="Greys_r", draw_mesh=True, default_linewidth=2,
                         trim=((0, 1), (0, 1)),
                         numbers_on=True, vmin=None, vmax=None, labels=True):
     """
@@ -328,14 +328,14 @@ def plot_reconstruction(fig, ax, image, image4error, num_cells_per_dim, model, s
         elif plot_singular_cells:
             plot_cells_not_regular_classification_core(ax, model_resolution, model.cells, alpha=0.8)
         plot_curve_core(ax, curve_cells=[cell for cell in model.cells.values() if
-                                         cell.CELL_TYPE == CURVE_CELL_TYPE])
+                                         cell.CELL_TYPE == CURVE_CELL_TYPE], default_linewidth=default_linewidth * 1.5)
 
     if draw_mesh:
         draw_cell_borders(
             ax, mesh_shape=num_cells_per_dim,
             refinement=model_resolution // num_cells_per_dim,
             color='black',
-            default_linewidth=2,
+            default_linewidth=default_linewidth,
             mesh_style=":"
         )
 

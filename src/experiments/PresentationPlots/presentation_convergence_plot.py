@@ -9,7 +9,7 @@ import config
 from PerplexityLab.DataManager import DataManager, JOBLIB, dmfilter
 from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
-from PerplexityLab.visualization import generic_plot, make_data_frames, save_fig
+from PerplexityLab.visualization import generic_plot, make_data_frames, save_fig, LegendOutsidePlot
 from experiments.PaperPlots.exploring_methods_convergence import obtain_images, obtain_image4error, fit_model, \
     piecewise_constant, quadratic_aero, quartic_aero, PlotStyle, elvira, elvira_w_oriented, linear_obera, \
     linear_obera_w, quadratic_obera_non_adaptive, plot_reconstruction
@@ -71,31 +71,36 @@ if __name__ == "__main__":
                     endpoint=False).tolist() +
         num_cells_per_dim_2plot_1 + num_cells_per_dim_2plot_2 + num_cells_per_dim_2plot_3)))
 
+    # PIECEWISE_COLOR = YELLOW  # #FFFF00
+    # LVIRA_COLOR = RED  # #FC6255
+    # AEROS_2_COLOR = BLUE  # #58C4DD
+    # QUADRATIC_COLOR = GREEN  # #83C167
+    # QUARTIC_COLOR = PURPLE  # #CAA3E8
     accepted_models = {
         "HighOrderModels": OrderedDict([
-            ("piecewise_constant", PlotStyle(color=cpink, marker="o", linestyle="--")),
+            ("piecewise_constant", PlotStyle(color="#FFFF00", marker="o", linestyle="--")),
 
-            ("linear_obera", PlotStyle(color=cblue, marker=".", linestyle=":")),
-            ("elvira", PlotStyle(color=cblue, marker="o", linestyle="--")),
-            ("elvira_w_oriented", PlotStyle(color=cpurple, marker="o", linestyle="--")),
-            ("linear_obera_w", PlotStyle(color=cpurple, marker=".", linestyle=":")),
+            # ("linear_obera", PlotStyle(color=cblue, marker=".", linestyle=":")),
+            ("linear_obera_w", PlotStyle(color="#FC6255", marker="o", linestyle="--")),
 
-            ("quadratic_aero", PlotStyle(color=cgreen, marker="o", linestyle="--")),
-            ("quadratic_obera_non_adaptive", PlotStyle(color=cgreen, marker=".", linestyle=":")),
+            ("quadratic_obera_non_adaptive", PlotStyle(color="#83C167", marker="o", linestyle="--")),
+            ("quadratic_aero", PlotStyle(color="#58C4DD", marker="o", linestyle="--")),
 
-            ("quartic_aero", PlotStyle(color=cred, marker="o", linestyle="--")),
+            ("quartic_aero", PlotStyle(color="#CAA3E8", marker="o", linestyle="--")),
             # ("quartic_obera", PlotStyle(color=cpurple, marker=".", linestyle=":")),
+            # ("elvira", PlotStyle(color=cblue, marker="o", linestyle="--")),
+            # ("elvira_w_oriented", PlotStyle(color=cpurple, marker="o", linestyle="--")),
         ]),
     }
 
     names_dict = {
-        "piecewise_constant": "Piecewise Constant",
+        "piecewise_constant": "Piecewise constant",
 
         "elvira": "ELVIRA",
         "elvira_w_oriented": "ELVIRA-WO",
 
         "linear_obera": "OBERA Linear",  # l1
-        "linear_obera_w": "OBERA-W Linear",  # l1
+        "linear_obera_w": "LVIRA",  # l1
 
         "quadratic_obera_non_adaptive": "OBERA Quadratic",
         "quadratic_aero": "AEROS Quadratic",
@@ -125,44 +130,17 @@ if __name__ == "__main__":
     )
     data_manager.load()
 
-    lab = LabPipeline()
-    lab.define_new_block_of_functions(
-        "precompute_images",
-        obtain_images
-    )
-
-    lab.define_new_block_of_functions(
-        "precompute_error_resolution",
-        obtain_image4error
-    )
-
-    lab.define_new_block_of_functions(
-        "models",
-        *list(map(fit_model,
-                  [
-                      piecewise_constant,
-                      elvira,
-                      elvira_w_oriented,
-
-                      linear_obera,
-                      linear_obera_w,
-
-                      quadratic_obera_non_adaptive,
-                      quadratic_aero,
-
-                      quartic_aero,
-                  ]
-                  )),
-        recalculate=False
-    )
-
     # ========== =========== ========== =========== #
     #               Experiment Plots                #
     # ========== =========== ========== =========== #
-    # cmap = "viridis"
+    # alpha = 1
+    # cmap = "coolwarm"
+    # vmin = 0
+    # vmax = 1
+
+    cmap = "viridis"
     alpha = 1
-    cmap = "coolwarm"
-    vmin = 0
+    vmin = -1
     vmax = 1
 
     # ---------- plot VOF ----------- #
@@ -203,64 +181,87 @@ if __name__ == "__main__":
     subcell.fit(image, indexer=ArrayIndexerNd(image, modes=EXTEND))
     reconstruction = subcell.reconstruct_by_factor(5)
 
-    plot_image(reconstruction, cmap=cmap, vmin=vmin, vmax=vmax, alpha=alpha)
+    plot_image(reconstruction, cmap=cmap, vmin=-1, vmax=vmax, alpha=alpha)
     save_fig_without_white(f"{config.subcell_presentation_path}/solution_avg_{i}_reconstructed{image_format}")
 
-    exit()
-    # ----------- Color for model ---------- #
-    for group, model_style in accepted_models.items():
-        runsinfo.append_info(
-            **{f'color-{k.replace("_", "-")}': str(np.round(v.color, decimals=2).tolist())[1:-1] for k, v in
-               model_style.items()}
-        )
+    # ---------- Reconstruction ----------- #
+    plot_image(circle_image[2000 // 10 * 2:2000 // 10 * 5 - 1, 2000 // 10 * 2:2000 // 10 * 5 - 1], cmap=cmap, vmin=vmin,
+               vmax=vmax, alpha=1)
+    save_fig_without_white(f"{config.subcell_presentation_path}/zoomed_true_image_{image_format}")
 
-    # ----------- Convergence ---------- #
-    for group, model_style in accepted_models.items():
-        models2plot = list(model_style.keys())
-        palette = {names_dict[k]: v.color for k, v in model_style.items()}
-
-        vlines = [10, 20]
-        generic_plot(data_manager,
-                     name=f"Convergence_{group}_{'_'.join(map(str, vlines))}",
-                     path=config.subcell_paper_figures_path,
-                     folder=group,
-                     x="num_cells_per_dim", y="error_l1", label="models",
-                     plot_func=NamedPartial(plot_convergence, model_style=model_style, names_dict=names_dict,
-                                            vlines=vlines,
-                                            threshold=30),
-                     log="xy",
-                     models=models2plot,
-                     method=lambda models: names_dict[str(models)],
-                     sorted_models=lambda models: models2plot.index(models),
-                     sort_by=['sorted_models'],
-                     format=image_format,
-                     axes_xy_proportions=(12, 8),
-                     axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
-                     labels_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
-                     legend_font_dict={'weight': 'normal', "size": 19, 'stretch': 'normal'},
-                     font_family="amssymb",
-                     uselatex=False if running_in == "server" else True,
-                     xlabel=r"$1/h$",
-                     ylabel=r"$\|u-\tilde u \|_{L^1}$",
-                     xticks=[10, 30, 100] + vlines,
-                     create_preimage_data=True,
-                     only_create_preimage_data=only_create_preimage_data
-                     )
-
-    # ----------- Reconstruction ---------- #
     for group, model_style in accepted_models.items():
         models2plot = list(model_style.keys())
 
-        # for limits, ncpdg in zip([(2, 5), (3, 6), (3, 6)], [num_cells_per_dim_2plot_1, num_cells_per_dim_2plot_2, num_cells_per_dim_2plot_3]):
-        # for limits, ncpdg in zip([(2, 5), (3, 6), (3, 6)],
-        #                          [num_cells_per_dim_2plot_1, num_cells_per_dim_2plot_2, num_cells_per_dim_2plot_3]):
-        #     for ncpd in ncpdg:
         limits = [2, 5]
         ncpdg = [10, 20]
         for ncpd in ncpdg:
             plot_reconstruction(
                 data_manager,
-                path=config.subcell_paper_figures_path,
+                path=config.subcell_presentation_path,
+                folder=group,
+                format=image_format,
+                name=f"OriginalData",
+                models='piecewise_constant',
+                plot_by=['num_cells_per_dim', "models"],
+                num_cells_per_dim=ncpd,
+                axes_xy_proportions=(15, 15),
+                difference=False,
+                plot_curve=True,
+                plot_curve_winner=False,
+                plot_vh_classification=False,
+                plot_singular_cells=False,
+                alpha_true_image=0,
+                alpha=0.65,
+                numbers_on=False,
+                plot_again=True,
+                num_cores=1,
+                default_linewidth=5,
+                trim=((limits[0] * ncpd / ncpdg[0], limits[1] * ncpd / ncpdg[0]),
+                      (limits[0] * ncpd / ncpdg[0], limits[1] * ncpd / ncpdg[0])),
+                cmap=cmap,
+                cmap_true_image="Greys_r",
+                # cmap_true_image=cmap,
+                vmin=vmin, vmax=vmax,
+                labels=False,
+                uselatex=False if running_in == "server" else True,
+                create_preimage_data=True,
+                only_create_preimage_data=only_create_preimage_data
+            )
+
+            plot_reconstruction(
+                data_manager,
+                path=config.subcell_presentation_path,
+                folder=group,
+                format=image_format,
+                name=f"NoOriginalImage",
+                models=models2plot,
+                plot_by=['num_cells_per_dim', "models"],
+                num_cells_per_dim=ncpd,
+                axes_xy_proportions=(15, 15),
+                difference=False,
+                plot_curve=True,
+                plot_curve_winner=False,
+                plot_vh_classification=False,
+                plot_singular_cells=False,
+                alpha_true_image=0,
+                alpha=0.5,
+                numbers_on=False,
+                plot_again=True,
+                num_cores=1,
+                default_linewidth=5,
+                trim=((limits[0] * ncpd / ncpdg[0], limits[1] * ncpd / ncpdg[0]),
+                      (limits[0] * ncpd / ncpdg[0], limits[1] * ncpd / ncpdg[0])),
+                cmap=cmap,
+                cmap_true_image="Greys_r",
+                vmin=vmin, vmax=vmax,
+                labels=False,
+                uselatex=False if running_in == "server" else True,
+                create_preimage_data=True,
+                only_create_preimage_data=only_create_preimage_data
+            )
+            plot_reconstruction(
+                data_manager,
+                path=config.subcell_presentation_path,
                 folder=group,
                 format=image_format,
                 name=f"{group}",
@@ -273,15 +274,17 @@ if __name__ == "__main__":
                 plot_curve_winner=False,
                 plot_vh_classification=False,
                 plot_singular_cells=False,
-                alpha_true_image=1,
-                alpha=0.65,
+                alpha_true_image=0.5,
+                alpha=0.5,
                 numbers_on=False,
                 plot_again=True,
                 num_cores=1,
+                default_linewidth=5,
                 trim=((limits[0] * ncpd / ncpdg[0], limits[1] * ncpd / ncpdg[0]),
                       (limits[0] * ncpd / ncpdg[0], limits[1] * ncpd / ncpdg[0])),
                 cmap=cmap,
-                cmap_true_image="Greys_r",
+                cmap_true_image=cmap,
+                # cmap_true_image="Greys_r",
                 vmin=vmin, vmax=vmax,
                 labels=False,
                 uselatex=False if running_in == "server" else True,
@@ -289,65 +292,58 @@ if __name__ == "__main__":
                 only_create_preimage_data=only_create_preimage_data
             )
 
-    # ========== =========== ========== =========== #
-    #               Experiment Times                #
-    # ========== =========== ========== =========== #
-    # times to fit cell
-    df = next(make_data_frames(
-        data_manager,
-        var_names=["models", "time"],
-        group_by=[],
-        # models=models2plot,
-        time=curve_cells_fitting_times,
-    ))[1].groupby("models").apply(lambda x: np.nanmean(list(chain(*x["time"].values.tolist()))))
-    runsinfo.append_info(
-        **{k.replace("_", "-") + "-time": f"{v:.1g}" for k, v in df.items()}
-    )
 
-    # times to fit cell std
-    dfstd = next(make_data_frames(
-        data_manager,
-        var_names=["models", "time"],
-        group_by=[],
-        # models=models2plot,
-        time=curve_cells_fitting_times,
-    ))[1].groupby("models").apply(lambda x: np.nanstd(list(chain(*x["time"].values.tolist()))))
-    runsinfo.append_info(
-        **{"std-" + k.replace("_", "-") + "-time": f"{v:.1g}" for k, v in dfstd.items()}
-    )
+    # ----------- Convergence ---------- #
+    def extra_process4plot(fig, ax):
+        ax.spines[['right', 'top']].set_visible(False)
+        ax.spines[['bottom', 'left']].set_color('white')
+        ax.xaxis.label.set_color('white')
+        ax.yaxis.label.set_color('white')
+        ax.tick_params(axis='x', colors='white')
+        ax.tick_params(axis='y', colors='white')
 
-    dfstd = next(make_data_frames(
-        data_manager,
-        var_names=["models", "time"],
-        group_by=[],
-        # models=models2plot,
-        time=curve_cells_fitting_times,
-    ))[1].groupby("models").apply(lambda x: np.nanquantile(list(chain(*x["time"].values.tolist())), 0.05))
-    runsinfo.append_info(
-        **{"qlow-" + k.replace("_", "-") + "-time": f"{v:.1g}" for k, v in dfstd.items()}
-    )
 
-    dfstd = next(make_data_frames(
-        data_manager,
-        var_names=["models", "time"],
-        group_by=[],
-        # models=models2plot,
-        time=curve_cells_fitting_times,
-    ))[1].groupby("models").apply(lambda x: np.nanquantile(list(chain(*x["time"].values.tolist())), 0.95))
-    runsinfo.append_info(
-        **{"qhigh-" + k.replace("_", "-") + "-time": f"{v:.1g}" for k, v in dfstd.items()}
-    )
+    for group, model_style in accepted_models.items():
+        models2plot = list(model_style.keys())
 
-    dfstd = next(make_data_frames(
-        data_manager,
-        var_names=["models", "time"],
-        group_by=[],
-        # models=models2plot,
-        time=curve_cells_fitting_times,
-    ))[1].groupby("models").apply(lambda x: np.nanquantile(list(chain(*x["time"].values.tolist())), 0.5))
-    runsinfo.append_info(
-        **{"median-" + k.replace("_", "-") + "-time": f"{v:.1g}" for k, v in dfstd.items()}
-    )
+        for i in range(len(models2plot)):
+            # model_style_new = {
+            #     k: PlotStyle(color=(v.color if k in models2plot[:(i + 1)] else (0, 48 / 255, 73 / 255, 0)),
+            #                  marker=v.marker if k in models2plot[:(i + 1)] else None,
+            #                  linestyle=v.linestyle if k in models2plot[:(i + 1)] else None) for k, v in model_style.items()}
 
-    print("CO2 consumption: ", data_manager.CO2kg)
-    copy_main_script_version(__file__, data_manager.path)
+            vlines = [10, 20]
+            generic_plot(data_manager,
+                         name=f"Convergence_{group}_{'_'.join(map(str, vlines))}_{models2plot[i]}",
+                         path=config.subcell_presentation_path,
+                         folder=group,
+                         x="num_cells_per_dim", y="error_l1", label="models",
+                         plot_func=NamedPartial(plot_convergence, model_style=model_style, names_dict=names_dict,
+                                                vlines=vlines,
+                                                threshold=30),
+                         log="xy",
+                         ylim=(5e-8, 5e-1),
+                         models=models2plot[:(i + 1)][::-1],
+                         method=lambda models: names_dict[str(models)],
+                         sorted_models=lambda models: 100-models2plot.index(models),
+                         sort_by=['sorted_models'],
+                         format=image_format,
+                         axes_xy_proportions=(12, 8),
+                         axis_font_dict={'color': 'white', 'weight': 'normal', 'size': 25},
+                         labels_font_dict={'color': 'white', 'weight': 'normal', 'size': 25},
+                         legend_font_dict={'weight': 'normal', "size": 19, 'stretch': 'normal'},
+                         legend_loc="lower left",
+                         font_family="amssymb",
+                         uselatex=False if running_in == "server" else True,
+                         # xlabel=r"$1/h$",
+                         # ylabel=r"$\|u-\tilde u \|_{L^1}$",
+                         xlabel="",
+                         ylabel="",
+                         xticks=[10, 30, 100] + vlines,
+                         create_preimage_data=False,
+                         only_create_preimage_data=False,
+                         use_preimage_data=True,
+                         kwargs4savefig={"bbox_inches": 'tight', "pad_inches": 0, "transparent": True},
+                         extra_plot_processes=extra_process4plot,
+                         # legend_outside_plot=LegendOutsidePlot(loc="lower left")
+                         )
