@@ -82,8 +82,30 @@ def calculate_true_solution(image, num_cells_per_dim, velocity, ntimes):
     }
 
 
+def get_velocity_field(velocity, num_cells_per_dim, center=np.zeros(2), angular_velocity=0):
+    """
+
+    :param velocity:
+    :param num_cells_per_dim:
+    :param center: measured [0, 1]
+    :param angular_velocity:
+    :return:
+    """
+    if angular_velocity != 0:
+        h = 1.0 / num_cells_per_dim
+        velocity = np.array(velocity) + np.zeros((num_cells_per_dim, num_cells_per_dim, 2))
+        xy = h * np.array(np.meshgrid(range(num_cells_per_dim), range(num_cells_per_dim)))
+        r = (xy - np.array(center)[:, np.newaxis, np.newaxis] + h / 2)  # radius
+        # rotation of 90º angle
+        r = r[[1, 0]]  # reflection around 45º line
+        r[0] = -r[0]  # reflection around x=0
+        velocity += np.transpose(r, axes=(1, 2, 0)) * angular_velocity
+    return velocity
+
+
 def fit_model(subcell_reconstruction):
-    def decorated_func(image, noise, num_cells_per_dim, reconstruction_factor, velocity, ntimes, true_solution):
+    def decorated_func(image, noise, num_cells_per_dim, reconstruction_factor, velocity, ntimes, true_solution,
+                       angular_velocity):
         image_array = load_image(image)
         avg_values = calculate_averages_from_image(image_array, num_cells_per_dim)
         np.random.seed(42)
@@ -92,6 +114,8 @@ def fit_model(subcell_reconstruction):
         model = SubCellScheme(name=subcell_reconstruction.__name__, subcell_reconstructor=subcell_reconstruction(),
                               min_value=0, max_value=1)
 
+        center = 0.5 * np.ones(2) + np.array([0, 5.0 / 3 / num_cells_per_dim]) if angular_velocity != 0 else np.zeros(2)
+        velocity = get_velocity_field(velocity, num_cells_per_dim, center, angular_velocity)
         # finite volume solver evolution
         t0 = time.time()
         solution, all_cells = model.evolve(
@@ -228,3 +252,8 @@ scheme_error = lambda image, true_solution, solution: np.mean(
 scheme_reconstruction_error = lambda true_reconstruction, reconstruction, reconstruction_factor: np.array([
     get_reconstruction_error(tr_i, reconstruction=r_i, reconstruction_factor=reconstruction_factor)
     for r_i, tr_i in zip(reconstruction, true_reconstruction)]) if reconstruction is not None else None
+
+if __name__ == "__main__":
+    # Tests
+    velocity = get_velocity_field(velocity=(0, 0), num_cells_per_dim=50, center=np.zeros(2), angular_velocity=1)
+    assert np.allclose(np.max(np.sqrt(np.sum(velocity ** 2, axis=-1))), np.sqrt(2), 10)

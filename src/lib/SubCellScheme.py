@@ -44,7 +44,8 @@ class SubCellScheme:
 
             # ----- update values with calculated fluxes ----- #
             for coords_i, cell in self.subcell_reconstructor.cells.items():
-                for coords_j, flux in cell.flux(velocity, indexer).items():
+                v = velocity if len(np.shape(velocity)) == 1 else velocity[coords_i]
+                for coords_j, flux in cell.flux(v, indexer).items():
                     if flux != 0:
                         # if self.min_value is not None and average_values[coords_i] - self.min_value < flux:
                         #     flux = average_values[coords_i] - self.min_value

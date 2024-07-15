@@ -1,3 +1,4 @@
+import matplotlib.pylab as plt
 import numpy as np
 import seaborn as sns
 
@@ -7,14 +8,41 @@ from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
 from PerplexityLab.visualization import generic_plot, make_data_frames, LegendOutsidePlot
 from experiments.PaperPlots.paper_corners_plot import aero_qelvira_vertex
-from experiments.PaperPlots.exploring_methods_convergence import quadratic_aero, elvira_w_oriented
-from experiments.PaperPlots.exploring_scheme_methods import scheme_error, plot_reconstruction_time_i, scheme_reconstruction_error, \
+from experiments.PaperPlots.exploring_methods_convergence import quadratic_aero, elvira_w_oriented, elvira
+from experiments.PaperPlots.exploring_scheme_methods import scheme_error, plot_reconstruction_time_i, \
+    scheme_reconstruction_error, \
     plot_time_i, calculate_true_solution, fit_model
 from experiments.global_params import cpink, corange, cblue, cgreen, runsinfo, cpurple, cred, cgray, \
     RESOLUTION_FACTOR, num_cores, running_in, only_create_preimage_data, image_format
 from experiments.PaperPlots.models2compare import upwind
 
 SAVE_EACH = 1
+num_cells_per_dim = [15, 30, 60]
+
+
+def zalesak_notched_circle(num_pixels=1680):
+    radius = num_pixels / 4
+    rectangle_width = radius / 3
+    rectangle_y_shift = rectangle_width
+    rectangle_height = rectangle_width * 4
+    center = num_pixels // 2 * np.ones(2)
+    image = np.zeros((num_pixels, num_pixels))
+    xycoords = np.array(np.meshgrid(range(num_pixels), range(num_pixels)))
+    image[np.where(np.sum((xycoords - center[:, np.newaxis, np.newaxis]) ** 2, axis=0) <= radius ** 2)] = 1
+    image[
+        np.all(xycoords > (center -
+                           np.array([rectangle_width // 2, rectangle_height // 2 - rectangle_y_shift]))[:, np.newaxis,
+                          np.newaxis],
+               axis=0) &
+        np.all(xycoords < (center +
+                           np.array([rectangle_width // 2, rectangle_height // 2 + rectangle_y_shift]))[:, np.newaxis,
+                          np.newaxis],
+               axis=0)] = 0
+
+    return image
+
+
+plt.imsave(f"{config.images_path}/zalesak_notched_circle.jpg", zalesak_notched_circle(num_pixels=1680), cmap='gray')
 
 # ========== ========== Names and colors to present ========== ========== #
 names_dict = {
@@ -72,10 +100,11 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "models",
         *map(fit_model, [
-            aero_qelvira_vertex,
+            # aero_qelvira_vertex,
+            # elvira,
             elvira_w_oriented,
-            quadratic_aero,
-            upwind,
+            # quadratic_aero,
+            # upwind,
         ]),
         recalculate=False
     )
@@ -89,11 +118,31 @@ if __name__ == "__main__":
         refinement=[1],
         ntimes=[ntimes],
         velocity=[(0, 1 / 4)],
-        num_cells_per_dim=[15, 30],  # 60
+        angular_velocity=[0],
+        num_cells_per_dim=num_cells_per_dim,  # 60
         noise=[0],
         image=[
-            "batata.jpg",
-            "ShapesVertex.jpg",
+            # "batata.jpg",
+            # "ShapesVertex.jpg",
+            "zalesak_notched_circle.jpg",
+        ],
+        reconstruction_factor=[RESOLUTION_FACTOR],
+    )
+    lab.execute(
+        data_manager,
+        num_cores=num_cores,
+        forget=False,
+        save_on_iteration=None,
+        refinement=[1],
+        ntimes=[ntimes],
+        velocity=[(0, 0)],
+        angular_velocity=[np.pi/6],
+        num_cells_per_dim=num_cells_per_dim,  # 60
+        noise=[0],
+        image=[
+            # "batata.jpg",
+            # "ShapesVertex.jpg",
+            "zalesak_notched_circle.jpg",
         ],
         reconstruction_factor=[RESOLUTION_FACTOR],
     )
@@ -106,7 +155,7 @@ if __name__ == "__main__":
                  format=image_format,
                  path=config.subcell_paper_figures_path,
                  x="times", y="scheme_error", label="method",
-                 plot_by=["num_cells_per_dim", "image"],
+                 plot_by=["num_cells_per_dim", "image", "angular_velocity"],
                  times=lambda ntimes: np.arange(0, ntimes, SAVE_EACH) + 1,
                  scheme_error=scheme_reconstruction_error,
                  plot_func=NamedPartial(
@@ -135,6 +184,17 @@ if __name__ == "__main__":
                                                        extra_x_left=0.125, extra_x_right=0.075),
                  )
 
+    plot_reconstruction_time_i(
+        data_manager,
+        i=-1,
+        alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True,
+        plot_curve_winner=False,
+        plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
+        cmap_true_image="Greys_r", draw_mesh=True,
+        trim=((0, 1), (0, 1)),
+        numbers_on=True, vmin=None, vmax=None, labels=True,
+        plot_by=["num_cells_per_dim", "image", "velocity", "angular_velocity", "models"]
+    )
     # ========== =========== ========== =========== #
     #               Experiment Times                #
     # ========== =========== ========== =========== #
