@@ -2,6 +2,7 @@ import time
 
 import numpy as np
 import seaborn as sns
+from scipy import ndimage
 from tqdm import tqdm
 
 import config
@@ -61,27 +62,6 @@ runsinfo.append_info(
 )
 
 
-# ========== ========== Experiment definitions ========== ========== #
-def calculate_true_solution(image, num_cells_per_dim, velocity, ntimes):
-    image = load_image(image)
-    pixels_per_cell = np.array(np.shape(image)) / num_cells_per_dim
-    velocity_in_pixels = np.array(pixels_per_cell * np.array(velocity), dtype=int)
-    assert np.all(velocity_in_pixels == pixels_per_cell * np.array(velocity))
-
-    true_solution = []
-    true_reconstruction = []
-    for i in range(ntimes + 1):
-        if i % SAVE_EACH == 0:
-            true_reconstruction.append(image.copy())
-        true_solution.append(calculate_averages_from_image(image, num_cells_per_dim))
-        image = np.roll(image, velocity_in_pixels)
-
-    return {
-        "true_solution": true_solution,
-        "true_reconstruction": true_reconstruction
-    }
-
-
 def get_velocity_field(velocity, num_cells_per_dim, center=np.zeros(2), angular_velocity=0):
     """
 
@@ -93,14 +73,62 @@ def get_velocity_field(velocity, num_cells_per_dim, center=np.zeros(2), angular_
     """
     if angular_velocity != 0:
         h = 1.0 / num_cells_per_dim
-        velocity = np.array(velocity) + np.zeros((num_cells_per_dim, num_cells_per_dim, 2))
         xy = h * np.array(np.meshgrid(range(num_cells_per_dim), range(num_cells_per_dim)))
         r = (xy - np.array(center)[:, np.newaxis, np.newaxis] + h / 2)  # radius
         # rotation of 90º angle
         r = r[[1, 0]]  # reflection around 45º line
         r[0] = -r[0]  # reflection around x=0
-        velocity += np.transpose(r, axes=(1, 2, 0)) * angular_velocity
-    return velocity
+        rot_velocity = np.transpose(r, axes=(1, 2, 0)) * angular_velocity
+    else:
+        rot_velocity = 0
+    return velocity, rot_velocity
+
+
+# ========== ========== Experiment definitions ========== ========== #
+def get_relative_angular_velocity(num_cells_per_dim, angular_velocity):
+    return np.arctan((1 / num_cells_per_dim) / (num_cells_per_dim / 2)) * angular_velocity
+
+
+def get_velocity4experiments(num_cells_per_dim, velocity, angular_velocity):
+    # center = 0.5 * np.ones(2) + np.array([0, 5.0 / 3 / num_cells_per_dim]) if angular_velocity != 0 else np.zeros(2)
+    angular_velocity = get_relative_angular_velocity(num_cells_per_dim, angular_velocity)
+    center = np.zeros(2)
+    velocity, rot_velocity = get_velocity_field(velocity, num_cells_per_dim, center, angular_velocity)
+    return velocity, rot_velocity, center
+
+
+def calculate_true_solution(image, num_cells_per_dim, velocity, ntimes, angular_velocity):
+    image = load_image(image)
+    pixels_per_cell = np.array(np.shape(image)) / num_cells_per_dim
+
+    angular_velocity = get_relative_angular_velocity(num_cells_per_dim, angular_velocity)*pixels_per_cell[0]
+    velocity, _, _ = get_velocity4experiments(num_cells_per_dim, velocity, angular_velocity)
+    velocity_in_pixels = np.array(pixels_per_cell * np.array(velocity), dtype=int)
+    assert np.all(velocity_in_pixels == pixels_per_cell * np.array(velocity))
+
+    original_image = image.copy()
+    true_solution = []
+    true_reconstruction = []
+    for i in range(ntimes + 1):
+        if i % SAVE_EACH == 0:
+            true_reconstruction.append(image.copy())
+        true_solution.append(calculate_averages_from_image(image, num_cells_per_dim))
+        if not np.any(velocity):
+            image = ndimage.rotate(original_image, 180 * angular_velocity*(i+1) / np.pi, mode="mirror", reshape=False)
+        elif angular_velocity == 0:
+            image = np.roll(original_image, velocity_in_pixels*(i+1))
+        else:
+            image = np.roll(image, velocity_in_pixels / 2)
+            image = ndimage.rotate(image, 180 * angular_velocity / np.pi, mode="mirror", reshape=False)
+            image = np.roll(image, velocity_in_pixels / 2)
+        # threshold to binarize again
+        image[image < 0.5] = 0
+        image[image >= 0.5] = 1
+
+    return {
+        "true_solution": true_solution,
+        "true_reconstruction": true_reconstruction
+    }
 
 
 def fit_model(subcell_reconstruction):
@@ -114,8 +142,8 @@ def fit_model(subcell_reconstruction):
         model = SubCellScheme(name=subcell_reconstruction.__name__, subcell_reconstructor=subcell_reconstruction(),
                               min_value=0, max_value=1)
 
-        center = 0.5 * np.ones(2) + np.array([0, 5.0 / 3 / num_cells_per_dim]) if angular_velocity != 0 else np.zeros(2)
-        velocity = get_velocity_field(velocity, num_cells_per_dim, center, angular_velocity)
+        velocity, rot_velocity, _ = get_velocity4experiments(num_cells_per_dim, velocity, angular_velocity)
+        velocity = rot_velocity + velocity
         # finite volume solver evolution
         t0 = time.time()
         solution, all_cells = model.evolve(

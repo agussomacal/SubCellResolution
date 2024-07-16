@@ -94,7 +94,7 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "ground_truth",
         calculate_true_solution,
-        recalculate=False
+        recalculate=True
     )
 
     lab.define_new_block_of_functions(
@@ -106,28 +106,28 @@ if __name__ == "__main__":
             # quadratic_aero,
             # upwind,
         ]),
-        recalculate=False
+        recalculate=True
     )
 
     ntimes = 120 if running_in == "server" else 20
-    lab.execute(
-        data_manager,
-        num_cores=num_cores,
-        forget=False,
-        save_on_iteration=None,
-        refinement=[1],
-        ntimes=[ntimes],
-        velocity=[(0, 1 / 4)],
-        angular_velocity=[0],
-        num_cells_per_dim=num_cells_per_dim,  # 60
-        noise=[0],
-        image=[
-            # "batata.jpg",
-            # "ShapesVertex.jpg",
-            "zalesak_notched_circle.jpg",
-        ],
-        reconstruction_factor=[RESOLUTION_FACTOR],
-    )
+    # lab.execute(
+    #     data_manager,
+    #     num_cores=num_cores,
+    #     forget=False,
+    #     save_on_iteration=None,
+    #     refinement=[1],
+    #     ntimes=[ntimes],
+    #     velocity=[(0, 1 / 4)],
+    #     angular_velocity=[0],
+    #     num_cells_per_dim=num_cells_per_dim,  # 60
+    #     noise=[0],
+    #     image=[
+    #         # "batata.jpg",
+    #         # "ShapesVertex.jpg",
+    #         "zalesak_notched_circle.jpg",
+    #     ],
+    #     reconstruction_factor=[RESOLUTION_FACTOR],
+    # )
     lab.execute(
         data_manager,
         num_cores=num_cores,
@@ -136,8 +136,8 @@ if __name__ == "__main__":
         refinement=[1],
         ntimes=[ntimes],
         velocity=[(0, 0)],
-        angular_velocity=[np.pi/6],
-        num_cells_per_dim=num_cells_per_dim,  # 60
+        angular_velocity=[0.25],
+        num_cells_per_dim=num_cells_per_dim[-1:],  # 60
         noise=[0],
         image=[
             # "batata.jpg",
