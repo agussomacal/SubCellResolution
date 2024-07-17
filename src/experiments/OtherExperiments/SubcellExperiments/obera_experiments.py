@@ -138,7 +138,7 @@ def circle(refinement: int, iterations: int, central_cell_extra_weight: float, m
 
 
 @perplex_plot()
-@one_line_iterator
+@one_line_iterator()
 def plot_reconstruction(fig, ax, image4error, num_cells_per_dim, model, reconstruction, alpha=0.5,
                         plot_original_image=True,
                         difference=False, plot_curve=True, plot_curve_winner=False, plot_vh_classification=True,

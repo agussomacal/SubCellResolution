@@ -42,7 +42,7 @@ if RAM > 70:  # if run in server
     num_cores = workers = 50
     RESOLUTION_FACTOR = 1
     only_create_preimage_data = True
-elif RAM > 40:
+elif RAM > 30:
     running_in = "local-power"
     print("running in local power machine")
     N = int(1e6)

@@ -284,7 +284,7 @@ def fit_model(sub_cell_model):
 # ========== =========== ========== =========== #
 
 @perplex_plot(legend=False)
-@one_line_iterator
+@one_line_iterator()
 def plot_reconstruction(fig, ax, image, image4error, num_cells_per_dim, model, sub_discretization2bound_error,
                         alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True, plot_curve_winner=False,
                         plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",

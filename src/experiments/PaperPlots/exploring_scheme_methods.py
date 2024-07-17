@@ -70,18 +70,20 @@ def get_velocity_field(velocity, num_cells_per_dim, center=np.zeros(2), angular_
     :param center: measured [0, 1]
     :param angular_velocity:
     :return:
+    velocity:
+    rot_velocity: num_cells_per_dim x num_cells_per_dim x 2
     """
     if angular_velocity != 0:
         h = 1.0 / num_cells_per_dim
-        xy = h * np.array(np.meshgrid(range(num_cells_per_dim), range(num_cells_per_dim)))
-        r = (xy - np.array(center)[:, np.newaxis, np.newaxis] + h / 2)  # radius
+        xy = h * (1 / 2 + np.array(np.meshgrid(range(num_cells_per_dim), range(num_cells_per_dim), indexing="ij")))
+        r = (xy - np.array(center)[:, np.newaxis, np.newaxis])  # radius
         # rotation of 90º angle
         r = r[[1, 0]]  # reflection around 45º line
         r[0] = -r[0]  # reflection around x=0
         rot_velocity = np.transpose(r, axes=(1, 2, 0)) * angular_velocity
     else:
         rot_velocity = 0
-    return velocity, rot_velocity
+    return np.array(velocity), rot_velocity
 
 
 # ========== ========== Experiment definitions ========== ========== #
@@ -91,17 +93,17 @@ def get_relative_angular_velocity(num_cells_per_dim, angular_velocity):
 
 def get_velocity4experiments(num_cells_per_dim, velocity, angular_velocity):
     # center = 0.5 * np.ones(2) + np.array([0, 5.0 / 3 / num_cells_per_dim]) if angular_velocity != 0 else np.zeros(2)
-    angular_velocity = get_relative_angular_velocity(num_cells_per_dim, angular_velocity)
-    center = np.zeros(2)
+    # angular_velocity = get_relative_angular_velocity(num_cells_per_dim, angular_velocity)
+    center = np.ones(2) / 2
     velocity, rot_velocity = get_velocity_field(velocity, num_cells_per_dim, center, angular_velocity)
     return velocity, rot_velocity, center
 
 
-def calculate_true_solution(image, num_cells_per_dim, velocity, ntimes, angular_velocity):
+def calculate_true_solution(image, num_cells_per_dim, velocity, ntimes, angular_velocity, SAVE_EACH):
     image = load_image(image)
     pixels_per_cell = np.array(np.shape(image)) / num_cells_per_dim
 
-    angular_velocity = get_relative_angular_velocity(num_cells_per_dim, angular_velocity)*pixels_per_cell[0]
+    angular_velocity = get_relative_angular_velocity(num_cells_per_dim, angular_velocity) * pixels_per_cell[0]
     velocity, _, _ = get_velocity4experiments(num_cells_per_dim, velocity, angular_velocity)
     velocity_in_pixels = np.array(pixels_per_cell * np.array(velocity), dtype=int)
     assert np.all(velocity_in_pixels == pixels_per_cell * np.array(velocity))
@@ -114,9 +116,10 @@ def calculate_true_solution(image, num_cells_per_dim, velocity, ntimes, angular_
             true_reconstruction.append(image.copy())
         true_solution.append(calculate_averages_from_image(image, num_cells_per_dim))
         if not np.any(velocity):
-            image = ndimage.rotate(original_image, 180 * angular_velocity*(i+1) / np.pi, mode="mirror", reshape=False)
+            image = ndimage.rotate(original_image, 180 * angular_velocity * (i + 1) / np.pi, mode="mirror",
+                                   reshape=False)
         elif angular_velocity == 0:
-            image = np.roll(original_image, velocity_in_pixels*(i+1))
+            image = np.roll(original_image, velocity_in_pixels * (i + 1))
         else:
             image = np.roll(image, velocity_in_pixels / 2)
             image = ndimage.rotate(image, 180 * angular_velocity / np.pi, mode="mirror", reshape=False)
@@ -133,7 +136,7 @@ def calculate_true_solution(image, num_cells_per_dim, velocity, ntimes, angular_
 
 def fit_model(subcell_reconstruction):
     def decorated_func(image, noise, num_cells_per_dim, reconstruction_factor, velocity, ntimes, true_solution,
-                       angular_velocity):
+                       angular_velocity, SAVE_EACH):
         image_array = load_image(image)
         avg_values = calculate_averages_from_image(image_array, num_cells_per_dim)
         np.random.seed(42)
@@ -142,6 +145,8 @@ def fit_model(subcell_reconstruction):
         model = SubCellScheme(name=subcell_reconstruction.__name__, subcell_reconstructor=subcell_reconstruction(),
                               min_value=0, max_value=1)
 
+        # pixels_per_cell = np.array(np.shape(image_array)) / num_cells_per_dim
+        # angular_velocity = get_relative_angular_velocity(num_cells_per_dim, angular_velocity)*pixels_per_cell[0]
         velocity, rot_velocity, _ = get_velocity4experiments(num_cells_per_dim, velocity, angular_velocity)
         velocity = rot_velocity + velocity
         # finite volume solver evolution
@@ -185,7 +190,7 @@ def fit_model(subcell_reconstruction):
 
 # ========== ========== Plots definitions ========== ========== #
 @perplex_plot()
-@one_line_iterator
+@one_line_iterator()
 def plot_time_i(fig, ax, true_solution, solution, num_cells_per_dim, i=0, alpha=0.5, cmap="Greys_r",
                 trim=((0, 0), (0, 0)),
                 numbers_on=True, error=False, draw_mesh=True):
@@ -212,7 +217,7 @@ def plot_time_i(fig, ax, true_solution, solution, num_cells_per_dim, i=0, alpha=
 
 
 @perplex_plot(legend=False)
-@one_line_iterator
+@one_line_iterator()
 def plot_reconstruction_time_i(fig, ax, true_reconstruction, num_cells_per_dim, resolution, reconstruction, cells, i=0,
                                alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True,
                                plot_curve_winner=False,
@@ -283,5 +288,23 @@ scheme_reconstruction_error = lambda true_reconstruction, reconstruction, recons
 
 if __name__ == "__main__":
     # Tests
-    velocity = get_velocity_field(velocity=(0, 0), num_cells_per_dim=50, center=np.zeros(2), angular_velocity=1)
+    num_cells_per_dim = 50
+    velocity, rot_velocity = get_velocity_field(velocity=(0, 0), num_cells_per_dim=num_cells_per_dim,
+                                                center=np.zeros(2),
+                                                angular_velocity=1)
+    velocity = velocity + rot_velocity
     assert np.allclose(np.max(np.sqrt(np.sum(velocity ** 2, axis=-1))), np.sqrt(2), 10)
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    num_cells_per_dim = 10
+    velocity, rot_velocity, center = get_velocity4experiments(num_cells_per_dim, velocity=(0, 0), angular_velocity=1)
+    velocity = velocity + rot_velocity
+    x, y = np.meshgrid(np.linspace(0, 1, num_cells_per_dim), np.linspace(0, 1, num_cells_per_dim), indexing="ij")
+    plt.quiver(x, y, velocity[:, :, 0], velocity[:, :, 1])
+    plt.show()
+    print(velocity[0, 0])
+    print(velocity[-1, 0])
+    print(velocity[-1, -1])
+    print(velocity[0, -1])

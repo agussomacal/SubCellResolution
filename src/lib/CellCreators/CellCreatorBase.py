@@ -75,6 +75,11 @@ def velocity_8nei_direction(velocity):
     return np.sign(velocity)
 
 
+def relu(velocity):
+    velocity[velocity < 0] = 0
+    return velocity
+
+
 def get_relative_next_coords_to_calculate_flux(velocity):
     velocity_sign = velocity_8nei_direction(velocity)
     if np.any(velocity_sign == 0):
@@ -83,11 +88,10 @@ def get_relative_next_coords_to_calculate_flux(velocity):
         return NEIGHBOURHOOD_8[(neighbourhood_8_ix(velocity_sign) + np.array([-1, 0, 1])) % 8]
 
 
-def get_relative_rectangle_to_calculate_flux(velocity, coords):
-    middle_point = velocity_8nei_direction(velocity) - velocity
-    coords1 = coords + 1 - np.sign(velocity)
-    coords2 = [vertex_1 + np.sign(middle_point - vertex_1) * np.min(([1, 1], np.abs(middle_point - vertex_1)), axis=0)
-               for vertex_1 in coords1]
+def get_relative_rectangle_to_calculate_flux(velocity, next_coords):
+    middle_point = relu(velocity_8nei_direction(velocity)) - velocity
+    coords1 = next_coords - (np.sign(velocity) - 1) // 2
+    coords2 = [middle_point] * len(next_coords)
     rectangles = np.sort([coords1, coords2], axis=0).swapaxes(0, 1)
     rectangles[rectangles < 0] = 0
     rectangles[rectangles > 1] = 1

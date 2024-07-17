@@ -52,7 +52,7 @@ def experiment(image, num_cells_per_dim):
 
 
 @perplex_plot()
-@one_line_iterator
+@one_line_iterator()
 def plot_opposite_cells(fig, ax, image, num_cells_per_dim, opposite_cells,
                         alpha=0.5, cmap="Greys_r", c=cblue, marker=".",
                         linestyle="--", linewidth=3, trim=((0, 0), (0, 0)), numbers_on=True):

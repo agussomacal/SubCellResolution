@@ -18,6 +18,7 @@ from experiments.PaperPlots.models2compare import upwind
 
 SAVE_EACH = 1
 num_cells_per_dim = [15, 30, 60]
+num_cells_per_dim = [60]
 
 
 def zalesak_notched_circle(num_pixels=1680):
@@ -83,7 +84,7 @@ if __name__ == "__main__":
     data_manager = DataManager(
         path=config.paper_results_path,
         emissions_path=config.results_path,
-        name='Schemes',
+        name='SchemesRot',
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
@@ -94,22 +95,22 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "ground_truth",
         calculate_true_solution,
-        recalculate=True
+        recalculate=False
     )
 
     lab.define_new_block_of_functions(
         "models",
         *map(fit_model, [
-            # aero_qelvira_vertex,
-            # elvira,
+            aero_qelvira_vertex,
+            elvira,
             elvira_w_oriented,
-            # quadratic_aero,
-            # upwind,
+            quadratic_aero,
+            upwind,
         ]),
-        recalculate=True
+        recalculate=False
     )
 
-    ntimes = 120 if running_in == "server" else 20
+    ntimes = 120 if running_in in ["server", "local-power"] else 20
     # lab.execute(
     #     data_manager,
     #     num_cores=num_cores,
@@ -137,7 +138,7 @@ if __name__ == "__main__":
         ntimes=[ntimes],
         velocity=[(0, 0)],
         angular_velocity=[0.25],
-        num_cells_per_dim=num_cells_per_dim[-1:],  # 60
+        num_cells_per_dim=num_cells_per_dim,  # 60
         noise=[0],
         image=[
             # "batata.jpg",
@@ -145,6 +146,7 @@ if __name__ == "__main__":
             "zalesak_notched_circle.jpg",
         ],
         reconstruction_factor=[RESOLUTION_FACTOR],
+        SAVE_EACH=[8],
     )
     print(set(data_manager["models"]))
 
@@ -184,17 +186,39 @@ if __name__ == "__main__":
                                                        extra_x_left=0.125, extra_x_right=0.075),
                  )
 
-    plot_reconstruction_time_i(
-        data_manager,
-        i=-1,
-        alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True,
-        plot_curve_winner=False,
-        plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
-        cmap_true_image="Greys_r", draw_mesh=True,
-        trim=((0, 1), (0, 1)),
-        numbers_on=True, vmin=None, vmax=None, labels=True,
-        plot_by=["num_cells_per_dim", "image", "velocity", "angular_velocity", "models"]
-    )
+    # for angular_velocity in [0.25, 0]:
+    #     for i in range(ntimes-1):
+    #         plot_time_i(
+    #             data_manager,
+    #             folder=f"sol_angvel{angular_velocity}",
+    #             name=f"Solution{i}",
+    #             i=i,
+    #             alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True,
+    #             plot_curve_winner=False,
+    #             plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
+    #             cmap_true_image="Greys_r", draw_mesh=True,
+    #             trim=((0, 1), (0, 1)),
+    #             angular_velocity=angular_velocity,
+    #             numbers_on=True, vmin=None, vmax=None, labels=True,
+    #             plot_by=["num_cells_per_dim", "image", "velocity", "angular_velocity", "models"]
+    #         )
+
+    for angular_velocity in [0.25]:
+        for i in range(ntimes-1):
+            plot_reconstruction_time_i(
+                data_manager,
+                folder=f"angvel{angular_velocity}",
+                name=f"Reconstruction{i}",
+                i=i,
+                alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True,
+                plot_curve_winner=False,
+                plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
+                cmap_true_image="Greys_r", draw_mesh=True,
+                trim=((0, 1), (0, 1)),
+                angular_velocity=angular_velocity,
+                numbers_on=True, vmin=None, vmax=None, labels=True,
+                plot_by=["num_cells_per_dim", "image", "velocity", "angular_velocity", "models"]
+            )
     # ========== =========== ========== =========== #
     #               Experiment Times                #
     # ========== =========== ========== =========== #

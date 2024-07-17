@@ -51,7 +51,7 @@ def experiment(image, num_cells_per_dim, angle_threshold, method="optim", kernel
 
 
 @perplex_plot(legend=False)
-@one_line_iterator
+@one_line_iterator()
 def plot_orientation(fig, ax, image, num_cells_per_dim, orientations,
                      alpha=0.5, cmap="Greys_r", trim=((0, 0), (0, 0)), numbers_on=True,
                      specific_cells: List[SpecialCellsPlotTuple] = [], mesh_linewidth=0):
