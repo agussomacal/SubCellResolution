@@ -226,13 +226,12 @@ def get_curve_vertex(curve_cell: CurveVertexPolynomial, coords2=None):
         yield points[np.ravel(points_inside_cell), :]
 
 
-def plot_curve_core(ax, curve_cells, color=None):
+def plot_curve_core(ax, curve_cells, color=None, default_linewidth=3.5):
     for curve_cell in curve_cells:
         for points in get_curve(curve_cell) if curve_cell.CELL_TYPE == CURVE_CELL_TYPE else get_curve_vertex(
                 curve_cell):
             c = COLOR_CURVE if color is None else color[str(curve_cell)]
-            ax.plot(*transform_points2plot(points).T, '-', c=COLOR_CURVE, alpha=1, linewidth=3.5)
-            ax.plot(*transform_points2plot(points).T, '-', c=c, alpha=1, linewidth=2.5)
+            ax.plot(*transform_points2plot(points).T, '-', c=c, alpha=1, linewidth=default_linewidth)
 
 
 def plot_image(image, cmap="viridis", vmin=-1, vmax=1, alpha=1):
