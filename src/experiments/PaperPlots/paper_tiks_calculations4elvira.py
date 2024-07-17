@@ -37,3 +37,34 @@ plot_cells(ax=ax2, colors=u, mesh_shape=np.array(kernel_size) * refinement, alph
            vmin=-1, vmax=1)
 plt.tight_layout()
 plt.show()
+
+# ======== ========= ========= =========
+#               Tikz AEROS
+# 1+1.2*(\x-1.2)-0.1*(\x-1.2)^2-(\x-1.2)^3/10))
+dx = -0.3
+kernel_size = (5, 3)
+poly = -1.5+1+1.2* Polynomial([dx, 1]) - 0.1 * Polynomial([dx, 1]) ** 2 - Polynomial([dx, 1]) ** 3/10
+value_up = 0
+value_down = 1
+refinement = 20
+
+curve = CurvePolynomial(poly, value_up, value_down)
+kernel = np.round(get_averages_from_curve_kernel(kernel_size, curve, center_cell_coords=None), decimals=2)
+kernel
+
+
+u = get_evaluations2test_curve(curve, kernel_size, refinement=refinement)
+
+fig = plt.figure()
+ax = fig.add_gridspec(6, 5)
+ax1 = fig.add_subplot(ax[:, 0:3])
+ax1.set_title('Averages')
+ax2 = fig.add_subplot(ax[:, 3:])
+ax2.set_title('True curve')
+
+sns.heatmap(kernel, annot=True, cmap="viridis", alpha=0.7, ax=ax1)
+plot_cells(ax=ax2, colors=u, mesh_shape=np.array(kernel_size) * refinement, alpha=0.5,
+           cmap="viridis",
+           vmin=-1, vmax=1)
+plt.tight_layout()
+plt.show()

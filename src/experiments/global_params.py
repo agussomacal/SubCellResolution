@@ -15,7 +15,7 @@ pinkish = (230, 0, 136)
 greenish = (6, 194, 88)
 cyanish = (82, 189, 236)
 
-image_format = '.png'  # .pdf
+image_format = '.pdf'  # .pdf
 EVALUATIONS = True
 
 SUB_CELL_DISCRETIZATION2BOUND_ERROR = 20

@@ -74,7 +74,7 @@ if __name__ == "__main__":
         num_cores=15,
         forget=False,
         save_on_iteration=None,
-        num_cells_per_dim=[30],  # 20, 42, 84 168 , 84 4220,, 42
+        num_cells_per_dim=[10, 12, 15, 20, 30],  # 20, 42, 84 168 , 84 4220,, 42
         image=[
             "batata.jpg"
             # "yoda.jpg",
@@ -86,6 +86,68 @@ if __name__ == "__main__":
         ],
         reconstruction_factor=[5],
     )
+
+    # plot_reconstruction(
+    #     data_manager,
+    #     path=config.subcell_paper_figures_path,
+    #     format=image_format,
+    #     plot_by=['image', 'models', 'num_cells_per_dim'],
+    #     axes_xy_proportions=(15, 15),
+    #     difference=False,
+    #     plot_curve=True,
+    #     plot_curve_winner=False,
+    #     plot_vh_classification=False,
+    #     plot_singular_cells=False,
+    #     alpha_true_image=1,
+    #     alpha=0.65,
+    #     plot_again=True,
+    #     num_cores=1,
+    #     num_cells_per_dim=[12],
+    #     trim=((1, 1), (1, 1)),
+    #     cmap="viridis",
+    #     cmap_true_image="Greys_r",
+    #     vmin=-1, vmax=1,
+    #     labels=False,
+    #     draw_mesh=False,
+    #     numbers_on=False,
+    #     axis_font_dict={},
+    #     legend_font_dict={},
+    #     xlabel=None,
+    #     ylabel=None,
+    #     xticks=None,
+    #     yticks=None
+    # )
+
+    # plot_reconstruction(
+    #     data_manager,
+    #     path=config.subcell_paper_figures_path,
+    #     format=image_format,
+    #     plot_by=['image', 'models', 'num_cells_per_dim'],
+    #     axes_xy_proportions=(15, 15),
+    #     difference=False,
+    #     plot_curve=True,
+    #     plot_curve_winner=False,
+    #     plot_vh_classification=False,
+    #     plot_singular_cells=False,
+    #     alpha_true_image=1,
+    #     alpha=0.65,
+    #     plot_again=True,
+    #     num_cores=1,
+    #     num_cells_per_dim=[20],
+    #     trim=((1, 2), (3, 3)),
+    #     cmap="viridis",
+    #     cmap_true_image="Greys_r",
+    #     vmin=-1, vmax=1,
+    #     labels=False,
+    #     draw_mesh=False,
+    #     numbers_on=False,
+    #     axis_font_dict={},
+    #     legend_font_dict={},
+    #     xlabel=None,
+    #     ylabel=None,
+    #     xticks=None,
+    #     yticks=None
+    # )
 
     plot_reconstruction(
         data_manager,
@@ -102,8 +164,8 @@ if __name__ == "__main__":
         alpha=0.65,
         plot_again=True,
         num_cores=1,
-        num_cells_per_dim=[30],
-        trim=((2, 3), (5, 5)),
+        num_cells_per_dim=[15],
+        trim=((1, 1), (2, 2)),
         cmap="viridis",
         cmap_true_image="Greys_r",
         vmin=-1, vmax=1,
@@ -117,3 +179,34 @@ if __name__ == "__main__":
         xticks=None,
         yticks=None
     )
+    #
+    # plot_reconstruction(
+    #     data_manager,
+    #     path=config.subcell_paper_figures_path,
+    #     format=image_format,
+    #     plot_by=['image', 'models', 'num_cells_per_dim'],
+    #     axes_xy_proportions=(15, 15),
+    #     difference=False,
+    #     plot_curve=True,
+    #     plot_curve_winner=False,
+    #     plot_vh_classification=False,
+    #     plot_singular_cells=False,
+    #     alpha_true_image=1,
+    #     alpha=0.65,
+    #     plot_again=True,
+    #     num_cores=1,
+    #     num_cells_per_dim=[30],
+    #     trim=((2, 3), (5, 5)),
+    #     cmap="viridis",
+    #     cmap_true_image="Greys_r",
+    #     vmin=-1, vmax=1,
+    #     labels=False,
+    #     draw_mesh=False,
+    #     numbers_on=False,
+    #     axis_font_dict={},
+    #     legend_font_dict={},
+    #     xlabel=None,
+    #     ylabel=None,
+    #     xticks=None,
+    #     yticks=None
+    # )
