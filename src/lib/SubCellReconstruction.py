@@ -214,7 +214,8 @@ class SubCellFlux:
 class SubCellReconstruction:
     def __init__(self, name, smoothness_calculator, cell_classifier: Callable = cell_classifier_by_smoothness,
                  reconstruction_error_measure=ReconstructionErrorMeasureBase,
-                 cell_creators: List[CellCreatorPipeline] = [], refinement: int = 1, obera_iterations=0):
+                 cell_creators: List[CellCreatorPipeline] = [], refinement: int = 1, obera_iterations=0,
+                 eps_complexity=0):
         self.name = name
         self.smoothness_calculator = smoothness_calculator
         self.cell_classifier = cell_classifier
@@ -225,6 +226,7 @@ class SubCellReconstruction:
         self.stencils = dict()
         self.resolution = None
         self.obera_iterations = obera_iterations
+        self.eps_complexity = eps_complexity  # penalize models with more complexity if reconstruction errors are not too different.
 
         self.times = defaultdict(ddf)
         self.obera_fevals = defaultdict(ddf)
@@ -269,6 +271,8 @@ class SubCellReconstruction:
                 damping=np.array([1, 1, 1e-4])) for coords in iterate_all(smoothness_index)}
 
             for i, cell_creator in enumerate(self.cell_creators):
+                eps_complexity = self.eps_complexity[i] if isinstance(self.eps_complexity, list) \
+                    else self.eps_complexity
                 for coords in cell_creator.cell_iterator(smoothness_index=smoothness_index,
                                                          reconstruction_error=reconstruction_error):
                     if i not in cell_classification[coords.tuple]:
@@ -340,7 +344,7 @@ class SubCellReconstruction:
                                         else:
                                             old_cell_reconstruction_error = reconstruction_error[coords.tuple]
 
-                                        if proposed_cell_reconstruction_error < old_cell_reconstruction_error:
+                                        if proposed_cell_reconstruction_error + eps_complexity < old_cell_reconstruction_error:
                                             reconstruction_error[coords.tuple] = proposed_cell_reconstruction_error
                                             self.cells[coords.tuple] = proposed_cell
                                             self.stencils[coords.tuple] = list(map(tuple, stencil.coords.tolist()))

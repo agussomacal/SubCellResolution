@@ -73,38 +73,35 @@ def get_velocity_field(velocity, num_cells_per_dim, center=np.zeros(2), angular_
     velocity:
     rot_velocity: num_cells_per_dim x num_cells_per_dim x 2
     """
+    h = 1.0 / num_cells_per_dim
     if angular_velocity != 0:
-        h = 1.0 / num_cells_per_dim
         xy = h * (1 / 2 + np.array(np.meshgrid(range(num_cells_per_dim), range(num_cells_per_dim), indexing="ij")))
         r = (xy - np.array(center)[:, np.newaxis, np.newaxis])  # radius
         # rotation of 90º angle
         r = r[[1, 0]]  # reflection around 45º line
         r[0] = -r[0]  # reflection around x=0
-        rot_velocity = np.transpose(r, axes=(1, 2, 0)) * angular_velocity
+        new_angular_velocity = angular_velocity / np.max(np.abs(r))
+        rot_velocity = np.transpose(r, axes=(1, 2, 0)) * new_angular_velocity
     else:
+        new_angular_velocity = 0
         rot_velocity = 0
-    return np.array(velocity), rot_velocity
+    return np.array(velocity), rot_velocity, new_angular_velocity * h
 
 
 # ========== ========== Experiment definitions ========== ========== #
-def get_relative_angular_velocity(num_cells_per_dim, angular_velocity):
-    return np.arctan((1 / num_cells_per_dim) / (num_cells_per_dim / 2)) * angular_velocity
-
-
 def get_velocity4experiments(num_cells_per_dim, velocity, angular_velocity):
-    # center = 0.5 * np.ones(2) + np.array([0, 5.0 / 3 / num_cells_per_dim]) if angular_velocity != 0 else np.zeros(2)
-    # angular_velocity = get_relative_angular_velocity(num_cells_per_dim, angular_velocity)
     center = np.ones(2) / 2
-    velocity, rot_velocity = get_velocity_field(velocity, num_cells_per_dim, center, angular_velocity)
-    return velocity, rot_velocity, center
+    velocity, rot_velocity, new_angular_velocity = get_velocity_field(velocity, num_cells_per_dim, center,
+                                                                      angular_velocity)
+    return velocity, rot_velocity, center, new_angular_velocity
 
 
 def calculate_true_solution(image, num_cells_per_dim, velocity, ntimes, angular_velocity, SAVE_EACH):
     image = load_image(image)
     pixels_per_cell = np.array(np.shape(image)) / num_cells_per_dim
 
-    angular_velocity = get_relative_angular_velocity(num_cells_per_dim, angular_velocity) * pixels_per_cell[0]
-    velocity, _, _ = get_velocity4experiments(num_cells_per_dim, velocity, angular_velocity)
+    # angular_velocity = get_relative_angular_velocity(num_cells_per_dim, angular_velocity) * pixels_per_cell[0]
+    velocity, _, _, new_angular_velocity = get_velocity4experiments(num_cells_per_dim, velocity, angular_velocity)
     velocity_in_pixels = np.array(pixels_per_cell * np.array(velocity), dtype=int)
     assert np.all(velocity_in_pixels == pixels_per_cell * np.array(velocity))
 
@@ -116,13 +113,13 @@ def calculate_true_solution(image, num_cells_per_dim, velocity, ntimes, angular_
             true_reconstruction.append(image.copy())
         true_solution.append(calculate_averages_from_image(image, num_cells_per_dim))
         if not np.any(velocity):
-            image = ndimage.rotate(original_image, 180 * angular_velocity * (i + 1) / np.pi, mode="mirror",
+            image = ndimage.rotate(original_image, 180 * new_angular_velocity * (i + 1) / np.pi, mode="mirror",
                                    reshape=False)
-        elif angular_velocity == 0:
+        elif new_angular_velocity == 0:
             image = np.roll(original_image, velocity_in_pixels * (i + 1))
         else:
             image = np.roll(image, velocity_in_pixels / 2)
-            image = ndimage.rotate(image, 180 * angular_velocity / np.pi, mode="mirror", reshape=False)
+            image = ndimage.rotate(image, 180 * new_angular_velocity / np.pi, mode="mirror", reshape=False)
             image = np.roll(image, velocity_in_pixels / 2)
         # threshold to binarize again
         image[image < 0.5] = 0
@@ -147,7 +144,7 @@ def fit_model(subcell_reconstruction):
 
         # pixels_per_cell = np.array(np.shape(image_array)) / num_cells_per_dim
         # angular_velocity = get_relative_angular_velocity(num_cells_per_dim, angular_velocity)*pixels_per_cell[0]
-        velocity, rot_velocity, _ = get_velocity4experiments(num_cells_per_dim, velocity, angular_velocity)
+        velocity, rot_velocity, _, _ = get_velocity4experiments(num_cells_per_dim, velocity, angular_velocity)
         velocity = rot_velocity + velocity
         # finite volume solver evolution
         t0 = time.time()

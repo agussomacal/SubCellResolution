@@ -189,8 +189,8 @@ def aero_qelvira_vertex(smoothness_calculator=naive_piece_wise, refinement=1, ob
         cell_creators=
         [
             piecewise01,
-            elvira_cc(angle_threshold=45),
-            aero_q(angle_threshold=45),
+            elvira_cc(angle_threshold=0),
+            aero_q(angle_threshold=0),
             tem,
             # ------------ AVRO ------------ #
             CellCreatorPipeline(
@@ -204,7 +204,8 @@ def aero_qelvira_vertex(smoothness_calculator=naive_piece_wise, refinement=1, ob
                 reconstruction_error_measure=reconstruction_error_measure_w
             ),
         ],
-        obera_iterations=obera_iterations
+        obera_iterations=obera_iterations,
+        eps_complexity=[0, 0, 1e-2, 1e-2, 1e-2],
     )
 
 
