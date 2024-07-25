@@ -150,13 +150,15 @@ def plot_cells_identity(ax, mesh_shape, all_cells, alpha=0.5, color_dict=None):
     cell_types = defaultdict(list)
     for cell in all_cells.values():
         cell_types[str(cell)].append(cell.coords.tuple)
+    print(set(cell_types.keys()))
 
     plot_specific_cells(
         ax=ax,
         mesh_shape=mesh_shape,
         special_cells=[
             SpecialCellsPlotTuple(name=k, indexes=v,
-                                  color=sns.color_palette("colorblind")[i % 8] if color_dict is None else color_dict,
+                                  color=color_dict[k] if isinstance(color_dict, dict)
+                                  else sns.color_palette("colorblind")[i % 8],
                                   alpha=alpha) for
             i, (k, v) in enumerate(cell_types.items())],
         rectangle_mode=False
@@ -223,15 +225,17 @@ def get_curve_vertex(curve_cell: CurveVertexPolynomial, coords2=None):
         points = points[:, [curve_cell.independent_axis, curve_cell.dependent_axis]]  # correct order x, y.
         square = [curve_cell.coords.coords, coords2 if coords2 is not None else curve_cell.coords.coords + 1]
         points_inside_cell = list(map(partial(is_in_square, square=square), points))
-        yield points[np.ravel(points_inside_cell), :]
+        if len(points_inside_cell) > 0:
+            yield points[np.ravel(points_inside_cell), :]
 
 
 def plot_curve_core(ax, curve_cells, color=None, default_linewidth=3.5):
     for curve_cell in curve_cells:
         for points in get_curve(curve_cell) if curve_cell.CELL_TYPE == CURVE_CELL_TYPE else get_curve_vertex(
                 curve_cell):
-            c = COLOR_CURVE if color is None else color[str(curve_cell)]
-            ax.plot(*transform_points2plot(points).T, '-', c=c, alpha=1, linewidth=default_linewidth)
+            if len(points) > 0:
+                c = COLOR_CURVE if color is None else color[str(curve_cell)]
+                ax.plot(*transform_points2plot(points).T, '-', c=c, alpha=1, linewidth=default_linewidth)
 
 
 def plot_image(image, cmap="viridis", vmin=-1, vmax=1, alpha=1):

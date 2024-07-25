@@ -81,7 +81,7 @@ def aero_q(angle_threshold, reconstruction_error_measure: ReconstructionErrorMea
     )
 
 
-tem = CellCreatorPipeline(
+tem = lambda reconstruction_error_measure: CellCreatorPipeline(
     cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
                           condition=operator.eq),
     orientator=OrientPredefined(predefined_axis=0),
@@ -89,7 +89,7 @@ tem = CellCreatorPipeline(
     cell_creator=VertexCellCreatorUsingNeighboursLines(
         regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax,
     ),
-    reconstruction_error_measure=reconstruction_error_measure_w
+    reconstruction_error_measure=reconstruction_error_measure
 )
 
 
@@ -179,6 +179,38 @@ def elvira_vertex(smoothness_calculator=naive_piece_wise, refinement=1, obera_it
         obera_iterations=obera_iterations
     )
 
+# rem = ReconstructionErrorMeasureDefaultStencil(
+#                     StencilCreatorFixedShape((3, 3)),
+#                     metric=2, central_cell_extra_weight=10)
+
+# def aero_qelvira_vertex(smoothness_calculator=naive_piece_wise, refinement=1, obera_iterations=0, *args, **kwargs):
+#     return SubCellReconstruction(
+#         name="All",
+#         smoothness_calculator=smoothness_calculator,
+#         reconstruction_error_measure=reconstruction_error_measure_default,
+#         refinement=refinement,
+#         cell_creators=
+#         [
+#             piecewise01,
+#             elvira_cc(angle_threshold=0, reconstruction_error_measure=rem),
+#             aero_q(angle_threshold=0, reconstruction_error_measure=rem),
+#             tem(reconstruction_error_measure=rem),
+#             # ------------ AVRO ------------ #
+#             CellCreatorPipeline(
+#                 cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
+#                                       condition=operator.eq),
+#                 orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2, method="sobel",
+#                                             angle_threshold=0),
+#                 stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=4),
+#                 cell_creator=LinearVertexCellCurveCellCreator(
+#                     regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax),
+#                 reconstruction_error_measure=rem
+#             ),
+#         ],
+#         obera_iterations=obera_iterations,
+#         eps_complexity=[0, 0, 0, 0, 0],
+#     )
+
 
 def aero_qelvira_vertex(smoothness_calculator=naive_piece_wise, refinement=1, obera_iterations=0, *args, **kwargs):
     return SubCellReconstruction(
@@ -189,9 +221,9 @@ def aero_qelvira_vertex(smoothness_calculator=naive_piece_wise, refinement=1, ob
         cell_creators=
         [
             piecewise01,
-            elvira_cc(angle_threshold=0),
-            aero_q(angle_threshold=0),
-            tem,
+            elvira_cc(angle_threshold=45),
+            aero_q(angle_threshold=45),
+            tem(reconstruction_error_measure_w),
             # ------------ AVRO ------------ #
             CellCreatorPipeline(
                 cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
@@ -204,10 +236,8 @@ def aero_qelvira_vertex(smoothness_calculator=naive_piece_wise, refinement=1, ob
                 reconstruction_error_measure=reconstruction_error_measure_w
             ),
         ],
-        obera_iterations=obera_iterations,
-        eps_complexity=[0, 0, 1e-2, 1e-2, 1e-2],
+        obera_iterations=obera_iterations
     )
-
 
 names_dict = {
     "aero_qelvira_vertex": "ELVIRA-WO + AEROS Quadratic + TEM + AEROS Vertex",

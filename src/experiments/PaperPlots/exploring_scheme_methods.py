@@ -18,7 +18,7 @@ from experiments.PaperPlots.models2compare import qelvira, upwind
 from experiments.tools import calculate_averages_from_image, load_image, \
     reconstruct, singular_cells_mask, get_reconstruction_error
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
-from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE
+from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE, VERTEX_CELL_TYPE
 from lib.CellCreators.LearningFluxRegularCellCreator import CellLearnedFlux
 from lib.SubCellScheme import SubCellScheme
 
@@ -96,11 +96,11 @@ def get_velocity4experiments(num_cells_per_dim, velocity, angular_velocity):
     return velocity, rot_velocity, center, new_angular_velocity
 
 
-def calculate_true_solution(image, num_cells_per_dim, velocity, ntimes, angular_velocity, SAVE_EACH):
+def calculate_true_solution(image, num_cells_per_dim, velocity, ntimes, angular_velocity, num_screenshots):
+    times2save = np.linspace(0, ntimes-1, num_screenshots, dtype=int)
     image = load_image(image)
     pixels_per_cell = np.array(np.shape(image)) / num_cells_per_dim
 
-    # angular_velocity = get_relative_angular_velocity(num_cells_per_dim, angular_velocity) * pixels_per_cell[0]
     velocity, _, _, new_angular_velocity = get_velocity4experiments(num_cells_per_dim, velocity, angular_velocity)
     velocity_in_pixels = np.array(pixels_per_cell * np.array(velocity), dtype=int)
     assert np.all(velocity_in_pixels == pixels_per_cell * np.array(velocity))
@@ -109,7 +109,7 @@ def calculate_true_solution(image, num_cells_per_dim, velocity, ntimes, angular_
     true_solution = []
     true_reconstruction = []
     for i in range(ntimes + 1):
-        if i % SAVE_EACH == 0:
+        if i in times2save:
             true_reconstruction.append(image.copy())
         true_solution.append(calculate_averages_from_image(image, num_cells_per_dim))
         if not np.any(velocity):
@@ -133,7 +133,7 @@ def calculate_true_solution(image, num_cells_per_dim, velocity, ntimes, angular_
 
 def fit_model(subcell_reconstruction):
     def decorated_func(image, noise, num_cells_per_dim, reconstruction_factor, velocity, ntimes, true_solution,
-                       angular_velocity, SAVE_EACH):
+                       angular_velocity, num_screenshots):
         image_array = load_image(image)
         avg_values = calculate_averages_from_image(image_array, num_cells_per_dim)
         np.random.seed(42)
@@ -155,7 +155,9 @@ def fit_model(subcell_reconstruction):
         )
         t_fit = time.time() - t0
 
-        all_cells = [cell for i, cell in enumerate(all_cells) if i % SAVE_EACH == 0]
+        # retain only certain times for reconstruction
+        times2save = np.linspace(0, ntimes-1, num_screenshots, dtype=int)
+        all_cells = [cell for i, cell in enumerate(all_cells) if i in times2save]
 
         # do reconstruction
         t0 = time.time()
@@ -247,14 +249,15 @@ def plot_reconstruction_time_i(fig, ax, true_reconstruction, num_cells_per_dim, 
 
     if plot_curve:
         if plot_curve_winner:
-            plot_cells_identity(ax, model_resolution, cells[i], alpha=0.8)
+            plot_cells_identity(ax, model_resolution, cells[i], alpha=0.8, color_dict=plot_curve_winner)
             # plot_cells_type_of_curve_core(ax, model.resolution, model.cells, alpha=0.8)
         elif plot_vh_classification:
             plot_cells_vh_classification_core(ax, model_resolution, cells[i], alpha=0.8)
         elif plot_singular_cells:
             plot_cells_not_regular_classification_core(ax, model_resolution, cells[i], alpha=0.8)
         plot_curve_core(ax, curve_cells=[cell for cell in cells[i].values() if
-                                         cell.CELL_TYPE == CURVE_CELL_TYPE])
+                                         cell.CELL_TYPE in [CURVE_CELL_TYPE, VERTEX_CELL_TYPE]],
+                        default_linewidth=3.5 * 20 / num_cells_per_dim)
 
     if draw_mesh:
         draw_cell_borders(
