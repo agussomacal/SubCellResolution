@@ -39,14 +39,14 @@ def get_neighbouring_singular_coords_under_condition(coords: CellCoords, indexer
     :return:
     """
     # look in the 2-distance neighborhood and retain only cells that are singular.
-    # visited_nodes = [
-    #     indexer[new_coords.coords] for new_coords in coords + NEIGHBOURHOOD_16_MANHATTAN
-    #     if indexer[new_coords.tuple] in cells and cells[indexer[new_coords.tuple]].CELL_TYPE == CURVE_CELL_TYPE
-    # ]
     visited_nodes = [
-        indexer[new_coords.coords] for new_coords in coords + NEIGHBOURHOOD_8_MANHATTAN
+        indexer[new_coords.coords] for new_coords in coords + NEIGHBOURHOOD_16_MANHATTAN
         if indexer[new_coords.tuple] in cells and cells[indexer[new_coords.tuple]].CELL_TYPE == CURVE_CELL_TYPE
     ]
+    # visited_nodes = [
+    #     indexer[new_coords.coords] for new_coords in coords + NEIGHBOURHOOD_8_MANHATTAN
+    #     if indexer[new_coords.tuple] in cells and cells[indexer[new_coords.tuple]].CELL_TYPE == CURVE_CELL_TYPE
+    # ]
 
     singular_cells = []
     if len(visited_nodes) >= 2:

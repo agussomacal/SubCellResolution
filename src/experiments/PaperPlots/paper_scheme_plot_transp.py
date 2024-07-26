@@ -1,6 +1,8 @@
 import operator
+import warnings
 from functools import partial
 
+import matplotlib.colors as mcolors
 import matplotlib.pylab as plt
 import numpy as np
 import seaborn as sns
@@ -9,26 +11,32 @@ import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
 from PerplexityLab.miscellaneous import NamedPartial, copy_main_script_version
-from PerplexityLab.visualization import generic_plot, make_data_frames, LegendOutsidePlot
-from experiments.PaperPlots.exploring_scheme_methods import plot_reconstruction_time_i, \
-    scheme_reconstruction_error, \
+from PerplexityLab.visualization import generic_plot, LegendOutsidePlot, perplex_plot, \
+    one_line_iterator
+from experiments.PaperPlots.exploring_scheme_methods import scheme_reconstruction_error, \
     calculate_true_solution, fit_model
+from experiments.PaperPlots.models2compare import piecewise
 from experiments.PaperPlots.paper_corners_plot import elvira_cc, \
     reconstruction_error_measure_default, piecewise01, aero_q, tem, reconstruction_error_measure_w
+from experiments.VizReconstructionUtils import plot_cells, plot_curve_core, draw_numbers
 from experiments.global_params import cpink, corange, cblue, cgreen, runsinfo, cpurple, cred, cgray, \
     RESOLUTION_FACTOR, num_cores, running_in, image_format
 from lib.AuxiliaryStructures.Constants import CURVE_CELL
+from lib.CellClassifiers import cell_classifier_try_it_all
+from lib.CellCreators.CellCreatorBase import CURVE_CELL_TYPE, VERTEX_CELL_TYPE
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells_by_minmax
 from lib.CellCreators.CurveCellCreators.VertexCellCreator import LinearVertexCellCurveCellCreator
 from lib.CellIterators import iterate_by_reconstruction_error_and_smoothness
 from lib.CellOrientators import OrientByGradient
-from lib.SmoothnessCalculators import naive_piece_wise
+from lib.SmoothnessCalculators import naive_piece_wise, indifferent
 from lib.StencilCreators import StencilCreatorAdaptive
 from lib.SubCellReconstruction import SubCellReconstruction, CellCreatorPipeline
 
 num_screenshots = 20
 
 num_cells_per_dim = [15, 30, 60]
+num_cells_per_dim = [15]
+num_cells_per_dim = [60]
 num_cells_per_dim = [30]
 
 
@@ -92,6 +100,44 @@ runsinfo.append_info(
 )
 
 
+@perplex_plot(legend=False)
+@one_line_iterator()
+def plot_reconstruction_init_final(fig, ax, true_reconstruction, num_cells_per_dim, resolution, cells,
+                                   alpha_true_image=0.5, numbers_on=False, default_linewidth=3.5,
+                                   cmap_true_image="Greys_r", init_end_color=(cgreen, cblue),
+                                   trim=((0, 1), (0, 1)), vmin=None, vmax=None, labels=True):
+    if isinstance(init_end_color[0], str):
+        init_end_color = tuple(list(map(mcolors.to_rgb, init_end_color)))
+
+    model_resolution = np.array(resolution)
+    image = true_reconstruction[0]
+
+    if alpha_true_image > 0:
+        plot_cells(ax, colors=image, mesh_shape=model_resolution, alpha=alpha_true_image, cmap=cmap_true_image,
+                   vmin=np.min(image) if vmin is None else vmin,
+                   vmax=np.max(image) if vmax is None else vmax,
+                   labels=labels)
+
+    for i, color in zip([0, -1], init_end_color):
+        plot_curve_core(ax, curve_cells=[cell for cell in cells[i].values() if
+                                         cell.CELL_TYPE in [CURVE_CELL_TYPE, VERTEX_CELL_TYPE]],
+                        default_linewidth=default_linewidth * 20 / num_cells_per_dim,
+                        color=color)
+
+    ax.set_ylim((model_resolution[1] - trim[0][1] - 0.5, -0.5 + trim[0][0]))
+    ax.set_xlim((trim[1][0] - 0.5, model_resolution[0] - trim[1][1] - 0.5))
+
+    draw_numbers(
+        ax, mesh_shape=num_cells_per_dim,
+        refinement=model_resolution // num_cells_per_dim,
+        numbers_on=numbers_on,
+        prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
+    )
+
+    if not numbers_on:
+        plt.box(False)
+
+
 def elvira_w_oriented(smoothness_calculator=naive_piece_wise, refinement=1, obera_iterations=0, *args, **kwargs):
     return SubCellReconstruction(
         name="All",
@@ -104,6 +150,21 @@ def elvira_w_oriented(smoothness_calculator=naive_piece_wise, refinement=1, ober
             elvira_cc(angle_threshold=45),
         ],
         obera_iterations=obera_iterations
+    )
+
+
+def quadratic_aero(smoothness_calculator=naive_piece_wise, refinement=1, obera_iterations=0, *args, **kwargs):
+    return SubCellReconstruction(
+        name="All",
+        smoothness_calculator=smoothness_calculator,
+        reconstruction_error_measure=reconstruction_error_measure_default,
+        refinement=refinement,
+        cell_creators=
+        [
+            piecewise01,
+            aero_q(angle_threshold=45),
+        ],
+        obera_iterations=obera_iterations,
     )
 
 
@@ -131,7 +192,23 @@ def aero_qelvira_vertex(smoothness_calculator=naive_piece_wise, refinement=1, ob
                 reconstruction_error_measure=reconstruction_error_measure_w
             ),
         ],
-        obera_iterations=obera_iterations
+        obera_iterations=obera_iterations,
+        eps_complexity=[0, 0, 1e-3, 0, 0]
+    )
+
+
+def upwind(smoothness_calculator=indifferent, refinement=1, *args, **kwargs):
+    return SubCellReconstruction(
+        name="All",
+        smoothness_calculator=smoothness_calculator,
+        cell_classifier=cell_classifier_try_it_all,
+        reconstruction_error_measure=reconstruction_error_measure_default,
+        refinement=refinement,
+        cell_creators=
+        [
+            piecewise
+        ],
+        obera_iterations=0
     )
 
 
@@ -139,7 +216,7 @@ if __name__ == "__main__":
     data_manager = DataManager(
         path=config.paper_results_path,
         emissions_path=config.results_path,
-        name='SchemesRot',
+        name=f'SchemesRev',
         format=JOBLIB,
         trackCO2=True,
         country_alpha_code="FR"
@@ -150,7 +227,7 @@ if __name__ == "__main__":
     lab.define_new_block_of_functions(
         "ntimescalcul",
         lambda num_cells_per_dim, velocity: {
-            "ntimes": int(np.round(num_cells_per_dim / velocity[1]))},
+            "ntimes": int(np.round(num_cells_per_dim / velocity[1])) + 1},
         recalculate=False
     )
 
@@ -166,50 +243,33 @@ if __name__ == "__main__":
             aero_qelvira_vertex,
             # elvira,
             elvira_w_oriented,
-            # quadratic_aero,
-            # upwind,
+            quadratic_aero,
+            upwind,
         ]),
         recalculate=False
     )
 
-    lab.execute(
-        data_manager,
-        num_cores=num_cores,
-        forget=False,
-        save_on_iteration=None,
-        refinement=[1],
-        # velocity=[(0, 1), (0, 0.5), (0, 0.25)],
-        velocity=[(0, 0.25)],
-        angular_velocity=[0],
-        num_cells_per_dim=num_cells_per_dim,  # 60
-        noise=[0],
-        image=[
-            "batata.jpg",
-            "ShapesVertex.jpg",
-            # "zalesak_notched_circle.jpg",
-        ],
-        reconstruction_factor=[RESOLUTION_FACTOR],
-        num_screenshots=[num_screenshots],
-    )
-    # lab.execute(
-    #     data_manager,
-    #     num_cores=num_cores,
-    #     forget=False,
-    #     save_on_iteration=None,
-    #     refinement=[1],
-    #     ntimes=[ntimes],
-    #     velocity=[(0, 0)],
-    #     angular_velocity=[angular_velocity],
-    #     num_cells_per_dim=num_cells_per_dim,  # 60
-    #     noise=[0],
-    #     image=[
-    #         # "batata.jpg",
-    #         # "ShapesVertex.jpg",
-    #         "zalesak_notched_circle.jpg",
-    #     ],
-    #     reconstruction_factor=[RESOLUTION_FACTOR],
-    #     SAVE_EACH=[SAVE_EACH],
-    # )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        lab.execute(
+            data_manager,
+            num_cores=num_cores,
+            forget=False,
+            save_on_iteration=None,
+            refinement=[1],
+            # velocity=[(0, 1), (0, 0.5), (0, 0.25)],
+            velocity=[(0, 0.25)],
+            angular_velocity=[0],
+            num_cells_per_dim=num_cells_per_dim,  # 60
+            noise=[0],
+            image=[
+                "batata.jpg",
+                "ShapesVertex.jpg",
+                "zalesak_notched_circle.jpg",
+            ],
+            reconstruction_factor=[RESOLUTION_FACTOR],
+            num_screenshots=[num_screenshots],
+        )
     print(set(data_manager["models"]))
 
     # ---------------- Paper plots ---------------- #
@@ -248,46 +308,54 @@ if __name__ == "__main__":
                                                        extra_x_left=0.125, extra_x_right=0.075),
                  )
 
-    for i in range(num_screenshots):
-        plot_reconstruction_time_i(
-            data_manager,
-            folder="Reconstructions",
-            folder_by=["num_cells_per_dim", "angular_velocity", "velocity", "models", ],
-            name=f"Reconstruction{i}",
-            i=i,
-            alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True,
-            plot_curve_winner=False,
-            plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
-            cmap_true_image="Greys_r", draw_mesh=True,
-            trim=((0, 1), (0, 1)),
-            numbers_on=True, vmin=None, vmax=None, labels=True,
-            plot_by=["num_cells_per_dim", "angular_velocity", "image", "velocity", "models"],
-        )
+    plot_reconstruction_init_final(
+        data_manager,
+        plot_by=["num_cells_per_dim", "angular_velocity", "image", "velocity", "models"],
+        folder="InitEndComparison",
+        alpha_true_image=0.1,
+        cmap_true_image="Greys_r", init_end_color=("black", cred),
+        trim=((2, 3), (2, 3)), vmin=None, vmax=None, labels=False)
 
-    for i in range(num_screenshots):
-        plot_reconstruction_time_i(
-            data_manager,
-            folder="Winners",
-            folder_by=["num_cells_per_dim", "angular_velocity", "models", ],
-            name=f"Reconstruction{i}",
-            i=i,
-            alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True,
-            plot_curve_winner={
-                'CellCurveBaseVertexLinearExtendedVertexCurvePolynomialByPartsLineaddCurvePolynomialByPartsLineaddNoCurveRegionNoCurveRegion': (
-                    0, 0.8, 0),
-                'CellCurveBaseVertexLinearExtendedVertexCurvePolynomialByPartsLineaddCurvePolynomialByPartsLine': (
-                    0, 0, 0.8),
-                'PolynomialCelldegree (1, 1)': (1, 1, 1, 0.5),
-                'CellCurveBaseCurveVertexPolynomialVertexCurvePolynomialByPartsLineaddCurvePolynomialByPartsLine': (
-                    0, 0, 0.8),
-                'CellCurveBaseCurveAverageQuadraticCCQuadratic': (0.8, 0, 0, 0.5),
-                'CellCurveBaseCurvePolynomialLine': (0.5, 0.5, 0.5, 0.5)},
-            plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
-            cmap_true_image="Greys_r", draw_mesh=True,
-            trim=((0, 1), (0, 1)),
-            numbers_on=True, vmin=None, vmax=None, labels=True,
-            plot_by=["num_cells_per_dim", "angular_velocity", "image", "velocity", "models"],
-        )
+    # for i in range(num_screenshots):
+    #     plot_reconstruction_time_i(
+    #         data_manager,
+    #         folder="Reconstructions",
+    #         folder_by=["num_cells_per_dim", "angular_velocity", "velocity", "models", "image"],
+    #         name=f"Reconstruction{i}",
+    #         i=i,
+    #         alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True,
+    #         plot_curve_winner=False,
+    #         plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
+    #         cmap_true_image="Greys_r", draw_mesh=True,
+    #         trim=((0, 1), (0, 1)),
+    #         numbers_on=True, vmin=None, vmax=None, labels=True,
+    #         plot_by=["num_cells_per_dim", "angular_velocity", "image", "velocity", "models"],
+    #     )
+    #
+    # for i in range(num_screenshots):
+    #     plot_reconstruction_time_i(
+    #         data_manager,
+    #         folder="Winners",
+    #         folder_by=["num_cells_per_dim", "angular_velocity", "models", "image"],
+    #         name=f"Reconstruction{i}",
+    #         i=i,
+    #         alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True,
+    #         plot_curve_winner={
+    #             'CellCurveBaseVertexLinearExtendedVertexCurvePolynomialByPartsLineaddCurvePolynomialByPartsLineaddNoCurveRegionNoCurveRegion': (
+    #                 0, 0.8, 0),
+    #             'CellCurveBaseVertexLinearExtendedVertexCurvePolynomialByPartsLineaddCurvePolynomialByPartsLine': (
+    #                 0, 0, 0.8),
+    #             'PolynomialCelldegree (1, 1)': (1, 1, 1, 0.5),
+    #             'CellCurveBaseCurveVertexPolynomialVertexCurvePolynomialByPartsLineaddCurvePolynomialByPartsLine': (
+    #                 0, 0, 0.8),
+    #             'CellCurveBaseCurveAverageQuadraticCCQuadratic': (0.8, 0, 0, 0.5),
+    #             'CellCurveBaseCurvePolynomialLine': (0.5, 0.5, 0.5, 0.5)},
+    #         plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
+    #         cmap_true_image="Greys_r", draw_mesh=True,
+    #         trim=((0, 1), (0, 1)),
+    #         numbers_on=True, vmin=None, vmax=None, labels=True,
+    #         plot_by=["num_cells_per_dim", "angular_velocity", "image", "velocity", "models"],
+    #     )
 
     # for i in range(ntimes // SAVE_EACH):
     #     plot_time_i(

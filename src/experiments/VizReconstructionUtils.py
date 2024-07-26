@@ -234,7 +234,12 @@ def plot_curve_core(ax, curve_cells, color=None, default_linewidth=3.5):
         for points in get_curve(curve_cell) if curve_cell.CELL_TYPE == CURVE_CELL_TYPE else get_curve_vertex(
                 curve_cell):
             if len(points) > 0:
-                c = COLOR_CURVE if color is None else color[str(curve_cell)]
+                if color is None:
+                    c = COLOR_CURVE
+                elif isinstance(color, dict):
+                    c = color[str(curve_cell)]
+                else:
+                    c = color
                 ax.plot(*transform_points2plot(points).T, '-', c=c, alpha=1, linewidth=default_linewidth)
 
 
