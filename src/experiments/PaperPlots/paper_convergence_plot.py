@@ -3,7 +3,9 @@ from itertools import chain
 
 import numpy as np
 import seaborn as sns
+from matplotlib import pyplot as plt
 
+from matplotlib.colors import LinearSegmentedColormap
 import config
 from PerplexityLab.DataManager import DataManager, JOBLIB, dmfilter
 from PerplexityLab.LabPipeline import LabPipeline
@@ -14,7 +16,7 @@ from experiments.PaperPlots.exploring_methods_convergence import obtain_images, 
     linear_obera_w, quadratic_obera_non_adaptive, plot_reconstruction
 from experiments.VizReconstructionUtils import plot_image
 from experiments.global_params import SUB_CELL_DISCRETIZATION2BOUND_ERROR, runsinfo, cblue, cgreen, cred, \
-    cpurple, cpink, running_in, only_create_preimage_data, image_format
+    cpurple, cpink, running_in, only_create_preimage_data, image_format, cyellow
 from experiments.tools import curve_cells_fitting_times
 
 
@@ -150,16 +152,29 @@ if __name__ == "__main__":
     # ========== =========== ========== =========== #
     #               Experiment Plots                #
     # ========== =========== ========== =========== #
+    cmap_true = "viridis"
+    cmap_true = "Reds"
+    cmap_true = "Greys"
+    cmap_true = LinearSegmentedColormap.from_list("Red", colors=[(1,1,1), cred], N=100)
+
     circle_image = dmfilter(data_manager, names=["image4error"],
                             num_cells_per_dim=[max(num_cells_per_dim)])["image4error"][0]
-    with save_fig(paths=config.subcell_paper_figures_path, filename=f"Circle{image_format}", show=False, dpi=None):
-        plot_image(circle_image, cmap="viridis", vmin=-1, vmax=1, alpha=0.65)
+    with save_fig(
+            paths=config.subcell_paper_figures_path,
+            # paths=data_manager.path,
+            filename=f"Circle{image_format}", show=False, dpi=None):
+        plot_image(circle_image, cmap=cmap_true, vmin=0, vmax=1, alpha=0.65)
+        plt.box(False)
 
     for N in [10, 20]:
-        with save_fig(paths=config.subcell_paper_figures_path, filename=f"CircleAvg{N}{image_format}", show=False,
-                      dpi=None):
+        with save_fig(
+                paths=config.subcell_paper_figures_path,
+                # paths=data_manager.path,
+                filename=f"CircleAvg{N}{image_format}", show=False,
+                dpi=None):
             plot_image(dmfilter(data_manager, names=["image"], num_cells_per_dim=[N])["image"][0],
-                       cmap="viridis", vmin=-1, vmax=1, alpha=0.65)
+                       cmap=cmap_true, vmin=0, vmax=1, alpha=0.65)
+            plt.box(False)
 
     # ----------- Color for model ---------- #
     for group, model_style in accepted_models.items():
@@ -202,6 +217,12 @@ if __name__ == "__main__":
                      )
 
     # ----------- Reconstruction ---------- #
+    curve_color = cred
+    cmap_true_image = LinearSegmentedColormap.from_list("Yellow", colors=[(1, 1, 1), cyellow], N=2)
+    cmap_reconstruction = LinearSegmentedColormap.from_list("Red", colors=[(1, 1, 1), curve_color], N=100)
+    cmap_reconstruction = "Reds"
+    cmap_true_image = "Greys"
+
     for group, model_style in accepted_models.items():
         models2plot = list(model_style.keys())
 
@@ -227,20 +248,57 @@ if __name__ == "__main__":
                 plot_curve_winner=False,
                 plot_vh_classification=False,
                 plot_singular_cells=False,
-                alpha_true_image=1,
-                alpha=0.65,
+                cmap=cmap_reconstruction,
+                cmap_true_image=cmap_true_image,
+                alpha_true_image=0.1,
+                alpha=0,
                 numbers_on=False,
                 plot_again=True,
                 num_cores=1,
                 trim=((limits[0] * ncpd / ncpdg[0], limits[1] * ncpd / ncpdg[0]),
                       (limits[0] * ncpd / ncpdg[0], limits[1] * ncpd / ncpdg[0])),
-                cmap="viridis",
-                cmap_true_image="Greys_r",
-                vmin=-1, vmax=1,
+                vmin=0, vmax=1,
                 labels=False,
                 uselatex=False if running_in == "server" else True,
                 create_preimage_data=True,
-                only_create_preimage_data=only_create_preimage_data
+                only_create_preimage_data=only_create_preimage_data,
+                curve_color=curve_color,
+                default_linewidth=5,
+                draw_mesh=True,
+            )
+
+            plot_reconstruction(
+                data_manager,
+                path=config.subcell_paper_figures_path,
+                folder=group,
+                format=image_format,
+                name=f"{group}",
+                models="piecewise_constant",
+                plot_by=['num_cells_per_dim', "models"],
+                num_cells_per_dim=ncpd,
+                axes_xy_proportions=(15, 15),
+                difference=False,
+                plot_curve=True,
+                plot_curve_winner=False,
+                plot_vh_classification=False,
+                plot_singular_cells=False,
+                cmap=cmap_reconstruction,
+                cmap_true_image=cmap_true_image,
+                alpha_true_image=0.5,
+                alpha=0.5,
+                numbers_on=False,
+                plot_again=True,
+                num_cores=1,
+                trim=((limits[0] * ncpd / ncpdg[0], limits[1] * ncpd / ncpdg[0]),
+                      (limits[0] * ncpd / ncpdg[0], limits[1] * ncpd / ncpdg[0])),
+                vmin=0, vmax=1,
+                labels=False,
+                uselatex=False if running_in == "server" else True,
+                create_preimage_data=True,
+                only_create_preimage_data=only_create_preimage_data,
+                curve_color=curve_color,
+                default_linewidth=5,
+                draw_mesh=True,
             )
 
     # ========== =========== ========== =========== #

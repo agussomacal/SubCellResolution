@@ -15,7 +15,7 @@ from experiments.global_params import CCExtraWeight, EVALUATIONS, cpink, corange
 from experiments.OtherExperiments.SubcellExperiments.models2compare import elvira_cc, aero_q
 from experiments.tools import get_reconstruction_error, calculate_averages_from_image, load_image, \
     get_reconstruction_error_in_interface, reconstruct
-from experiments.tools4binary_images import plot_reconstruction
+from experiments.tools4binary_images import plot_reconstruction4img
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.RegularCellCreator import PolynomialRegularCellCreator, weight_cells_by_distance
@@ -536,7 +536,7 @@ if __name__ == "__main__":
                  axes_by=[],
                  plot_by=["reconstruction_factor", "N", "frequency", "perturbation"])
 
-    plot_reconstruction(
+    plot_reconstruction4img(
         data_manager,
         path=config.subcell_paper_figures_path,
         format=".pdf",
@@ -562,7 +562,7 @@ if __name__ == "__main__":
         draw_cells=False
     )
 
-    plot_reconstruction(
+    plot_reconstruction4img(
         data_manager,
         name="Reconstruction",
         folder='reconstruction',

@@ -12,7 +12,7 @@ from experiments.global_params import EVALUATIONS
 from experiments.PaperPlots.models2compare import reconstruction_error_measure_default, piecewise01, elvira_cc
 from experiments.tools import load_image, calculate_averages_from_image, reconstruct, \
     get_reconstruction_error
-from experiments.tools4binary_images import plot_reconstruction
+from experiments.tools4binary_images import plot_reconstruction4img
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.SmoothnessCalculators import naive_piece_wise
 from lib.SubCellReconstruction import SubCellReconstruction
@@ -108,7 +108,7 @@ if __name__ == "__main__":
         log="x"
     )
 
-    plot_reconstruction(
+    plot_reconstruction4img(
         data_manager,
         path=config.subcell_paper_figures_path,
         name="Reconstruction",

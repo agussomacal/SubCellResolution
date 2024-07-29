@@ -17,7 +17,7 @@ from experiments.PaperPlots.exploring_methods_convergence import quadratic_aero,
 from experiments.global_params import CurveAverageQuadraticCC, CCExtraWeight, cgray, cblue, cgreen, cred, \
     corange, cpurple, runsinfo, image_format
 from experiments.tools import curve_cells_fitting_times
-from experiments.tools4binary_images import plot_reconstruction
+from experiments.tools4binary_images import plot_reconstruction4img
 
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCellCreator
@@ -303,7 +303,7 @@ if __name__ == "__main__":
         'CellCurveBaseVertexLinearExtendedVertexCurvePolynomialByPartsLineaddCurvePolynomialByPartsLineaddNoCurveRegionNoCurveRegion': corange
     }
 
-    plot_reconstruction(
+    plot_reconstruction4img(
         data_manager,
         path=config.subcell_paper_figures_path,
         format=image_format,

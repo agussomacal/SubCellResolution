@@ -2,7 +2,7 @@ import config
 from PerplexityLab.DataManager import DataManager, JOBLIB
 from PerplexityLab.LabPipeline import LabPipeline
 from experiments.OtherExperiments.SubcellExperiments.models2compare import aero_linear, aero_qelvira_vertex, elvira, quadratic, winner_color_dict
-from experiments.tools4binary_images import fit_model, plot_reconstruction
+from experiments.tools4binary_images import fit_model, plot_reconstruction4img
 
 if __name__ == "__main__":
     data_manager = DataManager(
@@ -44,7 +44,7 @@ if __name__ == "__main__":
         angle_threshold=[25]
     )
 
-    plot_reconstruction(
+    plot_reconstruction4img(
         data_manager,
         path=config.subcell_paper_figures_path,
         format=".pdf",
@@ -73,11 +73,11 @@ if __name__ == "__main__":
         # cmapoi="YlGn",
         # alphaio=0.7,
         # alpha=0,
-        winner_color_dict=winner_color_dict,
+        curve_color=winner_color_dict,
         draw_cells=False
     )
 
-    plot_reconstruction(
+    plot_reconstruction4img(
         data_manager,
         name="Reconstruction",
         folder='Reconstruction',
@@ -92,5 +92,5 @@ if __name__ == "__main__":
         numbers_on=True,
         plot_again=True,
         num_cores=15,
-        winner_color_dict=winner_color_dict
+        curve_color=winner_color_dict
     )

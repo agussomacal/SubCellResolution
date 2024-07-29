@@ -6,9 +6,9 @@ from PerplexityLab.LabPipeline import LabPipeline
 from experiments.PaperPlots.exploring_methods_convergence import piecewise_constant, \
     quadratic_aero, quartic_aero, elvira, elvira_w_oriented, linear_obera, linear_obera_w, \
     quadratic_obera_non_adaptive
-from experiments.global_params import EVALUATIONS, image_format
+from experiments.global_params import EVALUATIONS, image_format, cred
 from experiments.tools import load_image, calculate_averages_from_image, reconstruct
-from experiments.tools4binary_images import plot_reconstruction
+from experiments.tools4binary_images import plot_reconstruction4img
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 
 
@@ -149,9 +149,12 @@ if __name__ == "__main__":
     #     yticks=None
     # )
 
-    plot_reconstruction(
+    curve_color = cred
+    cmap_reconstruction = "Reds"
+    cmap_true_image = "Greys_r"
+    plot_reconstruction4img(
         data_manager,
-        path=config.subcell_paper_figures_path,
+        # path=config.subcell_paper_figures_path,
         format=image_format,
         plot_by=['image', 'models', 'num_cells_per_dim'],
         axes_xy_proportions=(15, 15),
@@ -160,15 +163,16 @@ if __name__ == "__main__":
         plot_curve_winner=False,
         plot_vh_classification=False,
         plot_singular_cells=False,
-        alpha_true_image=1,
-        alpha=0.65,
+        alpha_true_image=0.15,
+        alpha=0,
         plot_again=True,
         num_cores=1,
         num_cells_per_dim=[15],
         trim=((1, 1), (2, 2)),
-        cmap="viridis",
-        cmap_true_image="Greys_r",
-        vmin=-1, vmax=1,
+        cmap=cmap_reconstruction,
+        cmap_true_image=cmap_true_image,
+        curve_color=curve_color,
+        vmin=0, vmax=1,
         labels=False,
         draw_mesh=False,
         numbers_on=False,

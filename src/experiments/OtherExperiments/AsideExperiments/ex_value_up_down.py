@@ -15,7 +15,7 @@ from experiments.global_params import CCExtraWeight, EVALUATIONS, cpink, corange
 from experiments.PaperPlots.models2compare import reconstruction_error_measure_3x3_w
 from experiments.tools import get_reconstruction_error, calculate_averages_from_image, load_image, \
     reconstruct
-from experiments.tools4binary_images import plot_reconstruction
+from experiments.tools4binary_images import plot_reconstruction4img
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.CellCreators.CurveCellCreators.CurveCellCreatorBase import get_values_up_down_eval, get_values_up_down_avg, \
@@ -350,7 +350,7 @@ if __name__ == "__main__":
     #              axes_by=["method"],
     #              plot_by=["reconstruction_factor", "N", "frequency", "perturbation"])
 
-    plot_reconstruction(
+    plot_reconstruction4img(
         data_manager,
         name="Reconstruction",
         folder='reconstruction',

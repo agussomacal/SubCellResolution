@@ -8,7 +8,7 @@ from PerplexityLab.visualization import generic_plot, make_data_frames
 from experiments.OtherExperiments.SubcellExperiments.models2compare import elvira, winner_color_dict, \
     qelvira
 from experiments.tools import get_reconstruction_error, load_image
-from experiments.tools4binary_images import fit_model, plot_reconstruction
+from experiments.tools4binary_images import fit_model, plot_reconstruction4img
 
 if __name__ == "__main__":
     data_manager = DataManager(
@@ -76,7 +76,7 @@ if __name__ == "__main__":
         plot_by=["num_cells_per_dim"]
     )
 
-    plot_reconstruction(
+    plot_reconstruction4img(
         data_manager,
         path=config.subcell_paper_figures_path,
         name="Reconstruction",
@@ -107,7 +107,7 @@ if __name__ == "__main__":
         draw_cells=False
     )
 
-    plot_reconstruction(
+    plot_reconstruction4img(
         data_manager,
         name="Reconstruction",
         folder='Reconstruction',
@@ -133,6 +133,6 @@ if __name__ == "__main__":
         numbers_on=True,
         plot_again=True,
         num_cores=15,
-        winner_color_dict=winner_color_dict,
+        curve_color=winner_color_dict,
         cmap="plasma"
     )
