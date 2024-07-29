@@ -35,9 +35,7 @@ from lib.SubCellReconstruction import SubCellReconstruction, CellCreatorPipeline
 num_screenshots = 20
 
 num_cells_per_dim = [15, 30, 60]
-num_cells_per_dim = [15]
-num_cells_per_dim = [60]
-num_cells_per_dim = [30]
+num_cells_per_dim = [30, 60]
 
 
 def zalesak_notched_circle(num_pixels=1680):
@@ -273,116 +271,73 @@ if __name__ == "__main__":
     print(set(data_manager["models"]))
 
     # ---------------- Paper plots ---------------- #
-    generic_plot(data_manager,
-                 name="ReconstructionErrorInTimex",
-                 format=image_format,
-                 path=config.subcell_paper_figures_path,
-                 x="times", y="scheme_error", label="method",
-                 plot_by=["num_cells_per_dim", "image", "angular_velocity", "velocity"],
-                 times=lambda ntimes, num_screenshots: np.linspace(0, ntimes, num_screenshots, dtype=int),
-                 scheme_error=scheme_reconstruction_error,
-                 plot_func=NamedPartial(
-                     sns.lineplot,
-                     marker="o", linestyle="--",
-                     markers=True, linewidth=3,
-                     palette={v: model_color[k] for k, v in names_dict.items()}
-                 ),
-                 # log="yx",
-                 log="y",
-                 models=list(model_color.keys()),
-                 method=lambda models: names_dict[models],
-                 # num_cells_per_dim=[30],
-                 axes_xy_proportions=(12, 8),
-                 axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
-                 labels_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
-                 legend_font_dict={'weight': 'normal', "size": 20, 'stretch': 'normal'},
-                 uselatex=False if running_in == "server" else True,
-                 xlabel=r"Iterations",
-                 ylabel=r"$\|u-\tilde u \|_{L^1}$",
-                 # xticks=[1, 2, 4, 8, 16, 24, 40, 70, 120],
-                 create_preimage_data=True if running_in == "server" else False,
-                 use_preimage_data=True,
-                 only_create_preimage_data=True if running_in == "server" else False,
-                 legend_outside_plot=LegendOutsidePlot(loc="lower center",
-                                                       extra_y_top=0.01, extra_y_bottom=0.3,
-                                                       extra_x_left=0.125, extra_x_right=0.075),
-                 )
+    for ncpd, legend in zip([30, 60], [False, True]):
+        generic_plot(data_manager,
+                     name="ReconstructionErrorInTimex",
+                     format=image_format,
+                     path=config.subcell_paper_figures_path,
+                     x="times", y="scheme_error", label="method",
+                     # axes_by=["num_cells_per_dim"],
+                     num_cells_per_dim=ncpd,
+                     add_legend=legend,
+                     plot_by=["num_cells_per_dim", "image", "angular_velocity", "velocity"],
+                     times=lambda ntimes, num_screenshots: np.linspace(0, ntimes, num_screenshots, dtype=int),
+                     scheme_error=scheme_reconstruction_error,
+                     plot_func=NamedPartial(
+                         sns.lineplot,
+                         marker="o", linestyle="--",
+                         markers=True, linewidth=3,
+                         palette={v: model_color[k] for k, v in names_dict.items()}
+                     ),
+                     axes_xy_proportions=(12, (5 if legend else 4.2)), transpose=True,
+                     share_axis="x", log="y",
+                     models=list(model_color.keys()),
+                     method=lambda models: names_dict[models],
+                     # num_cells_per_dim=[30],
+                     axis_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
+                     labels_font_dict={'color': 'black', 'weight': 'normal', 'size': 25},
+                     legend_font_dict={'weight': 'normal', "size": 19, 'stretch': 'normal'},
+                     uselatex=False if running_in == "server" else True,
+                     xlabel=r"Iterations",
+                     ylabel=r"$\|u-\tilde u \|_{L^1}$",
+                     # xticks=[1, 2, 4, 8, 16, 24, 40, 70, 120],
+                     create_preimage_data=True if running_in == "server" else False,
+                     use_preimage_data=True,
+                     only_create_preimage_data=True if running_in == "server" else False,
+                     legend_outside_plot=LegendOutsidePlot(loc="lower center",
+                                                           extra_y_top=0.01,
+                                                           extra_y_bottom=0.15 + (0.25 if legend else 0),
+                                                           extra_x_left=0.125, extra_x_right=0.075),
+                     )
 
-    plot_reconstruction_init_final(
-        data_manager,
-        plot_by=["num_cells_per_dim", "angular_velocity", "image", "velocity", "models"],
-        folder="InitEndComparison",
-        alpha_true_image=0.1,
-        cmap_true_image="Greys_r", init_end_color=("black", cred),
-        trim=((2, 3), (2, 3)), vmin=None, vmax=None, labels=False)
+    for i, ncpd in enumerate(num_cells_per_dim):
+        plot_reconstruction_init_final(
+            data_manager,
+            path=config.subcell_paper_figures_path,
+            format=".pdf",
+            plot_by=["num_cells_per_dim", "angular_velocity", "image", "velocity", "models"],
+            num_cells_per_dim=ncpd,
+            folder="InitEndComparison",
+            alpha_true_image=0.1,
+            cmap_true_image="Greys_r", init_end_color=("black", cred),
+            image=[
+                "batata.jpg",
+                "ShapesVertex.jpg",
+            ],
+            trim=((2*(i+1), 3*(i+1)), (2*(i+1), 3*(i+1))), vmin=None, vmax=None, labels=False)
 
-    # for i in range(num_screenshots):
-    #     plot_reconstruction_time_i(
-    #         data_manager,
-    #         folder="Reconstructions",
-    #         folder_by=["num_cells_per_dim", "angular_velocity", "velocity", "models", "image"],
-    #         name=f"Reconstruction{i}",
-    #         i=i,
-    #         alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True,
-    #         plot_curve_winner=False,
-    #         plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
-    #         cmap_true_image="Greys_r", draw_mesh=True,
-    #         trim=((0, 1), (0, 1)),
-    #         numbers_on=True, vmin=None, vmax=None, labels=True,
-    #         plot_by=["num_cells_per_dim", "angular_velocity", "image", "velocity", "models"],
-    #     )
-    #
-    # for i in range(num_screenshots):
-    #     plot_reconstruction_time_i(
-    #         data_manager,
-    #         folder="Winners",
-    #         folder_by=["num_cells_per_dim", "angular_velocity", "models", "image"],
-    #         name=f"Reconstruction{i}",
-    #         i=i,
-    #         alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True,
-    #         plot_curve_winner={
-    #             'CellCurveBaseVertexLinearExtendedVertexCurvePolynomialByPartsLineaddCurvePolynomialByPartsLineaddNoCurveRegionNoCurveRegion': (
-    #                 0, 0.8, 0),
-    #             'CellCurveBaseVertexLinearExtendedVertexCurvePolynomialByPartsLineaddCurvePolynomialByPartsLine': (
-    #                 0, 0, 0.8),
-    #             'PolynomialCelldegree (1, 1)': (1, 1, 1, 0.5),
-    #             'CellCurveBaseCurveVertexPolynomialVertexCurvePolynomialByPartsLineaddCurvePolynomialByPartsLine': (
-    #                 0, 0, 0.8),
-    #             'CellCurveBaseCurveAverageQuadraticCCQuadratic': (0.8, 0, 0, 0.5),
-    #             'CellCurveBaseCurvePolynomialLine': (0.5, 0.5, 0.5, 0.5)},
-    #         plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
-    #         cmap_true_image="Greys_r", draw_mesh=True,
-    #         trim=((0, 1), (0, 1)),
-    #         numbers_on=True, vmin=None, vmax=None, labels=True,
-    #         plot_by=["num_cells_per_dim", "angular_velocity", "image", "velocity", "models"],
-    #     )
+    for i, ncpd in enumerate(num_cells_per_dim):
+        plot_reconstruction_init_final(
+            data_manager,
+            path=config.subcell_paper_figures_path,
+            format=".pdf",
+            plot_by=["num_cells_per_dim", "angular_velocity", "image", "velocity", "models"],
+            folder="InitEndComparison",
+            alpha_true_image=0.1,
+            cmap_true_image="Greys", init_end_color=("black", cred),
+            image="zalesak_notched_circle.jpg",
+            trim=((2*(i+1), 2*(i+1)), (2*(i+1), 2*(i+1))), vmin=None, vmax=None, labels=False)
 
-    # for i in range(ntimes // SAVE_EACH):
-    #     plot_time_i(
-    #         data_manager,
-    #         folder_by=["num_cells_per_dim", "angular_velocity", "models", ],
-    #         name=f"Solution{i}",
-    #         i=i,
-    #         alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True,
-    #         plot_curve_winner=False,
-    #         plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
-    #         cmap_true_image="Greys_r", draw_mesh=True,
-    #         trim=((0, 1), (0, 1)),
-    #         numbers_on=True, vmin=None, vmax=None, labels=True,
-    #         plot_by=["num_cells_per_dim", "image", "velocity", "angular_velocity", "models"]
-    #     )
-    # ========== =========== ========== =========== #
-    #               Experiment Times                #
-    # ========== =========== ========== =========== #
-    # times to fit cell
-    # df = next(make_data_frames(
-    #     data_manager,
-    #     var_names=["models", "time_to_fit"],
-    #     group_by=[],
-    # ))[1].groupby("models").mean()["time_to_fit"] / ntimes
-    # runsinfo.append_info(
-    #     **{"scheme-" + k.replace("_", "-") + "-time": f"{v:.1g}" for k, v in df.items()}
-    # )
 
     print("CO2 consumption: ", data_manager.CO2kg)
     copy_main_script_version(__file__, data_manager.path)

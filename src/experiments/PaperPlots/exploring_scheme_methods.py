@@ -151,7 +151,7 @@ def fit_model(subcell_reconstruction):
         solution, all_cells = model.evolve(
             init_average_values=avg_values, indexer=ArrayIndexerNd(avg_values, "cyclic"),
             velocity=np.array(velocity), ntimes=ntimes,
-            interface_oracle=singular_cells_mask(true_solution)
+            interface_oracle=singular_cells_mask(true_solution),
         )
         t_fit = time.time() - t0
 
