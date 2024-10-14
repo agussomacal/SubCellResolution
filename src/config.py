@@ -5,7 +5,7 @@ project_root = Path(__file__).parent.parent
 data_path = Path.joinpath(project_root, 'Data')
 results_path = Path.joinpath(project_root, 'Results')
 # paper_results_path = Path.joinpath(results_path, 'Paper')
-paper_results_path = Path.joinpath(results_path, 'PaperTest')
+paper_results_path = Path.joinpath(results_path, 'PaperRev')
 data_path.mkdir(parents=True, exist_ok=True)
 results_path.mkdir(parents=True, exist_ok=True)
 paper_results_path.mkdir(parents=True, exist_ok=True)
