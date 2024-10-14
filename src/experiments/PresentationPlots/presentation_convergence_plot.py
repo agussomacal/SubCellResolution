@@ -39,6 +39,15 @@ def save_fig_without_white(filename):
     plt.close()
 
 
+def extra_process4plot(fig, ax):
+    ax.spines[['right', 'top']].set_visible(False)
+    ax.spines[['bottom', 'left']].set_color('white')
+    ax.xaxis.label.set_color('white')
+    ax.yaxis.label.set_color('white')
+    ax.tick_params(axis='x', colors='white')
+    ax.tick_params(axis='y', colors='white')
+
+
 def plot_convergence(data, x, y, hue, ax, threshold=30, rateonly=None, model_style=None, names_dict=None,
                      vlines=None, *args, **kwargs):
     for method, df in data.groupby(hue, sort=False):
@@ -292,16 +301,7 @@ if __name__ == "__main__":
                 only_create_preimage_data=only_create_preimage_data
             )
 
-
     # ----------- Convergence ---------- #
-    def extra_process4plot(fig, ax):
-        ax.spines[['right', 'top']].set_visible(False)
-        ax.spines[['bottom', 'left']].set_color('white')
-        ax.xaxis.label.set_color('white')
-        ax.yaxis.label.set_color('white')
-        ax.tick_params(axis='x', colors='white')
-        ax.tick_params(axis='y', colors='white')
-
 
     for group, model_style in accepted_models.items():
         models2plot = list(model_style.keys())
@@ -325,7 +325,7 @@ if __name__ == "__main__":
                          ylim=(5e-8, 5e-1),
                          models=models2plot[:(i + 1)][::-1],
                          method=lambda models: names_dict[str(models)],
-                         sorted_models=lambda models: 100-models2plot.index(models),
+                         sorted_models=lambda models: 100 - models2plot.index(models),
                          sort_by=['sorted_models'],
                          format=image_format,
                          axes_xy_proportions=(12, 8),
