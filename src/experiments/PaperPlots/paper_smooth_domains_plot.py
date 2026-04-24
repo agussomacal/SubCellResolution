@@ -47,7 +47,7 @@ if __name__ == "__main__":
         emissions_path=config.results_path,
         name='ImageReconstruction',
         format=JOBLIB,
-        trackCO2=True,
+        trackCO2=False,
         country_alpha_code="FR"
     )
 
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     )
     lab.execute(
         data_manager,
-        num_cores=15,
+        num_cores=1,
         forget=False,
         save_on_iteration=None,
         num_cells_per_dim=[10, 12, 15, 20, 30],  # 20, 42, 84 168 , 84 4220,, 42

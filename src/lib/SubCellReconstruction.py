@@ -148,7 +148,7 @@ def reconstruct_arbitrary_size(cells: Dict[Tuple[int, ...], CellBase], resolutio
         cell_ix = tuple(map(int, np.array(ix) / size * resolution))
         if cells2reconstruct is None or cell_ix in cells2reconstruct:
             values[ix] = cells[cell_ix].evaluate(
-                (np.array(ix) / size * resolution)[np.newaxis, :])
+                (np.array(ix) / size * resolution)[np.newaxis, :]).squeeze()
     return values
 
 

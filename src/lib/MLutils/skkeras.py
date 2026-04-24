@@ -84,7 +84,7 @@ make_keras_picklable()
 
 class SKKerasBase(BaseEstimator):
     def __init__(self, epochs=1000, restarts=1,
-                 max_time4fitting=np.Inf, validation_size=0.2, batch_size=None, criterion='mse', solver='Adam', lr=None,
+                 max_time4fitting=np.inf, validation_size=0.2, batch_size=None, criterion='mse', solver='Adam', lr=None,
                  lr_lower_limit=1e-12, lr_upper_limit=1, n_epochs_without_improvement=100, random_state=42, workers=1):
         super().__init__()
 
@@ -201,7 +201,7 @@ class SKKerasBase(BaseEstimator):
 
 class SKKerasFNN(SKKerasBase):
     def __init__(self, hidden_layer_sizes, activation="relu", epochs=1000, restarts=1,
-                 max_time4fitting=np.Inf, validation_size=0.2, batch_size=None, criterion='mse', solver='Adam', lr=None,
+                 max_time4fitting=np.inf, validation_size=0.2, batch_size=None, criterion='mse', solver='Adam', lr=None,
                  lr_lower_limit=1e-12, lr_upper_limit=1, n_epochs_without_improvement=100, random_state=42, workers=1,
                  train_noise=0):
         """

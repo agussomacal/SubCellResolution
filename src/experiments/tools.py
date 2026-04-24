@@ -42,7 +42,7 @@ def calculate_averages_from_curve(curve: Curve, resolution: Tuple[int, int], dep
         deplacement = 1 / np.array(resolution)
     assert deplacement[0] >= 0 and deplacement[1] >= 0, "only movements in positive implemented."
 
-    num_squares = np.product(resolution)
+    num_squares = np.prod(resolution)
     averages = np.zeros(resolution)
     for i, j in tqdm(
             itertools.product(*list(map(np.arange, resolution))) if cells2reconstruct is None else cells2reconstruct,

@@ -29,7 +29,7 @@ BestModel = namedtuple('BestModel', 'weights valid_loss epoch')
 
 
 class SKTorchBase(torch.nn.Module, BaseEstimator):
-    def __init__(self, epochs=1000, restarts=1, max_time4fitting=np.Inf, n_epochs_without_improvement=100,
+    def __init__(self, epochs=1000, restarts=1, max_time4fitting=np.inf, n_epochs_without_improvement=100,
                  validation_size=0.2, batch_size=None, criterion=torch.nn.MSELoss(),
                  solver=torch.optim.LBFGS, other_solvers=(),
                  iterations_cma=1000, popsize=10, sigma_cma=1, ratio_grad_cma=None,
@@ -162,7 +162,7 @@ class SKTorchBase(torch.nn.Module, BaseEstimator):
 
             x, _ = cma.fmin2(objective_function=objective_function,
                              x0=x0, sigma0=self.sigma_cma,
-                             options={'ftarget': -np.Inf, 'popsize': self.popsize,
+                             options={'ftarget': -np.inf, 'popsize': self.popsize,
                                       'maxfevals': self.popsize * self.iterations_cma})
         self = self.set_weights(self, x)
 
@@ -382,7 +382,7 @@ def get_activation_function(activation_name):
 
 class SKTorchFNN(SKTorchBase):
     def __init__(self, hidden_layer_sizes, epochs=1000, activation='sigmoid', validation_size=0.2, restarts=1,
-                 max_time4fitting=np.Inf, workers=1, batch_size=None, criterion=torch.nn.MSELoss(), other_solvers=(),
+                 max_time4fitting=np.inf, workers=1, batch_size=None, criterion=torch.nn.MSELoss(), other_solvers=(),
                  solver=torch.optim.LBFGS, iterations_cma=1000, popsize=10, sigma_cma=1, ratio_grad_cma=None, lr=None,
                  lr_lower_limit=1e-12, lr_upper_limit=1, n_epochs_without_improvement=100, random_state=42, dropout_p=0,
                  batch_normalization=False, save_stats=False):

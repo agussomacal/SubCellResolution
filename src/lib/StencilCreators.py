@@ -124,7 +124,7 @@ class StencilCreatorSmoothnessDistTradeOff(StencilCreatorFixedShape):
             # only test the half that is near in average value to the central cell.
             # if the discontinuity is a line (or aproximately regular) the stencil should be devided around half, thats why
             # we will look only at the fist half (/2).
-            test_indexes = np.where(neighbours_averages_diff < np.product(self.stencil_shape) / 2)
+            test_indexes = np.where(neighbours_averages_diff < np.prod(self.stencil_shape) / 2)
             near_smooth_index = self.dist_trade_off * self.dist_kernel + neighbours_smoothness / smoothness_index[
                 coords.tuple]
             # center_of_stencil = np.array(test_indexes).T[np.argmin(near_smooth_index[test_indexes])]

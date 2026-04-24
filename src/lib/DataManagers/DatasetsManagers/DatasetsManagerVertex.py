@@ -12,7 +12,7 @@ from lib.StencilCreators import Stencil
 
 class DatasetsManagerVertex(DatasetsBaseManager):
     def __init__(self, path2data: Union[str, Path], N: int, kernel_size: Tuple[int, int], min_val: float,
-                 max_val: float, workers=np.Inf, recalculate=False, angle1_limits=(0, 2), angle_cone_limits=(0, 2),
+                 max_val: float, workers=np.inf, recalculate=False, angle1_limits=(0, 2), angle_cone_limits=(0, 2),
                  transpose=False,
                  velocity_range: Union[Tuple[Tuple, Tuple], List] = ((1e-10, 0), (1.0, 0)), curve_position_radius: float = 1,
                  value_up_random=True):
@@ -54,7 +54,7 @@ class DatasetsManagerVertex(DatasetsBaseManager):
 
 class DatasetsManagerVertexAngleAngle(DatasetsBaseManager):
     def __init__(self, path2data: Union[str, Path], N: int, kernel_size: Tuple[int, int], min_val: float,
-                 max_val: float, workers=np.Inf, recalculate=False, angle1_limits=(0, 2), angle2_limits=(0, 2),
+                 max_val: float, workers=np.inf, recalculate=False, angle1_limits=(0, 2), angle2_limits=(0, 2),
                  transpose=False,
                  velocity_range: Union[Tuple[Tuple, Tuple], List] = ((1e-10, 0), (1.0, 0)), curve_position_radius: float = 1,
                  value_up_random=True):

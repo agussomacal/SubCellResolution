@@ -161,7 +161,7 @@ class PiecewiseConstantRegularCellCreator(CellCreatorBase):
                      stencil: Stencil, stencils: Dict[Tuple[int, ...], np.ndarray]) -> Generator[CellBase, None, None]:
         yield PolynomialCell(
             coords,
-            np.reshape(self.apriori_values[np.mean(stencil.values) > self.midpoint],
+            np.reshape(self.apriori_values[1*(np.mean(stencil.values) > self.midpoint)],
                        np.repeat(1, self.dimensionality))
         )
 

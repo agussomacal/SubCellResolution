@@ -1,8 +1,8 @@
 import operator
 from functools import partial
 
-from experiments.OtherExperiments.MLTraining.ml_cell_averages import kernel_lines_ml_model, \
-    kernel_quadratics_avg_ml_model
+# from experiments.OtherExperiments.MLTraining.ml_cell_averages import kernel_lines_ml_model, \
+#     kernel_quadratics_avg_ml_model
 from experiments.global_params import CCExtraWeight, CurveAverageQuadraticCC, cgray, \
     cblue, cgreen, cred, corange
 from lib.AuxiliaryStructures.Constants import REGULAR_CELL, CURVE_CELL
@@ -12,7 +12,7 @@ from lib.CellCreators.CurveCellCreators.ELVIRACellCreator import ELVIRACurveCell
 from lib.CellCreators.CurveCellCreators.RegularCellsSearchers import get_opposite_regular_cells_by_minmax
 from lib.CellCreators.CurveCellCreators.ValuesCurveCellCreator import ValuesLineConsistentCurveCellCreator, \
     ValuesCurveCellCreator
-from lib.CellCreators.CurveCellCreators.VertexCellCreator import LinearVertexCellCurveCellCreator
+# from lib.CellCreators.CurveCellCreators.VertexCellCreator import LinearVertexCellCurveCellCreator
 from lib.CellCreators.LearningFluxRegularCellCreator import LearningFluxRegularCellCreator
 from lib.CellCreators.RegularCellCreator import MirrorCellCreator, PiecewiseConstantRegularCellCreator
 from lib.CellCreators.VertexCellCreators.VertexCellCreatorBase import VertexCellCreatorUsingNeighboursLines
@@ -42,11 +42,11 @@ reconstruction_error_measure_3x3_w_singular = ReconstructionErrorMeasureDefaultS
     keeping_cells_condition=partial(keep_cells_on_condition, condition=curve_condition))
 
 # --------- --------- ML Reconstruction error measure --------- --------- #
-reconstruction_error_measure_w_kernel_ml = ReconstructionErrorMeasureML(
-    ml_model=[kernel_lines_ml_model, kernel_quadratics_avg_ml_model],
-    metric=2,
-    central_cell_extra_weight=CCExtraWeight
-)
+# reconstruction_error_measure_w_kernel_ml = ReconstructionErrorMeasureML(
+#     ml_model=[kernel_lines_ml_model, kernel_quadratics_avg_ml_model],
+#     metric=2,
+#     central_cell_extra_weight=CCExtraWeight
+# )
 
 # ========== ========== Models definitions ========== ========== #
 # piecewise01 = CellCreatorPipeline(
@@ -226,22 +226,22 @@ def qelvira(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshol
     )
 
 
-def qelvira_kml(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=0):
-    return SubCellReconstruction(
-        name="All",
-        smoothness_calculator=smoothness_calculator,
-        reconstruction_error_measure=reconstruction_error_measure_default,
-        refinement=refinement,
-        cell_creators=
-        [
-            piecewise01,
-            elvira_cc(angle_threshold=angle_threshold,
-                      reconstruction_error_measure=reconstruction_error_measure_w_kernel_ml),
-            aero_q(angle_threshold=angle_threshold,
-                   reconstruction_error_measure=reconstruction_error_measure_w_kernel_ml)
-        ],
-        obera_iterations=0,
-    )
+# def qelvira_kml(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=0):
+#     return SubCellReconstruction(
+#         name="All",
+#         smoothness_calculator=smoothness_calculator,
+#         reconstruction_error_measure=reconstruction_error_measure_default,
+#         refinement=refinement,
+#         cell_creators=
+#         [
+#             piecewise01,
+#             elvira_cc(angle_threshold=angle_threshold,
+#                       reconstruction_error_measure=reconstruction_error_measure_w_kernel_ml),
+#             aero_q(angle_threshold=angle_threshold,
+#                    reconstruction_error_measure=reconstruction_error_measure_w_kernel_ml)
+#         ],
+#         obera_iterations=0,
+#     )
 
 
 def aero_lq(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=0):
@@ -260,32 +260,32 @@ def aero_lq(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshol
     )
 
 
-def aero_qelvira_vertex(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=45, *args, **kwargs):
-    return SubCellReconstruction(
-        name="All",
-        smoothness_calculator=smoothness_calculator,
-        reconstruction_error_measure=reconstruction_error_measure_default,
-        refinement=refinement,
-        cell_creators=
-        [
-            piecewise01,
-            elvira_cc(angle_threshold),
-            tem,
-            aero_q(angle_threshold=angle_threshold),
-            # ------------ AVRO ------------ #
-            CellCreatorPipeline(
-                cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
-                                      condition=operator.eq),
-                orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2, method="sobel",
-                                            angle_threshold=angle_threshold),
-                stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=4),
-                cell_creator=LinearVertexCellCurveCellCreator(
-                    regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax),
-                reconstruction_error_measure=reconstruction_error_measure_w
-            )
-        ],
-        obera_iterations=0
-    )
+# def aero_qelvira_vertex(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=45, *args, **kwargs):
+#     return SubCellReconstruction(
+#         name="All",
+#         smoothness_calculator=smoothness_calculator,
+#         reconstruction_error_measure=reconstruction_error_measure_default,
+#         refinement=refinement,
+#         cell_creators=
+#         [
+#             piecewise01,
+#             elvira_cc(angle_threshold),
+#             tem,
+#             aero_q(angle_threshold=angle_threshold),
+#             # ------------ AVRO ------------ #
+#             CellCreatorPipeline(
+#                 cell_iterator=partial(iterate_by_reconstruction_error_and_smoothness, value=CURVE_CELL,
+#                                       condition=operator.eq),
+#                 orientator=OrientByGradient(kernel_size=(3, 3), dimensionality=2, method="sobel",
+#                                             angle_threshold=angle_threshold),
+#                 stencil_creator=StencilCreatorAdaptive(smoothness_threshold=0, independent_dim_stencil_size=4),
+#                 cell_creator=LinearVertexCellCurveCellCreator(
+#                     regular_opposite_cell_searcher=get_opposite_regular_cells_by_minmax),
+#                 reconstruction_error_measure=reconstruction_error_measure_w
+#             )
+#         ],
+#         obera_iterations=0
+#     )
 
 
 def aero_qelvira_tem(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=45, *args, **kwargs):

@@ -15,7 +15,7 @@ COS_SIN_OBJECTIVE = "cos_sin_objective"
 
 class DatasetsManagerLinearCurves(DatasetsBaseManager):
     def __init__(self, path2data: Union[str, Path], N: int, kernel_size: Tuple[int, int], min_val: float,
-                 max_val: float, workers=np.Inf, recalculate=False, angle_limits=(0, 2),
+                 max_val: float, workers=np.inf, recalculate=False, angle_limits=(0, 2),
                  velocity_range: Union[Tuple[Tuple, Tuple], List] = ((1e-10, 0), (1.0, 0)),
                  curve_position_radius: float = 1, transpose=False,
                  learning_objective=ANGLE_OBJECTIVE, value_up_random=True):

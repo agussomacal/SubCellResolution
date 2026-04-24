@@ -40,7 +40,7 @@ def get_evaluation_points(amplitude, num_points, sampling):
 
 class DatasetsManagerVanderCurves(DatasetsBaseManager):
     def __init__(self, path2data: Union[str, Path], N: int, kernel_size: Tuple[int, int], min_val: float,
-                 max_val: float, curve_type: Type[CurveVander], workers=np.Inf, recalculate=False,
+                 max_val: float, curve_type: Type[CurveVander], workers=np.inf, recalculate=False,
                  velocity_range: Union[Tuple[Tuple, Tuple], List] = ((1e-10, 0), (1.0, 0)),
                  learning_objective=POINTS_OBJECTIVE, transpose=False,
                  curve_position_radius: Union[float, Tuple] = 1, value_up_random=True, num_points: int = 3,

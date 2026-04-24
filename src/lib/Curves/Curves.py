@@ -83,7 +83,7 @@ class CurveBase:
         raise Exception("Not implemented.")
 
     def calculate_rectangle_average(self, x_limits: Tuple[float, ...], y_limits: Tuple[float, ...]) -> float:
-        rectangle_area = np.product((np.diff(x_limits), np.diff(y_limits)))
+        rectangle_area = np.prod((np.diff(x_limits), np.diff(y_limits)))
         if rectangle_area == 0:
             return 0
         else:
