@@ -8,7 +8,7 @@ from experiments.PaperPlots.exploring_methods_convergence import piecewise_const
     quadratic_obera_non_adaptive
 from experiments.global_params import EVALUATIONS, image_format, cred
 from experiments.tools import load_image, calculate_averages_from_image, reconstruct
-from experiments.tools4binary_images import plot_reconstruction4img
+from experiments.tools4binary_images import plx_plot_reconstruction4img
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 
 
@@ -152,7 +152,7 @@ if __name__ == "__main__":
     curve_color = cred
     cmap_reconstruction = "Reds"
     cmap_true_image = "Greys_r"
-    plot_reconstruction4img(
+    plx_plot_reconstruction4img(
         data_manager,
         # path=config.subcell_paper_figures_path,
         format=image_format,

@@ -65,8 +65,6 @@ def fit_model(sub_cell_model):
     return decorated_func
 
 
-@perplex_plot(legend=False)
-@one_line_iterator
 def plot_reconstruction4img(fig, ax, image, num_cells_per_dim, model, reconstruction,
                             alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True, plot_curve_winner=False,
                             plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
@@ -133,3 +131,6 @@ def plot_reconstruction4img(fig, ax, image, num_cells_per_dim, model, reconstruc
 
     if not numbers_on:
         plt.box(False)
+
+
+plx_plot_reconstruction4img = perplex_plot(legend=False)(one_line_iterator(plot_reconstruction4img))

@@ -13,7 +13,7 @@ from experiments.OtherExperiments.SubcellExperiments.models2compare import elvir
     qelvira, quadratic
 from experiments.global_params import image_format, cred
 from experiments.tools import get_reconstruction_error, load_image
-from experiments.tools4binary_images import fit_model, plot_reconstruction4img
+from experiments.tools4binary_images import fit_model, plx_plot_reconstruction4img
 
 if __name__ == "__main__":
     data_manager = DataManager(
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     curve_color = cred
     cmap_reconstruction = "Reds"
     cmap_true_image = "Greys_r"
-    plot_reconstruction4img(
+    plx_plot_reconstruction4img(
         data_manager,
         path=data_manager.path,
         format=image_format,
