@@ -1,9 +1,11 @@
 from pathlib import Path
 
+import matplotlib
+
 from experiments.OtherExperiments.SubcellExperiments.models2compare import quadratic, aero_linear, elvira
-from experiments.Refinement.ex_refinement_config import experiment_path, curve_color, cmap_reconstruction, \
-    cmap_true_image, fig_size
+from experiments.Refinement.ex_refinement_config import experiment_path
 from experiments.Refinement.ex_refinement_tools import image_to_avg, do_reconstruction, fit_model
+from experiments.global_params import cred
 from experiments.tools import load_image
 from experiments.tools4binary_images import plot_reconstruction4img
 from perplexitylab.experiment_tools import experiment_iterator, concatenate_iterators, define_default_constants, \
@@ -12,6 +14,13 @@ from perplexitylab.plot_tools import save_figure
 
 # 1680: 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 15, 16, 20, 21, 24, 28, 30, 35, 40, 42, 48, 56, 60, 70, 80, 84, 105, 120, 140, 168, 210, 240, 280, 336, 420, 560, 840, 1680
 # divisors = [i for i in range(1, n+1) if n % i == 0]
+
+# Reconstruction plot params
+matplotlib.rcParams['text.usetex'] = False
+curve_color = cred
+cmap_reconstruction = "Reds"
+cmap_true_image = "Greys_r"
+fig_size = (15, 15)
 
 if __name__ == "__main__":
     # Experiment general params

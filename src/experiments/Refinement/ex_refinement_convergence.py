@@ -6,7 +6,7 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-from experiments.Refinement.ex_refinement_config import experiment_path, fig_size
+from experiments.Refinement.ex_refinement_config import experiment_path
 from experiments.Refinement.ex_refinement_tools import fit_model, calculate_error
 from experiments.Refinement.models_to_compare import quadratic, aero_linear
 from experiments.tools import load_image, calculate_averages_from_curve, singular_cells_mask, make_image_high_resolution
@@ -72,7 +72,7 @@ if __name__ == "__main__":
         constants=define_default_constants(sub_cell_model=None, label=None, angle_threshold=0, reconstruction_factor=1,
                                            sub_discretization2bound_error=18, p=1, recalculate=recalculate_all),
         variables=define_default_variables(
-            num_cells_per_dim=[10, 20, 30, 40, 50, 60, 70, 80],
+            num_cells_per_dim=[10, 20, 30, 40, 50, 60, 70, 80, 90],
             shape=[CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232))],
             # image_name=["batata.jpg"],
             refinement=[1, 2]
@@ -131,7 +131,7 @@ if __name__ == "__main__":
 
     df = pd.DataFrame.from_dict(data)
     for shape, sub_df in df.groupby(["shape"]):
-        with save_figure(filename=f"Convergence_{shape}", path=experiment_path, figsize=fig_size, show=False) as (
+        with save_figure(filename=f"Convergence_{shape}", path=experiment_path, figsize=(12, 8), show=False) as (
                 fig, ax):
             ax = sns.lineplot(sub_df, ax=ax, x="num_cells_per_dim", y="error", hue="label", style="refinement")
             ax.set_xscale("log")
