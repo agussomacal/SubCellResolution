@@ -44,3 +44,7 @@ def do_reconstruction(image, model, reconstruction_factor):
     t_reconstruct = time.time() - t0
     print("\n\tTime to reconstruct:", t_reconstruct)
     return reconstruction
+
+
+def calculate_error(image, reconstruction, p=2):
+    return np.power(np.mean(np.abs(image - reconstruction) ** p), 1 / p)

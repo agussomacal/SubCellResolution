@@ -10,6 +10,9 @@ from perplexitylab.experiment_tools import experiment_iterator, concatenate_iter
     define_default_variables
 from perplexitylab.plot_tools import save_figure
 
+# 1680: 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 15, 16, 20, 21, 24, 28, 30, 35, 40, 42, 48, 56, 60, 70, 80, 84, 105, 120, 140, 168, 210, 240, 280, 336, 420, 560, 840, 1680
+# divisors = [i for i in range(1, n+1) if n % i == 0]
+
 if __name__ == "__main__":
     # Experiment general params
     noise = 0
