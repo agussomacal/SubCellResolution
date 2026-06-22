@@ -8,3 +8,5 @@ xtick.labelsize: 16
 ytick.labelsize: 16
 axes.spines.right: False
 axes.spines.top: False
+text.usetex: True
+font.family: amssymb

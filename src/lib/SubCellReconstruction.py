@@ -236,7 +236,7 @@ class SubCellReconstruction:
 
     @contextmanager
     def cell_timer(self, coords, cell_creator):
-        if self.refinement > 1: warning("Time calculations won't be correct if refinement > 1")
+        # if self.refinement > 1: warning("Time calculations won't be correct if refinement > 1")
         t0 = time.time()
         yield
         self.times[str(cell_creator)][coords.tuple] = time.time() - t0
@@ -278,7 +278,7 @@ class SubCellReconstruction:
                     if i not in cell_classification[coords.tuple]:
                         continue
 
-                    if self.refinement > 1: warning("Time calculations won't be correct if refinement > 1")
+                    # if self.refinement > 1: warning("Time calculations won't be correct if refinement > 1")
                     t0 = time.time()
 
                     axis3try = cell_creator.orientator.get_independent_axis(coords, average_values, indexer)

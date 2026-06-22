@@ -3,6 +3,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 
 data_path = Path.joinpath(project_root, 'Data')
+generated_data_path = Path.joinpath(data_path, 'GeneratedData')
 results_path = Path.joinpath(project_root, 'Results')
 # paper_results_path = Path.joinpath(results_path, 'Paper')
 paper_results_path = Path.joinpath(results_path, 'PaperRev')
