@@ -58,13 +58,13 @@ def efficient_reconstruction(model, avg_values, sub_discretization2bound_error, 
     """
 
     edge_mask = singular_cells_mask(avg_values)
-    edge_mask = np.repeat(np.repeat(edge_mask, refinement, axis=0), refinement, axis=1)
+    edge_mask = np.repeat(np.repeat(edge_mask, 2 ** (refinement - 1), axis=0), 2 ** (refinement - 1), axis=1)
     cells2reconstruct = list(zip(*np.where(edge_mask)))
 
     reconstruction = np.repeat(np.repeat(avg_values, sub_discretization2bound_error, axis=0),
                                sub_discretization2bound_error, axis=1)
 
-    magnification = sub_discretization2bound_error // refinement
+    magnification = sub_discretization2bound_error // 2 ** (refinement - 1)
     edge_mask_hr = np.repeat(np.repeat(edge_mask, magnification, axis=0), magnification, axis=1)
     reconstruction[edge_mask_hr] = \
         reconstruct_by_factor(cells=model.cells, resolution=model.resolution, cells2reconstruct=cells2reconstruct,
@@ -126,23 +126,23 @@ if __name__ == "__main__":
     iterator_builder, info = experiment_iterator(
         experiment_name=Path(__file__).stem,
         constants=define_default_constants(sub_cell_model=None, label=None, angle_threshold=0, reconstruction_factor=1,
-                                           sub_discretization2bound_error=18, p=1, recalculate=False,
+                                           sub_discretization2bound_error=3*2**3*2, p=1, recalculate=False,
                                            recalculate_inner_funcs=False),
         variables=define_default_variables(
             # num_cells_per_dim=[10, 20, 30, 40, 50, 60, 70, 80, 90],
-            num_cells_per_dim=[10, 20, 30, 40, 50, 60, 70, 80, 90],
+            num_cells_per_dim=[50, 60, 70, 80, 90],
             shape=[CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232))],
             # image_name=["batata.jpg"],
-            refinement=[1, 2]
+            refinement=[1, 2, 3]
         ))
 
     # ---------- Do experiments ---------- #
     _, df = do_experiment_convergence(
         recalculate=True,
         iterators=(
-            iterator_builder(sub_cell_model=quadratic, label="AEROS quadratic", refinement=[1],
+            iterator_builder(sub_cell_model=quadratic, label="AEROS quadratic", refinement=[1, ],
                              recalculate=False or recalculate_all),
-            iterator_builder(sub_cell_model=aero_linear, label="AEROS linear", refinement=[1, 2],
+            iterator_builder(sub_cell_model=aero_linear, label="AEROS linear", refinement=[1, ],
                              recalculate=False or recalculate_all, recalculate_inner_funcs=False),
             # iterator_builder(sub_cell_model=aero_linear_w, label="AEROS linear W", refinement=[1, 2],
             #                  recalculate=False or recalculate_all, recalculate_inner_funcs=False),
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     labels_font_dict = {'color': 'black', 'weight': 'normal', 'size': 25}
     legend_font_dict = {'weight': 'normal', "size": 19, 'stretch': 'normal'}
     line_style = {1: "solid", 2: "dashed", 3: "dashdot", 4: "dotted"}
-    marker_style = {1: ".", 2: "^", 3: "", 4: ""}
+    marker_style = {1: "o", 2: "^", 3: "s", 4: ""}
     color = {
         "AEROS quadratic": C_GREEN,
         "AEROS linear": C_BLUE,
@@ -185,7 +185,7 @@ if __name__ == "__main__":
                 fig, ax):
             for (label_plot, label, refinement), df4plot in sub_df.groupby(["label_plot", "label", "refinement"]):
                 hinv = df4plot["num_cells_per_dim"].values
-                valid_ix = hinv > threshold_hinv
+                valid_ix = hinv >= threshold_hinv
                 rate, origin = np.ravel(np.linalg.lstsq(
                     np.vstack([np.log(hinv[valid_ix]), np.ones(np.sum(valid_ix))]).T,
                     np.log(df4plot["error"].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
@@ -194,7 +194,7 @@ if __name__ == "__main__":
                          linestyle=line_style[refinement], color=color[label], linewidth=2,
                          marker=marker_style[refinement])
                 plt.plot(hinv[valid_ix], np.exp(origin) * hinv[valid_ix] ** rate,
-                         color="black", linestyle="solid", linewidth=1,)
+                         color="black", linestyle="solid", linewidth=1, )
 
             # ax = sns.lineplot(sub_df, ax=ax, x="num_cells_per_dim", y="error", hue="label", style="refinement")
             ax.set_xscale("log")
