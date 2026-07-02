@@ -8,6 +8,7 @@ from typing import Tuple, Union, List, Dict, Callable
 
 import numpy as np
 from scipy.optimize import minimize
+from tqdm import tqdm
 
 from lib.AuxiliaryStructures.Constants import CURVE_CELL
 from lib.AuxiliaryStructures.GraphAuxiliaryFunctions import mesh_iterator
@@ -144,7 +145,7 @@ def reconstruct_arbitrary_size(cells: Dict[Tuple[int, ...], CellBase], resolutio
     """
     size = np.array(size)
     values = np.zeros(size)
-    for ix in itertools.product(*list(map(range, size))):
+    for ix in tqdm(itertools.product(*list(map(range, size))), desc="Model evaluation"):
         cell_ix = tuple(map(int, np.array(ix) / size * resolution))
         if cells2reconstruct is None or cell_ix in cells2reconstruct:
             values[ix] = cells[cell_ix].evaluate(
@@ -163,7 +164,7 @@ def reconstruct_by_factor(cells: Dict[Tuple[int, ...], CellBase], resolution,
     resolution_factor = np.array([resolution_factor] * len(resolution), dtype=int) \
         if isinstance(resolution_factor, int) else np.array(resolution_factor)
     average_values = np.zeros(resolution_factor * np.array(resolution, dtype=int))
-    for ix in mesh_iterator(resolution, out_type=np.array) if cells2reconstruct is None else cells2reconstruct:
+    for ix in tqdm(mesh_iterator(resolution, out_type=np.array) if cells2reconstruct is None else cells2reconstruct, desc="Model areas evaluation"):
         for sub_ix in mesh_iterator(resolution_factor, out_type=np.array):
             rectangle_upper_left_vertex = ix + sub_ix / resolution_factor
             rectangle_down_right_vertex = rectangle_upper_left_vertex + 1.0 / resolution_factor

@@ -70,7 +70,7 @@ def plot_opposite_cells(fig, ax, image, num_cells_per_dim, opposite_cells,
                                   color=cgreen, alpha=0.5)
 
         ],
-        rectangle_mode=False)
+        color_border_only=False)
     for ccenter, oppcells in opposite_cells.items():
         ax.plot(*np.transpose(transform_points2plot([oppcells[0], ccenter, oppcells[1]]) + 0.5), c=c,
                 linestyle=linestyle, linewidth=linewidth, marker=marker)

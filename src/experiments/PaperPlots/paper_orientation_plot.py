@@ -72,13 +72,13 @@ def plot_orientation(fig, ax, image, num_cells_per_dim, orientations,
                                   color=color, alpha=alpha) for name, color, coords in
             zip(ORIENT_NAMES, ORIENTATION_COLORS, directions)
         ],
-        rectangle_mode=False)
+        color_border_only=False)
 
     plot_specific_cells(
         ax=ax,
         mesh_shape=mesh_shape,
         special_cells=specific_cells,
-        rectangle_mode=False)
+        color_border_only=False)
 
     if mesh_linewidth > 0:
         draw_cell_borders(

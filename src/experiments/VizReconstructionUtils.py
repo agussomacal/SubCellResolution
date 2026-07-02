@@ -108,7 +108,7 @@ def plot_cells(ax, colors, mesh_shape=None, cmap=None, alpha=None, vmin=None, vm
 
 
 def plot_specific_cells(ax, mesh_shape: Tuple[int, ...], special_cells: List[SpecialCellsPlotTuple],
-                        rectangle_mode=False, default_linewidth=1):
+                        color_border_only=False, default_linewidth=1):
     """
 
     :param ax:
@@ -121,7 +121,7 @@ def plot_specific_cells(ax, mesh_shape: Tuple[int, ...], special_cells: List[Spe
     for cells_name, cells_indexes, color, alpha in special_cells:
         for coords in cells_indexes:
             rect = patches.Rectangle(np.array(coords)[::-1] - 0.5, 1, 1, angle=0, linewidth=linewidth,
-                                     edgecolor=color, facecolor="none" if rectangle_mode else color, alpha=alpha)
+                                     edgecolor=color, facecolor="none" if color_border_only else color, alpha=alpha)
             ax.add_patch(rect)
 
 
@@ -143,7 +143,7 @@ def plot_cells_not_regular_classification_core(ax, mesh_shape, all_cells, alpha=
         special_cells=[SpecialCellsPlotTuple(name=cell_type, indexes=coords_list,
                                              color=SPECIAL_CELLS_COLOR_DICT[cell_type],
                                              alpha=alpha) for cell_type, coords_list in cell_classes.items()],
-        rectangle_mode=True)
+        color_border_only=True)
 
 
 def plot_cells_identity(ax, mesh_shape, all_cells, alpha=0.5, color_dict=None):
@@ -161,7 +161,7 @@ def plot_cells_identity(ax, mesh_shape, all_cells, alpha=0.5, color_dict=None):
                                   else sns.color_palette("colorblind")[i % 8],
                                   alpha=alpha) for
             i, (k, v) in enumerate(cell_types.items())],
-        rectangle_mode=False
+        color_border_only=False
     )
 
 
@@ -177,11 +177,11 @@ def plot_cells_type_of_curve_core(ax, mesh_shape, all_cells, alpha=1.0):
         special_cells=[
             SpecialCellsPlotTuple(name=k, indexes=v, color=sns.color_palette("colorblind")[i % 8], alpha=alpha) for
             i, (k, v) in enumerate(cell_types.items())],
-        rectangle_mode=True
+        color_border_only=True
     )
 
 
-def plot_cells_vh_classification_core(ax, mesh_shape, all_cells, alpha=1.0):
+def plot_cells_vh_classification_core(ax, mesh_shape, all_cells, alpha=1.0, color_border_only=True):
     vertical_cells = [cell.coords.tuple for cell in all_cells.values()
                       if hasattr(cell, "dependent_axis") and cell.dependent_axis == VERTICAL]
     horizontal_cells = [cell.coords.tuple for cell in all_cells.values()
@@ -196,7 +196,7 @@ def plot_cells_vh_classification_core(ax, mesh_shape, all_cells, alpha=1.0):
             SpecialCellsPlotTuple(name='HorizontalCells', indexes=horizontal_cells,
                                   color=HorizontalCells_COLOR, alpha=alpha)
         ],
-        rectangle_mode=True)
+        color_border_only=color_border_only)
 
 
 def get_curve(curve_cell: CellCurveBase, coords2=None):

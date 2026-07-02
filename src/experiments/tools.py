@@ -54,8 +54,28 @@ def calculate_averages_from_curve(curve: Curve, resolution: Tuple[int, int], dep
     return averages * num_squares
 
 
+def calculate_evaluations_from_curve(curve: Curve, resolution: Tuple[int, int], deplacement: Tuple = None,
+                                     origin=(0, 0), cells2reconstruct=None):
+    "TODO generalize"
+    if deplacement is None:
+        deplacement = 1 / np.array(resolution)
+    assert deplacement[0] >= 0 and deplacement[1] >= 0, "only movements in positive implemented."
+
+    num_squares = np.prod(resolution)
+    evaluations = np.zeros(resolution)
+    for i, j in tqdm(
+            itertools.product(*list(map(np.arange, resolution))) if cells2reconstruct is None else cells2reconstruct,
+            desc="Over {}".format(num_squares)):
+        evaluations[i, j] = curve.evaluate(
+            x=origin[0] + (i + 1) / resolution[0] - deplacement[0] / 2,
+            y=origin[1] + (j + 1) / resolution[1] - deplacement[1] / 2
+        )
+    return evaluations
+
+
 def load_image(image_name, other_path=None):
-    image = plt.imread(f"{config.images_path if other_path is None else other_path}/{image_name}", format=image_name.split(".")[-1])
+    image = plt.imread(f"{config.images_path if other_path is None else other_path}/{image_name}",
+                       format=image_name.split(".")[-1])
     image = np.mean(image, axis=tuple(np.arange(2, len(np.shape(image)), dtype=int)))
     image -= np.min(image)
     image /= np.max(image)
@@ -69,8 +89,8 @@ def get_reconstruction_error(enhanced_image, reconstruction, reconstruction_fact
     return np.mean(np.abs(np.array(reconstruction) - enhanced_image))
 
 
-def singular_cells_mask(avg_values):
-    return (0 < np.array(avg_values)) * (np.array(avg_values) < 1)
+def singular_cells_mask(avg_values, threshold=1e-10):
+    return (0+threshold < np.array(avg_values)) * (np.array(avg_values) < 1-threshold)
 
 
 def make_image_high_resolution(matrix, reconstruction_factor):

@@ -22,6 +22,8 @@ SUB_CELL_DISCRETIZATION2BOUND_ERROR = 20
 OBERA_ITERS = 500
 CCExtraWeight = 100  # central cell extra weight 100
 
+CurveAverageCubicCC = ClassPartialInit(CurveAveragePolynomial, class_name="CurveAverageCubicCC",
+                                           degree=3, ccew=CCExtraWeight)
 CurveAverageQuadraticCC = ClassPartialInit(CurveAveragePolynomial, class_name="CurveAverageQuadraticCC",
                                            degree=2, ccew=CCExtraWeight)
 VanderQuadratic = ClassPartialInit(CurveVandermondePolynomial, class_name="VanderQuadratic", degree=2)

@@ -29,12 +29,13 @@ class CurveAveragePolynomial(CurveReparametrized, CurvePolynomial):
                          weights=weights)
 
     def new_params2natural_params(self, x_points, y_points):
-        return np.linalg.lstsq(
-            (np.vander(x_points + 0.5, N=self.degree + 2, increasing=True)[:, 1:] -
-             np.vander(x_points - 0.5, N=self.degree + 2, increasing=True)[:, 1:]) /
-            np.arange(1, self.degree + 2)[np.newaxis, :] * self.weights[:, np.newaxis],
-            (y_points * self.weights).reshape((-1, 1)),
-            rcond=None)[0].ravel()
+        V = (np.vander(x_points + 0.5, N=self.degree + 2, increasing=True)[:, 1:] -
+             np.vander(x_points - 0.5, N=self.degree + 2, increasing=True)[:, 1:]) / np.arange(1, self.degree + 2)[
+                np.newaxis, :]
+        return np.linalg.lstsq(V * self.weights[:, np.newaxis],
+                               (y_points * self.weights).reshape((-1, 1)),
+                               rcond=None)[0].ravel()
+        # return np.linalg.pinv(V.T @ (V * self.weights[:, np.newaxis])) @ (V.T @ (y_points * self.weights))
 
     def get_natural_parametrization_curve(self):
         return CurvePolynomial(self.new_params2natural_params(self.x_points, self.y_points), value_up=self.value_up,
@@ -53,7 +54,7 @@ if __name__ == "__main__":
     #     rcond=None)[0].ravel()
 
     cap = CurveAveragePolynomial(x_points=[0, 1, 2], y_points=[0, 1, 4], value_up=0, value_down=1, degree=2, ccew=0,
-                           center=None)
+                                 center=None)
     print(cap.x_points, cap.params, super(CurveAveragePolynomial, cap).params)
     cap.set_x_shift(1)
     cap.set_y_shift(10)

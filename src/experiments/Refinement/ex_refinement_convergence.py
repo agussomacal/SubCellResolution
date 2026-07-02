@@ -9,12 +9,13 @@ from matplotlib import pyplot as plt
 
 from experiments.Refinement.ex_refinement_config import experiment_path, experiment_name, C_GREEN, C_BLUE, C_PURPLE, \
     C_ORANGE, C_RED
-from experiments.Refinement.ex_refinement_models_to_compare import quadratic, aero_linear, elvira, \
-    elvira_w, aero_linear_w
-from experiments.Refinement.ex_refinement_tools import fit_model, calculate_error
-from experiments.tools import load_image, calculate_averages_from_curve, singular_cells_mask, make_image_high_resolution
+from experiments.Refinement.ex_refinement_models_to_compare import quadratic, aero_linear, elvira, elvira_w, cubic, \
+    quadratic_lsq5
+from experiments.Refinement.ex_refinement_tools import fit_model, calculate_error, \
+    efficient_reconstruction, obtain_image4error
+from experiments.tools import calculate_averages_from_curve
 from lib.Curves.CurveCircle import CurveCircle, CircleParams
-from lib.SubCellReconstruction import reconstruct_by_factor
+from lib.Curves.CurveTrigo import CurveTrigo, TrigoParams
 from perplexitylab.experiment_tools import experiment_iterator, concatenate_iterators, define_default_constants, \
     define_default_variables, perplexifier
 from perplexitylab.miscellaneous import filter_for_func
@@ -24,76 +25,43 @@ file_format_data_to_plot = "csv"
 filename_data_to_plot = "ConvergencePlot"
 path_data_to_plot = f"{experiment_path}/{experiment_name}"
 
+# Experiment general params
+recalculate_all = False
+
 
 def identifier(experiment_info):
     return f"Img{experiment_info.shape}_{experiment_info.num_cells_per_dim}x{experiment_info.num_cells_per_dim}_{experiment_info.label}_Ref{experiment_info.refinement}"
 
 
-@perplexifier(default_path=experiment_path,
-              saver=lambda data, filepath: plt.imsave(filepath, data),
-              loader=lambda filepath: load_image(filepath, other_path=""),
-              file_format="png")
-def obtain_image4error(shape, num_cells_per_dim, sub_discretization2bound_error, avg_values):
-    edge_mask = make_image_high_resolution(singular_cells_mask(avg_values),
-                                           reconstruction_factor=sub_discretization2bound_error)
-    cells2reconstruct = list(zip(*np.where(edge_mask)))
-    true_reconstruction = make_image_high_resolution(avg_values, reconstruction_factor=sub_discretization2bound_error)
-    true_reconstruction[edge_mask] = calculate_averages_from_curve(
-        shape,
-        (num_cells_per_dim * sub_discretization2bound_error,
-         num_cells_per_dim * sub_discretization2bound_error),
-        cells2reconstruct=cells2reconstruct)[edge_mask]
-
-    return true_reconstruction
-
-
-@perplexifier(default_path=experiment_path,
-              saver=lambda data, filepath: plt.imsave(filepath, data),
-              loader=lambda filepath: load_image(filepath, other_path=""),
-              file_format="png")
-def efficient_reconstruction(model, avg_values, sub_discretization2bound_error, refinement):
-    """
-    Only reconstructs fully in the cells where there is discontinuity otherwise copies avgcells values
-    :return:
-    """
-
-    edge_mask = singular_cells_mask(avg_values)
-    edge_mask = np.repeat(np.repeat(edge_mask, 2 ** (refinement - 1), axis=0), 2 ** (refinement - 1), axis=1)
-    cells2reconstruct = list(zip(*np.where(edge_mask)))
-
-    reconstruction = np.repeat(np.repeat(avg_values, sub_discretization2bound_error, axis=0),
-                               sub_discretization2bound_error, axis=1)
-
-    magnification = sub_discretization2bound_error // 2 ** (refinement - 1)
-    edge_mask_hr = np.repeat(np.repeat(edge_mask, magnification, axis=0), magnification, axis=1)
-    reconstruction[edge_mask_hr] = \
-        reconstruct_by_factor(cells=model.cells, resolution=model.resolution, cells2reconstruct=cells2reconstruct,
-                              resolution_factor=magnification)[edge_mask_hr]
-    return reconstruction
+def get_label4plot(label, refinement):
+    return f'{label}{" Subdivisions=" + str(refinement - 1) if refinement > 1 else ""}'
 
 
 @perplexifier(default_path=experiment_path)
 def single_experiment_convergence(shape, sub_cell_model, refinement, angle_threshold, num_cells_per_dim,
-                                  sub_discretization2bound_error, p, recalculate_inner_funcs, hash_value=42):
+                                  sub_discretization2bound_error, p, evaluation_mode=False):
     avg_values = calculate_averages_from_curve(shape, (num_cells_per_dim, num_cells_per_dim))
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        hash_value, model = fit_model(
-            hash_of_preprocess=hash_value, recalculate=recalculate_inner_funcs,
+        model = fit_model(
             sub_cell_model=sub_cell_model,
             angle_threshold=angle_threshold,
             refinement=refinement, avg_values=avg_values)
-    hash_value, true_reconstruction = obtain_image4error(
-        hash_of_preprocess=hash_value, recalculate=recalculate_inner_funcs,
+    true_reconstruction = obtain_image4error(
         shape=shape, num_cells_per_dim=num_cells_per_dim,
         sub_discretization2bound_error=sub_discretization2bound_error,
-        avg_values=avg_values)
-    hash_value, reconstruction = efficient_reconstruction(
-        hash_of_preprocess=hash_value, recalculate=recalculate_inner_funcs,
+        avg_values=avg_values, evaluation_mode=evaluation_mode)
+    reconstruction = efficient_reconstruction(
         model=model, avg_values=avg_values,
         sub_discretization2bound_error=sub_discretization2bound_error,
-        refinement=refinement)
+        refinement=refinement, evaluation_mode=evaluation_mode)
     error = calculate_error(true_reconstruction, reconstruction, p=p)
+    # import matplotlib.pylab as plt
+    # d = np.abs(true_reconstruction - reconstruction)
+    # d = np.log10(d[d > 1e-10])
+    # plt.hist(d)
+    # plt.axvline(np.mean(d), c="k")
+    # plt.show()
     return error
 
 
@@ -107,9 +75,10 @@ def do_experiment_convergence(iterators: Tuple[Generator]):
     for experiment_info in concatenate_iterators(*iterators)():
         print("\n----------------------------------")
         print(identifier(experiment_info))
-        _, error = single_experiment_convergence(recalculate=experiment_info.recalculate,
-                                                 **filter_for_func(single_experiment_convergence,
-                                                                   experiment_info._asdict()))
+        _, error = single_experiment_convergence(
+            recalculate=experiment_info.recalculate,
+            **filter_for_func(single_experiment_convergence, experiment_info._asdict())
+        )
         data["error"].append(error)
         data["label"].append(experiment_info.label)
         data["refinement"].append(experiment_info.refinement)
@@ -119,37 +88,43 @@ def do_experiment_convergence(iterators: Tuple[Generator]):
 
 
 if __name__ == "__main__":
-    # Experiment general params
-    recalculate_all = False
-
     # ---------- Experiment variables and constants default ---------- #
     iterator_builder, info = experiment_iterator(
         experiment_name=Path(__file__).stem,
         constants=define_default_constants(sub_cell_model=None, label=None, angle_threshold=0, reconstruction_factor=1,
-                                           sub_discretization2bound_error=3*2**3*2, p=1, recalculate=False,
-                                           recalculate_inner_funcs=False),
+                                           sub_discretization2bound_error=2 * 2 * 3 * 2,
+                                           # sub_discretization2bound_error=2 * 2 * 3,
+                                           p=1, recalculate=False,
+                                           recalculate_inner_funcs=False, evaluation_mode=False),
         variables=define_default_variables(
-            # num_cells_per_dim=[10, 20, 30, 40, 50, 60, 70, 80, 90],
-            num_cells_per_dim=[50, 60, 70, 80, 90],
-            shape=[CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232))],
-            # image_name=["batata.jpg"],
-            refinement=[1, 2, 3]
+            # num_cells_per_dim=[20, 30, 40, 50, 60, 65],
+            num_cells_per_dim=[20, 30, 40, 50, 60, 70, 80, 90, 100],
+            shape=[
+                CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232)),
+                CurveTrigo(params=TrigoParams(x0=0.511, y0=0.486, amplitude=0.232, frequency=1.))
+            ],
+            refinement=[1, 2, ]
         ))
 
     # ---------- Do experiments ---------- #
     _, df = do_experiment_convergence(
-        recalculate=True,
+        recalculate=True or recalculate_all,
         iterators=(
-            iterator_builder(sub_cell_model=quadratic, label="AEROS quadratic", refinement=[1, ],
+            # iterator_builder(sub_cell_model=cubic, label="AEROS cubic", refinement=[1, 2], angle_threshold=45,
+            #                  recalculate=False or recalculate_all),
+            iterator_builder(sub_cell_model=quadratic, label="AEROS quadratic", refinement=[1], angle_threshold=45,
                              recalculate=False or recalculate_all),
-            iterator_builder(sub_cell_model=aero_linear, label="AEROS linear", refinement=[1, ],
+            iterator_builder(sub_cell_model=quadratic, label="AEROS quadratic", refinement=[2], angle_threshold=0,
+                             recalculate=False or recalculate_all),
+            # iterator_builder(sub_cell_model=quadratic_lsq5, label="AEROS quadratic lsqx5", refinement=[1, 2], angle_threshold=45,
+            #                  recalculate=False or recalculate_all),
+            iterator_builder(sub_cell_model=aero_linear, label="AEROS linear", refinement=[1, 2, 3], angle_threshold=45,
+                             recalculate=False or recalculate_all),
+            iterator_builder(sub_cell_model=elvira, label="ELVIRA", refinement=[1, 2, 3],
+                             recalculate=False or recalculate_all),
+            iterator_builder(sub_cell_model=elvira_w, label="ELVIRA W", refinement=[1, 2, 3],
+                             num_cells_per_dim=[20, 30, 40, 50, 60, ],
                              recalculate=False or recalculate_all, recalculate_inner_funcs=False),
-            # iterator_builder(sub_cell_model=aero_linear_w, label="AEROS linear W", refinement=[1, 2],
-            #                  recalculate=False or recalculate_all, recalculate_inner_funcs=False),
-            # iterator_builder(sub_cell_model=elvira, label="ELVIRA", refinement=[1, 2],
-            #                  recalculate=False or recalculate_all, recalculate_inner_funcs=False),
-            # iterator_builder(sub_cell_model=elvira_w, label="ELVIRA W", refinement=[1, 2],
-            #                  recalculate=False or recalculate_all, recalculate_inner_funcs=False),
         ),
     )
 
@@ -162,26 +137,28 @@ if __name__ == "__main__":
     color = {
         "AEROS quadratic": C_GREEN,
         "AEROS linear": C_BLUE,
-        "AEROS linear W": C_PURPLE,
+        "AEROS cubic": C_PURPLE,
+        "AEROS quadratic lsqx5": C_PURPLE,
         "ELVIRA": C_ORANGE,
         "ELVIRA W": C_RED,
     }
     method_name = {
         "AEROS quadratic": "AEROS quadratic",
         "AEROS linear": "AEROS linear",
-        "AEROS linear W": "AEROS linear W",
+        "AEROS cubic": "AEROS cubic",
+        "AEROS quadratic lsqx5": "AEROS quadratic LSQ",
         "ELVIRA": "ELVIRA",
         "ELVIRA W": "ELVIRA W"
     }
 
-    threshold_hinv = 50
+    threshold_hinv = 30
 
     for shape, sub_df in df.groupby("shape"):
         sub_df["label_plot"] = sub_df.apply(
-            lambda x: f'{x["label"]}{" Subdivisions=" + str(x["refinement"] - 1) if x["refinement"] > 1 else ""}',
+            lambda x: get_label4plot(x["label"], x["refinement"]),
             axis=1)
 
-        with save_figure(filename=f"Convergence_{shape}", path=experiment_path, figsize=(12, 8), show=False) as (
+        with save_figure(filename=f"Convergence_{shape}", path=experiment_path, figsize=(16, 8), show=False) as (
                 fig, ax):
             for (label_plot, label, refinement), df4plot in sub_df.groupby(["label_plot", "label", "refinement"]):
                 hinv = df4plot["num_cells_per_dim"].values
@@ -190,25 +167,29 @@ if __name__ == "__main__":
                     np.vstack([np.log(hinv[valid_ix]), np.ones(np.sum(valid_ix))]).T,
                     np.log(df4plot["error"].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
                 label_plot_rate = fr"{label_plot}: $\cal{{O}}$({abs(rate):.1f})"
-                plt.plot(df4plot["num_cells_per_dim"], df4plot["error"], label=label_plot_rate,
-                         linestyle=line_style[refinement], color=color[label], linewidth=2,
-                         marker=marker_style[refinement])
-                plt.plot(hinv[valid_ix], np.exp(origin) * hinv[valid_ix] ** rate,
-                         color="black", linestyle="solid", linewidth=1, )
+                # ax.scatter(df4plot["num_cells_per_dim"], df4plot["error"],
+                #             color=color[label], marker=marker_style[refinement], s=30)
+                ax.plot(df4plot["num_cells_per_dim"], df4plot["error"],
+                        color=color[label],
+                        marker=marker_style[refinement],
+                        linestyle=line_style[refinement], linewidth=2, label=label_plot_rate)
+                # plot fitting line
+                # ax.plot(hinv[valid_ix], np.exp(origin) * hinv[valid_ix] ** rate,
+                #          color=color[label], linestyle=line_style[refinement], linewidth=2, label=label_plot_rate)
 
             # ax = sns.lineplot(sub_df, ax=ax, x="num_cells_per_dim", y="error", hue="label", style="refinement")
             ax.set_xscale("log")
             ax.set_yscale("log")
 
             xticks = sorted(pd.unique(sub_df["num_cells_per_dim"]))
-            ax.set_xlim((int(min(xticks) * 0.8), int(max(xticks) * 1.2)))
+            ax.set_xlim((int(min(xticks) * 0.9), int(max(xticks) * 1.1)))
             ax.set_xticks(xticks, labels=list(map(str, xticks)))
             ax.grid(True)
 
             ax.set_title(shape)
             ax.set_xlabel(r"$1/h$", fontdict=axis_font_dict)
             ax.set_ylabel(r"$\|u-\tilde u \|_{L^1}$", fontdict=axis_font_dict)
-            ax.legend(prop=legend_font_dict)
+            ax.legend(prop=legend_font_dict, loc='upper left', bbox_to_anchor=(1, 1))
             ax.tick_params(labelsize=axis_font_dict["size"])
             # ax.set_ylim((1e-7, 1e-1))
             fig.tight_layout()
