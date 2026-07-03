@@ -11,6 +11,7 @@ from experiments.Refinement.ex_refinement_config import experiment_path, experim
 from experiments.Refinement.ex_refinement_convergence import single_experiment_convergence
 from experiments.Refinement.ex_refinement_models_to_compare import aero_linear, aero_linear_w
 from lib.Curves.CurveCircle import CurveCircle, CircleParams
+from lib.Curves.CurveTrigo import TrigoParams, CurveTrigo
 from perplexitylab.experiment_tools import experiment_iterator, concatenate_iterators, define_default_constants, \
     define_default_variables, perplexifier
 from perplexitylab.miscellaneous import filter_for_func, plx_partial
@@ -56,18 +57,21 @@ if __name__ == "__main__":
     iterator_builder, info = experiment_iterator(
         experiment_name=Path(__file__).stem,
         constants=define_default_constants(reconstruction_factor=1,
-                                           sub_discretization2bound_error=6, p=1, recalculate=True,
+                                           sub_discretization2bound_error=6, p=1, recalculate=False,
                                            evaluation_mode=False),
         variables=define_default_variables(
             # num_cells_per_dim=[10, 20, 30, 40, 50, 60, 70, 80, 90],
             # num_cells_per_dim=[20, 30, 40, 50, 60, 70, 80, 90, 100],
             # num_cells_per_dim=[20, 30, 40, ],
             num_cells_per_dim=[50, 60, 70, 80, 90, 100],
-            shape=[CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232))],
-            refinement=[1, 2],
+            shape=[
+                # CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232)),
+                CurveTrigo(params=TrigoParams(x0=0.511, y0=0.486, amplitude=0.232, frequency=1.))
+            ],
+            refinement=[1, ],
             # angle_threshold=[0, 27.5, 45],
             angle_threshold=[0, 45],
-            ccew=[10000],
+            ccew=[0, 10000],
         ))
 
     # ---------- Do experiments ---------- #

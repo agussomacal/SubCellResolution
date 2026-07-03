@@ -131,7 +131,7 @@ def is_in_square(cell_coords, square):
                    dtype=bool)
 
 
-def plot_cells_not_regular_classification_core(ax, mesh_shape, all_cells, alpha=1.0):
+def plot_cells_not_regular_classification_core(ax, mesh_shape, all_cells, alpha=1.0, color_border_only=True):
     cell_classes = defaultdict(list)
     for coords, cell in all_cells.items():
         if cell.CELL_TYPE != REGULAR_CELL_TYPE:
@@ -143,7 +143,7 @@ def plot_cells_not_regular_classification_core(ax, mesh_shape, all_cells, alpha=
         special_cells=[SpecialCellsPlotTuple(name=cell_type, indexes=coords_list,
                                              color=SPECIAL_CELLS_COLOR_DICT[cell_type],
                                              alpha=alpha) for cell_type, coords_list in cell_classes.items()],
-        color_border_only=True)
+        color_border_only=color_border_only)
 
 
 def plot_cells_identity(ax, mesh_shape, all_cells, alpha=0.5, color_dict=None):
