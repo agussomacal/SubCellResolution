@@ -8,7 +8,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 from experiments.Refinement.ex_refinement_config import experiment_path, experiment_name, C_GREEN, C_BLUE, C_PURPLE, \
-    C_ORANGE, C_RED, C_PINK
+    C_ORANGE, C_RED, C_PINK, C_OLIVE
 from experiments.Refinement.ex_refinement_models_to_compare import quadratic, aero_linear, elvira, elvira_w, cubic, \
     quadratic_lsq5, AEROS4
 from experiments.Refinement.ex_refinement_tools import fit_model, calculate_error, \
@@ -28,7 +28,33 @@ path_data_to_plot = f"{experiment_path}/{experiment_name}"
 # Experiment general params
 recalculate_all = False
 
+# Plot parameters
+axis_font_dict = {'color': 'black', 'weight': 'normal', 'size': 25}
+labels_font_dict = {'color': 'black', 'weight': 'normal', 'size': 25}
+legend_font_dict = {'weight': 'normal', "size": 19, 'stretch': 'normal'}
+line_style = {1: "solid", 2: "dashed", 3: "dashdot", 4: "dotted"}
+marker_style = {1: "o", 2: "^", 3: "s", 4: ""}
+color = {
+    "AEROS quadratic": C_GREEN,
+    "AEROS linear": C_BLUE,
+    "AEROS cubic": C_PURPLE,
+    "AEROS quartic": C_PINK,
+    "AEROS quadratic lsqx5": C_OLIVE,
+    "ELVIRA": C_ORANGE,
+    "ELVIRA W": C_RED,
+}
+method_name = {
+    "AEROS quadratic": "AEROS quadratic",
+    "AEROS linear": "AEROS linear",
+    "AEROS cubic": "AEROS cubic",
+    "AEROS quartic": "AEROS quartic",
+    "AEROS quadratic lsqx5": "AEROS quadratic LSQ",
+    "ELVIRA": "ELVIRA",
+    "ELVIRA W": "ELVIRA W"
+}
 
+
+# Auxiliary functions
 def identifier(experiment_info):
     return f"Img{experiment_info.shape}_{experiment_info.num_cells_per_dim}x{experiment_info.num_cells_per_dim}_{experiment_info.label}_Ref{experiment_info.refinement}"
 
@@ -110,7 +136,9 @@ if __name__ == "__main__":
     _, df = do_experiment_convergence(
         recalculate=True or recalculate_all,
         iterators=(
-            iterator_builder(sub_cell_model=AEROS4, label="AEROS quartic", refinement=[1, ], angle_threshold=45,
+            # iterator_builder(sub_cell_model=AEROS4, label="AEROS quartic", refinement=[1, ], angle_threshold=45,
+            #                  recalculate=False or recalculate_all),
+            iterator_builder(sub_cell_model=AEROS4, label="AEROS quartic", refinement=[1, 2], angle_threshold=0,
                              recalculate=False or recalculate_all),
             iterator_builder(sub_cell_model=cubic, label="AEROS cubic", refinement=[1, 2, 3], angle_threshold=45,
                              recalculate=False or recalculate_all),
@@ -124,36 +152,12 @@ if __name__ == "__main__":
                              recalculate=False or recalculate_all),
             iterator_builder(sub_cell_model=elvira, label="ELVIRA", refinement=[1, 2, 3],
                              recalculate=False or recalculate_all),
-            iterator_builder(sub_cell_model=elvira_w, label="ELVIRA W", refinement=[1, 2, 3],
-                             recalculate=False or recalculate_all, recalculate_inner_funcs=False),
+            # iterator_builder(sub_cell_model=elvira_w, label="ELVIRA W", refinement=[1, 2, 3],
+            #                  recalculate=False or recalculate_all, recalculate_inner_funcs=False),
         ),
     )
 
     # ---------- Do plot ---------- #
-    axis_font_dict = {'color': 'black', 'weight': 'normal', 'size': 25}
-    labels_font_dict = {'color': 'black', 'weight': 'normal', 'size': 25}
-    legend_font_dict = {'weight': 'normal', "size": 19, 'stretch': 'normal'}
-    line_style = {1: "solid", 2: "dashed", 3: "dashdot", 4: "dotted"}
-    marker_style = {1: "o", 2: "^", 3: "s", 4: ""}
-    color = {
-        "AEROS quadratic": C_GREEN,
-        "AEROS linear": C_BLUE,
-        "AEROS cubic": C_PURPLE,
-        "AEROS quartic": C_PINK,
-        "AEROS quadratic lsqx5": C_PURPLE,
-        "ELVIRA": C_ORANGE,
-        "ELVIRA W": C_RED,
-    }
-    method_name = {
-        "AEROS quadratic": "AEROS quadratic",
-        "AEROS linear": "AEROS linear",
-        "AEROS cubic": "AEROS cubic",
-        "AEROS quartic": "AEROS quartic",
-        "AEROS quadratic lsqx5": "AEROS quadratic LSQ",
-        "ELVIRA": "ELVIRA",
-        "ELVIRA W": "ELVIRA W"
-    }
-
     threshold_hinv = 30
 
     for shape, sub_df in df.groupby("shape"):

@@ -1,39 +1,36 @@
-import functools
 import warnings
 from collections import defaultdict
-from itertools import chain
 from pathlib import Path
-from typing import Tuple, List
+from typing import Tuple, Generator
 
 import matplotlib
-import networkx as nx
 import numpy as np
+import pandas as pd
 from matplotlib import pyplot as plt
-from tqdm.contrib import itertools
 
-from Results.PaperTest.SchemesTests.SchemesRot.main_script import num_cells_per_dim
-from experiments.OtherExperiments.SubcellExperiments.models2compare import quadratic, aero_linear
-from experiments.Refinement.ex_refinement_config import experiment_path
-from experiments.Refinement.ex_refinement_convergence import get_label4plot
-from experiments.Refinement.ex_refinement_tools import do_reconstruction, fit_model, plx_fit_model, obtain_image4error, \
-    plx_obtain_image4error, efficient_reconstruction, plx_efficient_reconstruction
-from experiments.VizReconstructionUtils import plot_cells, plot_cells_vh_classification_core, \
-    plot_cells_not_regular_classification_core, plot_curve_core, draw_cell_borders, draw_numbers, \
-    plot_cells_type_of_curve_core
+from experiments.OtherExperiments.SubcellExperiments.models2compare import aero_linear
+from experiments.Refinement.ex_refinement_config import experiment_path, experiment_name, C_BLUE, C_PURPLE, C_RED, \
+    C_GREEN, C_ORANGE, C_OLIVE
+from experiments.Refinement.ex_refinement_convergence import get_label4plot, axis_font_dict, legend_font_dict, color
+from experiments.Refinement.ex_refinement_singular_cells_connectivity import build_connected_singular_cell_graph
+from experiments.Refinement.ex_refinement_tools import plx_fit_model, plx_obtain_image4error, fit_model
 from experiments.global_params import cred
 from experiments.tools import calculate_averages_from_curve
-from experiments.tools import load_image, calculate_averages_from_image
-from experiments.tools4binary_images import plot_reconstruction4img
-from lib.CellCreators.CellCreatorBase import REGULAR_CELL_TYPE, CURVE_CELL_TYPE
+from lib.CellCreators.CellCreatorBase import REGULAR_CELL_TYPE
 from lib.Curves.CurveCircle import CurveCircle, CircleParams
 from lib.Curves.CurveTrigo import TrigoParams, CurveTrigo
 from perplexitylab.experiment_tools import experiment_iterator, concatenate_iterators, define_default_constants, \
-    define_default_variables
+    define_default_variables, perplexifier
 from perplexitylab.miscellaneous import filter_for_func
 from perplexitylab.plot_tools import save_figure
 
 # 1680: 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 15, 16, 20, 21, 24, 28, 30, 35, 40, 42, 48, 56, 60, 70, 80, 84, 105, 120, 140, 168, 210, 240, 280, 336, 420, 560, 840, 1680
 # divisors = [i for i in range(1, n+1) if n % i == 0]
+
+
+file_format_data_to_plot = "csv"
+filename_data_to_plot = "PairwiseSlopesPlot"
+path_data_to_plot = f"{experiment_path}/{experiment_name}"
 
 # Reconstruction plot params
 matplotlib.rcParams['text.usetex'] = False
@@ -42,113 +39,29 @@ cmap_reconstruction = "Reds"
 cmap_true_image = "Greys_r"
 fig_size = (15, 15)
 
-recalculate_obtain_image4error = False
-recalculate_fit_model = False
+
+def get_pairwise_slope_versors(model, graph):
+    def get_slope_versor(c):
+        slope = model.cells[c].curve.polynomial.deriv().coef[0]
+        vec = [0, 0]
+        vec[model.cells[c].independent_axis] = 1
+        vec[model.cells[c].dependent_axis] = slope
+        vec = np.array(vec)
+        vec /= np.linalg.norm(vec)
+        return vec
+
+    # TODO: Analysis only valid for linear interfaces
+    return [(get_slope_versor(c=graph[i]), get_slope_versor(c=graph[i + 1])) for i in range(len(graph) - 1)]
 
 
-def plot_singular_graph(fig, ax, true_reconstruction, num_cells_per_dim, model, graph,
-                        alpha_true_image=0.5,
-                        cmap_true_image="Greys_r", draw_mesh=True,
-                        trim=((0, 0), (0, 0)), default_linewidth=2,
-                        numbers_on=True, vmin=None, vmax=None, labels=True):
-    model_resolution = np.array(model.resolution)
-
-    plot_cells(ax, colors=true_reconstruction, mesh_shape=model_resolution, alpha=alpha_true_image,
-               cmap=cmap_true_image,
-               vmin=np.min(true_reconstruction) if vmin is None else vmin,
-               vmax=np.max(true_reconstruction) if vmax is None else vmax,
-               labels=labels)
-
-    if draw_mesh:
-        draw_cell_borders(
-            ax, mesh_shape=num_cells_per_dim,
-            refinement=model_resolution // num_cells_per_dim,
-            color='black',
-            default_linewidth=default_linewidth,
-            mesh_style=":"
-        )
-
-    ax.set_ylim((model.resolution[1] - trim[0][1] - 0.5, -0.5 + trim[0][0]))
-    ax.set_xlim((trim[1][0] - 0.5, model.resolution[0] - trim[1][1] - 0.5))
-
-    draw_numbers(
-        ax, mesh_shape=num_cells_per_dim,
-        refinement=model_resolution // num_cells_per_dim,
-        numbers_on=numbers_on,
-        prop_ticks=10 / num_cells_per_dim  # each 10 cells a tick
-    )
-
-    plot_cells_not_regular_classification_core(ax, model.resolution, model.cells, alpha=0.2, color_border_only=False)
-    ax.scatter(*np.array(graph).T[::-1, :], marker=".", color="black")
-    ax.plot(*np.array(graph).T[::-1, :], color="black")
-
-    if not numbers_on:
-        plt.box(False)
-    ax.spines['right'].set_visible(True)
-    ax.spines['top'].set_visible(True)
-    ax.spines['bottom'].set_visible(True)
-    ax.spines['left'].set_visible(True)
-
-
-def build_connected_singular_cell_graph(singular_cells_coords: List[Tuple[int, ...]], model, trim):
-    f_dist = lambda ci, cj: np.sqrt(np.sum((ci - cj).array ** 2))
-    max_dist = 2
-
-    n_cells = len(singular_cells_coords)
-    dist = defaultdict(list)
-    adj_list = defaultdict(list)
-    for i in range(n_cells):
-        for j in range(n_cells):
-            if i != j:
-                d = f_dist(singular_cells_coords[i], singular_cells_coords[j])
-                if d < max_dist:
-                    if singular_cells_coords[j] not in adj_list[singular_cells_coords[i]]:
-                        dist[singular_cells_coords[i]].append(1 * d)
-                        adj_list[singular_cells_coords[i]].append(singular_cells_coords[j])
-                    if singular_cells_coords[i] not in adj_list[singular_cells_coords[j]]:
-                        dist[singular_cells_coords[j]].append(1 * d)
-                        adj_list[singular_cells_coords[j]].append(singular_cells_coords[i])
-    for i in range(n_cells):
-        order = np.argsort(dist[singular_cells_coords[i]])
-        adj_list[singular_cells_coords[i]] = [adj_list[singular_cells_coords[i]][o] for o in order]
-        dist[singular_cells_coords[i]] = [dist[singular_cells_coords[i]][o] for o in order]
-
-    graph = []
-    ix = np.argmin([np.sum(np.abs(c.array)) for c in singular_cells_coords])
-    c = singular_cells_coords[ix]
-    for i in range(n_cells):
-        graph.append(c.tuple)
-        for neighbour in adj_list[c]:
-            if neighbour.tuple not in graph:
-                c = neighbour
-                break
-        else:
-            break
-    if f_dist(c, singular_cells_coords[ix]) <= max_dist:  # in case of cyclic border
-        graph.append(singular_cells_coords[ix].tuple)
-
-    # filter only the cells that are inside a given region
-    graph = [g for g in graph if
-             (g[0] >= trim[0][0] - 1) and (g[1] >= trim[0][1] - 1) and
-             (g[0] <= model.resolution[1] + trim[1][0]) and (g[1] <= model.resolution[1] + trim[1][1])]
-
-    return graph
-
-
+@perplexifier(default_path=experiment_path)
 def single_experiment_continuity(shape, sub_cell_model, refinement, angle_threshold, num_cells_per_dim,
-                                 hash_value=42, sub_discretization2bound_error=10, evaluation_mode=False,
                                  trim=((2, 2), (-2, -2))):
     avg_values = calculate_averages_from_curve(shape, (num_cells_per_dim, num_cells_per_dim))
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        hash_value, true_reconstruction = plx_obtain_image4error(
-            hash_of_preprocess=hash_value, recalculate=recalculate_obtain_image4error,
-            shape=shape, num_cells_per_dim=num_cells_per_dim,
-            sub_discretization2bound_error=sub_discretization2bound_error,
-            avg_values=avg_values, evaluation_mode=evaluation_mode)
-        hash_value, model = plx_fit_model(
-            hash_of_preprocess=hash_value, recalculate=recalculate_fit_model,
+        model = fit_model(
             sub_cell_model=sub_cell_model,
             angle_threshold=angle_threshold,
             refinement=refinement, avg_values=avg_values)
@@ -159,7 +72,29 @@ def single_experiment_continuity(shape, sub_cell_model, refinement, angle_thresh
         trim=trim
     )
 
-    return true_reconstruction, model, graph
+    pairwise_versors = get_pairwise_slope_versors(model, graph)
+    return pairwise_versors
+
+
+@perplexifier(default_path=experiment_path,
+              filename=filename_data_to_plot,
+              saver=lambda data, filepath: data.to_csv(filepath),
+              loader=lambda filepath: pd.read_csv(filepath),
+              file_format=file_format_data_to_plot)
+def do_experiment_continuity(iterators: Tuple[Generator]):
+    data = defaultdict(list)
+    for experiment_info in concatenate_iterators(*iterators)():
+        print("\n----------------------------------")
+        print(identifier(experiment_info))
+        _, pairwise_versors = single_experiment_continuity(
+            **filter_for_func(single_experiment_continuity, experiment_info._asdict())
+        )
+        data["pairwise_versors"].append(pairwise_versors)
+        data["label"].append(experiment_info.label)
+        data["refinement"].append(experiment_info.refinement)
+        data["num_cells_per_dim"].append(experiment_info.num_cells_per_dim)
+        data["shape"].append(str(experiment_info.shape))
+    return pd.DataFrame.from_dict(data)
 
 
 if __name__ == "__main__":
@@ -172,9 +107,9 @@ if __name__ == "__main__":
     iterator_builder, info = experiment_iterator(
         experiment_name=Path(__file__).stem,
         constants=define_default_constants(sub_cell_model=None, label=None, angle_threshold=0, reconstruction_factor=1,
-                                           recalculate=True),
+                                           recalculate=False),
         variables=define_default_variables(
-            num_cells_per_dim=[20, ],
+            num_cells_per_dim=[20, 40],
             shape=[
                 CurveTrigo(params=TrigoParams(x0=0.5, y0=0.5, amplitude=0.1, frequency=1.)),
                 CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232))
@@ -184,43 +119,108 @@ if __name__ == "__main__":
 
 
     def identifier(info):
-        return f"SingularGraph_Img{info.shape}_{info.num_cells_per_dim}x{info.num_cells_per_dim}_{info.label}_Ref{info.refinement}"
+        return f"Continuity_Img{info.shape}_{info.num_cells_per_dim}x{info.num_cells_per_dim}_{info.label}_Ref{info.refinement}"
 
-
-    iterators = concatenate_iterators(
-        # iterator_builder(sub_cell_model=quadratic, label="AEROS quadratic", refinement=[1, ], angle_threshold=45,
-        #                  recalculate=False or recalculate_all),
-        iterator_builder(sub_cell_model=aero_linear, label="AEROS linear", refinement=[1, 2, ], angle_threshold=45,
-                         recalculate=False or recalculate_all),
-        # iterator_builder(sub_cell_model=quadratic, label="AEROS quadratic", refinement=[1, ], angle_threshold=45,
-        #                  recalculate=False or recalculate_all),
-        # iterator_builder(sub_cell_model=aero_linear, label="AEROS linear", refinement=[1, 2], angle_threshold=45,
-        #                  recalculate=False or recalculate_all),
-        # iterator_builder(sub_cell_model=elvira, label="ELVIRA", recalculate=False or recalculate_all),
-    )
 
     # ---------- Do experiments ---------- #
-    for experiment_info in iterators():
-        print("----------------------------------")
-        print(identifier(experiment_info))
-        true_reconstruction, model, graph = single_experiment_continuity(
-            **filter_for_func(single_experiment_continuity, experiment_info._asdict())
-        )
-        with save_figure(filename=identifier(experiment_info), path=experiment_path, figsize=fig_size,
-                         show=False, format="svg") as (fig, ax):
-            ax.set_title(get_label4plot(experiment_info.label, experiment_info.refinement))
-            plot_singular_graph(
-                fig=fig, ax=ax,
-                true_reconstruction=true_reconstruction,
-                num_cells_per_dim=experiment_info.num_cells_per_dim,
-                graph=graph,
-                model=model,
-                default_linewidth=1.5,
-                alpha_true_image=0.15,
-                # trim=((1, 1), (2, 2)),
-                cmap_true_image=cmap_true_image,
-                vmin=0, vmax=1,
-                labels=False,
-                draw_mesh=True,
-                numbers_on=True,
-            )
+    _, df = do_experiment_continuity(
+        recalculate=True or recalculate_all,
+        iterators=(
+            iterator_builder(sub_cell_model=aero_linear, label="AEROS linear", refinement=[1, 2, 3, 4, 5, 6],
+                             angle_threshold=45,
+                             recalculate=False or recalculate_all),
+        ),
+    )
+
+
+    def diff_between_versors(pairwise_versors):
+        return np.sqrt(np.sum(np.diff(pairwise_versors, axis=0) ** 2))
+
+
+    def angle_between_versors(pairwise_versors, rad=False):
+        a1 = np.arccos(np.dot(pairwise_versors[0], pairwise_versors[1]))
+        a2 = np.arccos(np.dot(pairwise_versors[0], -pairwise_versors[1]))
+        return np.min((a1, a2)) * (1 if rad else 180 / np.pi)
+
+
+    linestyle = {
+        20: "solid",
+        40: "dashed"
+    }
+    for shape, sub_df in df.groupby("shape"):
+        # Continuity convergence
+        with save_figure(filename=f"ContinuityConvergence_{shape}", path=experiment_path, figsize=(16, 8),
+                         show=False) as (
+                fig, ax):
+            sub_df = sub_df.groupby(["label", "refinement", "num_cells_per_dim"]).apply(
+                lambda x: np.nanmedian(list(map(angle_between_versors, x["pairwise_versors"].values[0])))).reset_index(
+                name="angle")
+            for (label, num_cells_per_dim), df2plot in sub_df.groupby(["label", "num_cells_per_dim"]):
+                plt.plot(df2plot["refinement"], df2plot["angle"], label=rf"{label}: $1/h={num_cells_per_dim}$",
+                         color=color[label], linestyle=linestyle[num_cells_per_dim])
+
+            # ax.set_xscale("log")
+            ax.set_yscale("log")
+
+            yticks = [6, 3, 1, 0.5, 0.1]
+            # ax.set_xlim((int(min(xticks) * 0.9), int(max(xticks) * 1.1)))
+            ax.set_yticks(yticks, labels=yticks)
+
+            xticks = sorted(pd.unique(sub_df["refinement"]))
+            ax.set_xticks(xticks, labels=list(map(str, np.array(xticks) - 1)))
+            ax.grid(True)
+
+            ax.set_title(shape)
+            ax.set_xlabel(r"Number of subdivisions", fontdict=axis_font_dict)
+            ax.set_ylabel(r"Median angle difference (deg)", fontdict=axis_font_dict)
+            ax.legend(prop=legend_font_dict, loc='upper left', bbox_to_anchor=(1, 1))
+            ax.tick_params(labelsize=axis_font_dict["size"])
+            # ax.set_ylim((1e-7, 1e-1))
+            ax.set_xlim((0, None))
+            fig.tight_layout()
+
+    # Continuity histogram
+    color = {
+        1: C_GREEN,
+        2: C_BLUE,
+        3: C_PURPLE,
+        4: C_RED,
+        5: C_ORANGE,
+        6: C_OLIVE,
+    }
+
+    for shape, sub_df in df.groupby("shape"):
+        with save_figure(filename=f"HistogramContinuity_{shape}", path=experiment_path, figsize=(16, 8),
+                         show=False) as (
+                fig, ax):
+            sub_df["label_plot"] = sub_df.apply(
+                lambda x: get_label4plot(x["label"], x["refinement"]),
+                axis=1)
+
+            for (label_plot, label, refinement), df4plot in sub_df.groupby(["label_plot", "label", "refinement"]):
+                angles = np.array(list(map(angle_between_versors, df4plot["pairwise_versors"].values[0])))
+                angles = angles[angles > 1e-4]
+                hist, bins = np.histogram(angles, bins=int(np.sqrt(len(angles))))
+                logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
+                ax.hist(angles, bins=logbins, color=color[refinement], label=label_plot, alpha=0.5, log=True)
+                # plt.hist(angles, color=color[refinement], label=label_plot, alpha=0.5, log=True)
+                ax.axvline(np.nanmedian(angles), color=color[refinement], linestyle="dashed", linewidth=2)
+
+
+            ax.set_xscale("log")
+            ax.set_yscale("log")
+
+
+            xticks = [6, 3, 1, 0.5, 0.1]
+            # ax.set_xlim((int(min(xticks) * 0.9), int(max(xticks) * 1.1)))
+            ax.set_xticks(xticks, labels=xticks)
+            ax.grid(True)
+
+            ax.set_title(shape)
+            ax.set_xlabel(r"Angle difference (deg)", fontdict=axis_font_dict)
+            ax.set_ylabel("Counts", fontdict=axis_font_dict)
+            ax.legend(prop=legend_font_dict, loc='upper left', bbox_to_anchor=(1, 1))
+            ax.tick_params(labelsize=axis_font_dict["size"])
+            # ax.set_ylim((1e-7, 1e-1))
+            # ax.set_xlim((0, None))
+            fig.tight_layout()
