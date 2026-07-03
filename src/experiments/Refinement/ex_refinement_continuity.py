@@ -90,7 +90,7 @@ def plot_singular_graph(fig, ax, true_reconstruction, num_cells_per_dim, model, 
     ax.spines['left'].set_visible(True)
 
 
-def build_connected_singular_cell_graph(singular_cells_coords: List[Tuple[int, ...]], num_cells_per_dim, trim):
+def build_connected_singular_cell_graph(singular_cells_coords: List[Tuple[int, ...]], model, trim):
     f_dist = lambda ci, cj: np.sqrt(np.sum((ci - cj).array ** 2))
     max_dist = 2
 
@@ -130,7 +130,7 @@ def build_connected_singular_cell_graph(singular_cells_coords: List[Tuple[int, .
     # filter only the cells that are inside a given region
     graph = [g for g in graph if
              (g[0] >= trim[0][0] - 1) and (g[1] >= trim[0][1] - 1) and
-             (g[0] <= num_cells_per_dim + trim[1][0]) and (g[1] <= num_cells_per_dim + trim[1][1])]
+             (g[0] <= model.resolution[1] + trim[1][0]) and (g[1] <= model.resolution[1] + trim[1][1])]
 
     return graph
 
@@ -155,7 +155,7 @@ def single_experiment_continuity(shape, sub_cell_model, refinement, angle_thresh
 
     graph = build_connected_singular_cell_graph(
         singular_cells_coords=[cell.coords for cell in model.cells.values() if cell.CELL_TYPE != REGULAR_CELL_TYPE],
-        num_cells_per_dim=num_cells_per_dim,
+        model=model,
         trim=trim
     )
 
@@ -176,7 +176,7 @@ if __name__ == "__main__":
         variables=define_default_variables(
             num_cells_per_dim=[20, ],
             shape=[
-                # CurveTrigo(params=TrigoParams(x0=0.5, y0=0.5, amplitude=0.1, frequency=1.)),
+                CurveTrigo(params=TrigoParams(x0=0.5, y0=0.5, amplitude=0.1, frequency=1.)),
                 CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232))
             ],
             refinement=[1, ]
@@ -190,7 +190,7 @@ if __name__ == "__main__":
     iterators = concatenate_iterators(
         # iterator_builder(sub_cell_model=quadratic, label="AEROS quadratic", refinement=[1, ], angle_threshold=45,
         #                  recalculate=False or recalculate_all),
-        iterator_builder(sub_cell_model=aero_linear, label="AEROS linear", refinement=[1, ], angle_threshold=45,
+        iterator_builder(sub_cell_model=aero_linear, label="AEROS linear", refinement=[1, 2, ], angle_threshold=45,
                          recalculate=False or recalculate_all),
         # iterator_builder(sub_cell_model=quadratic, label="AEROS quadratic", refinement=[1, ], angle_threshold=45,
         #                  recalculate=False or recalculate_all),
