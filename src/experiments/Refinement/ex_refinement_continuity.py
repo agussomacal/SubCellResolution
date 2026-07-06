@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 
 from experiments.OtherExperiments.SubcellExperiments.models2compare import aero_linear
 from experiments.Refinement.ex_refinement_config import experiment_path, experiment_name, C_BLUE, C_PURPLE, C_RED, \
-    C_GREEN, C_ORANGE, C_OLIVE
+    C_GREEN, C_ORANGE, C_OLIVE, C_GRAY, C_BLACK
 from experiments.Refinement.ex_refinement_convergence import get_label4plot, axis_font_dict, legend_font_dict, color
 from experiments.Refinement.ex_refinement_singular_cells_connectivity import build_connected_singular_cell_graph
 from experiments.Refinement.ex_refinement_tools import plx_fit_model, plx_obtain_image4error, fit_model
@@ -126,13 +126,15 @@ if __name__ == "__main__":
     _, df = do_experiment_continuity(
         recalculate=True or recalculate_all,
         iterators=(
-            iterator_builder(sub_cell_model=aero_linear, label="AEROS linear", refinement=[1, 2, 3, 4, 5, 6],
+            iterator_builder(sub_cell_model=aero_linear, label="AEROS linear", refinement=[1, 2, 3, 4, 5, 6, 7],
                              angle_threshold=45,
                              recalculate=False or recalculate_all),
         ),
     )
 
 
+    # ---------------------------------------------------------- #
+    # Continuity convergence
     def diff_between_versors(pairwise_versors):
         return np.sqrt(np.sum(np.diff(pairwise_versors, axis=0) ** 2))
 
@@ -143,42 +145,79 @@ if __name__ == "__main__":
         return np.min((a1, a2)) * (1 if rad else 180 / np.pi)
 
 
+    metrics = {
+        "L1": lambda x: np.nanmean(np.abs(x)),
+        "L2": lambda x: np.sqrt(np.nanmean(x ** 2)),
+        "Loo": lambda x: np.nanmax(np.abs(x)),
+    }
+    metric_names = {
+        "Loo": r"$L_\infty$",
+        "L1": r"$L_1$",
+        "L2": r"$L_2$",
+    }
+
     linestyle = {
         20: "solid",
         40: "dashed"
     }
-    for shape, sub_df in df.groupby("shape"):
-        # Continuity convergence
-        with save_figure(filename=f"ContinuityConvergence_{shape}", path=experiment_path, figsize=(16, 8),
-                         show=False) as (
-                fig, ax):
-            sub_df = sub_df.groupby(["label", "refinement", "num_cells_per_dim"]).apply(
-                lambda x: np.nanmedian(list(map(angle_between_versors, x["pairwise_versors"].values[0])))).reset_index(
-                name="angle")
-            for (label, num_cells_per_dim), df2plot in sub_df.groupby(["label", "num_cells_per_dim"]):
-                plt.plot(df2plot["refinement"], df2plot["angle"], label=rf"{label}: $1/h={num_cells_per_dim}$",
-                         color=color[label], linestyle=linestyle[num_cells_per_dim])
 
-            # ax.set_xscale("log")
-            ax.set_yscale("log")
+    threshold_ref = 0
 
-            yticks = [6, 3, 1, 0.5, 0.1]
-            # ax.set_xlim((int(min(xticks) * 0.9), int(max(xticks) * 1.1)))
-            ax.set_yticks(yticks, labels=yticks)
+    for metric_name, metric in metrics.items():
+        for shape, sub_df in df.groupby("shape"):
+            with save_figure(filename=f"ContinuityConvergence_{shape}_{metric_name}", path=experiment_path,
+                             figsize=(16, 8),
+                             show=False) as (
+                    fig, ax):
+                sub_df = sub_df.groupby(["label", "refinement", "num_cells_per_dim"]).apply(
+                    lambda x: metric(
+                        np.array(list(map(angle_between_versors, x["pairwise_versors"].values[0]))))).reset_index(
+                    name="angle")
+                for (label, num_cells_per_dim), df2plot in sub_df.groupby(["label", "num_cells_per_dim"]):
+                    ref = df2plot["refinement"].copy()
+                    valid_ix = ref >= threshold_ref
+                    # rate, origin = np.ravel(np.linalg.lstsq(
+                    #     np.vstack([np.log(ref[valid_ix]), np.ones(np.sum(valid_ix))]).T,
+                    #     np.log(df2plot["angle"].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
+                    # label_plot_rate = fr"{label}: $1/h={num_cells_per_dim}$: $\cal{{O}}$({abs(rate):.1f})"
 
-            xticks = sorted(pd.unique(sub_df["refinement"]))
-            ax.set_xticks(xticks, labels=list(map(str, np.array(xticks) - 1)))
-            ax.grid(True)
+                    ref = df2plot["refinement"].copy()
+                    rate, origin = np.ravel(np.linalg.lstsq(
+                        np.vstack([ref[valid_ix], np.ones(np.sum(valid_ix))]).T,
+                        np.log2(df2plot["angle"].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
 
-            ax.set_title(shape)
-            ax.set_xlabel(r"Number of subdivisions", fontdict=axis_font_dict)
-            ax.set_ylabel(r"Median angle difference (deg)", fontdict=axis_font_dict)
-            ax.legend(prop=legend_font_dict, loc='upper left', bbox_to_anchor=(1, 1))
-            ax.tick_params(labelsize=axis_font_dict["size"])
-            # ax.set_ylim((1e-7, 1e-1))
-            ax.set_xlim((0, None))
-            fig.tight_layout()
+                    # plot fitting line
+                    ax.plot(df2plot["refinement"], df2plot["angle"], marker="o",
+                            label=fr"{label}: $1/h={num_cells_per_dim}$",
+                            color=color[label], linestyle=linestyle[num_cells_per_dim])
+                    # plot fitting line
+                    ax.plot(ref, 2 ** (origin + rate * ref),
+                            color=C_BLACK, linestyle=linestyle[num_cells_per_dim], linewidth=1.5,
+                            label=fr"Exponential fit: $r={abs(rate):.1f}$")
 
+
+                # ax.set_xscale("log")
+                ax.set_yscale("log")
+
+                yticks = [6, 3, 1, 0.5, 0.1]
+                # ax.set_xlim((int(min(xticks) * 0.9), int(max(xticks) * 1.1)))
+                ax.set_yticks(yticks, labels=yticks)
+
+                xticks = sorted(pd.unique(sub_df["refinement"]))
+                ax.set_xticks(xticks, labels=list(map(str, np.array(xticks) - 1)))
+                ax.grid(True)
+
+                ax.set_title(fr"{shape} and metric {metric_names[metric_name]}")
+                ax.set_xlabel(r"Number of subdivisions", fontdict=axis_font_dict)
+                ax.set_ylabel(fr"{metric_names[metric_name]} angle difference (deg)", fontdict=axis_font_dict)
+                ax.legend(prop=legend_font_dict, loc='upper left', bbox_to_anchor=(1, 1))
+                ax.tick_params(labelsize=axis_font_dict["size"])
+                # ax.set_ylim((1e-7, 1e-1))
+                ax.set_xlim((0, None))
+                fig.tight_layout()
+
+    exit()
+    # ---------------------------------------------------------- #
     # Continuity histogram
     color = {
         1: C_GREEN,
@@ -201,15 +240,13 @@ if __name__ == "__main__":
                 angles = np.array(list(map(angle_between_versors, df4plot["pairwise_versors"].values[0])))
                 angles = angles[angles > 1e-4]
                 hist, bins = np.histogram(angles, bins=int(np.sqrt(len(angles))))
-                logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
+                logbins = np.logspace(np.log10(bins[0]), np.log10(bins[-1]), len(bins))
                 ax.hist(angles, bins=logbins, color=color[refinement], label=label_plot, alpha=0.5, log=True)
                 # plt.hist(angles, color=color[refinement], label=label_plot, alpha=0.5, log=True)
                 ax.axvline(np.nanmedian(angles), color=color[refinement], linestyle="dashed", linewidth=2)
 
-
             ax.set_xscale("log")
             ax.set_yscale("log")
-
 
             xticks = [6, 3, 1, 0.5, 0.1]
             # ax.set_xlim((int(min(xticks) * 0.9), int(max(xticks) * 1.1)))
