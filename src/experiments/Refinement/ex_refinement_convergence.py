@@ -17,7 +17,7 @@ from experiments.tools import calculate_averages_from_curve
 from lib.Curves.CurveCircle import CurveCircle, CircleParams
 from lib.Curves.CurveTrigo import CurveTrigo, TrigoParams
 from perplexitylab.experiment_tools import experiment_iterator, concatenate_iterators, define_default_constants, \
-    define_default_variables, perplexifier
+    define_default_variables, perplexifier, do
 from perplexitylab.miscellaneous import filter_for_func
 from perplexitylab.plot_tools import save_figure
 
@@ -91,20 +91,17 @@ def single_experiment_convergence(shape, sub_cell_model, refinement, angle_thres
     return error
 
 
-@perplexifier(default_path=experiment_path,
-              filename=filename_data_to_plot,
-              saver=lambda data, filepath: data.to_csv(filepath),
-              loader=lambda filepath: pd.read_csv(filepath),
-              file_format=file_format_data_to_plot)
+# @perplexifier(default_path=experiment_path,
+#               filename=filename_data_to_plot,
+#               saver=lambda data, filepath: data.to_csv(filepath),
+#               loader=lambda filepath: pd.read_csv(filepath),
+#               file_format=file_format_data_to_plot)
 def do_experiment_convergence(iterators: Tuple[Generator]):
     data = defaultdict(list)
     for experiment_info in concatenate_iterators(*iterators)():
         print("\n----------------------------------")
         print(identifier(experiment_info))
-        _, error = single_experiment_convergence(
-            recalculate=experiment_info.recalculate,
-            **filter_for_func(single_experiment_convergence, experiment_info._asdict())
-        )
+        error = do(single_experiment_convergence, experiment_info)
         data["error"].append(error)
         data["label"].append(experiment_info.label)
         data["refinement"].append(experiment_info.refinement)
@@ -120,28 +117,28 @@ if __name__ == "__main__":
         constants=define_default_constants(sub_cell_model=None, label=None, angle_threshold=0, reconstruction_factor=1,
                                            sub_discretization2bound_error=2 * 2 * 3 * 2,
                                            # sub_discretization2bound_error=2 * 2 * 3,
-                                           p=1, recalculate=False,
-                                           recalculate_inner_funcs=False, evaluation_mode=False),
+                                           p=1, recalculate_inner_funcs=False, evaluation_mode=False),
         variables=define_default_variables(
             # num_cells_per_dim=[20, 30, 40, 50, 60, 65],
             num_cells_per_dim=[20, 30, 40, 50, 60, 70, 80, 90, 100],
             shape=[
-                CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232)),
+                # CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232)),
                 CurveTrigo(params=TrigoParams(x0=0.511, y0=0.486, amplitude=0.232, frequency=1.))
             ],
             refinement=[1, 2, ]
-        ))
+        )
+    )
 
     # ---------- Do experiments ---------- #
-    _, df = do_experiment_convergence(
-        recalculate=True or recalculate_all,
+    df = do_experiment_convergence(
+        # recalculate=True or recalculate_all,
         iterators=(
             # iterator_builder(sub_cell_model=AEROS4, label="AEROS quartic", refinement=[1, ], angle_threshold=45,
             #                  recalculate=False or recalculate_all),
             iterator_builder(sub_cell_model=AEROS4, label="AEROS quartic", refinement=[1, 2], angle_threshold=0,
                              recalculate=False or recalculate_all),
             iterator_builder(sub_cell_model=cubic, label="AEROS cubic", refinement=[1, 2, 3], angle_threshold=45,
-                             recalculate=False or recalculate_all),
+                             recalculate=True or recalculate_all),
             iterator_builder(sub_cell_model=quadratic, label="AEROS quadratic", refinement=[1], angle_threshold=45,
                              recalculate=False or recalculate_all),
             iterator_builder(sub_cell_model=quadratic, label="AEROS quadratic", refinement=[2], angle_threshold=0,

@@ -20,7 +20,7 @@ from lib.CellCreators.CellCreatorBase import REGULAR_CELL_TYPE
 from lib.Curves.CurveCircle import CurveCircle, CircleParams
 from lib.Curves.CurveTrigo import TrigoParams, CurveTrigo
 from perplexitylab.experiment_tools import experiment_iterator, concatenate_iterators, define_default_constants, \
-    define_default_variables, perplexifier
+    define_default_variables, perplexifier, do
 from perplexitylab.miscellaneous import filter_for_func
 from perplexitylab.plot_tools import save_figure
 
@@ -76,19 +76,20 @@ def single_experiment_continuity(shape, sub_cell_model, refinement, angle_thresh
     return pairwise_versors
 
 
-@perplexifier(default_path=experiment_path,
-              filename=filename_data_to_plot,
-              saver=lambda data, filepath: data.to_csv(filepath),
-              loader=lambda filepath: pd.read_csv(filepath),
-              file_format=file_format_data_to_plot)
+# @perplexifier(default_path=experiment_path,
+#               filename=filename_data_to_plot,
+#               saver=lambda data, filepath: data.to_csv(filepath),
+#               loader=lambda filepath: pd.read_csv(filepath),
+#               file_format=file_format_data_to_plot)
 def do_experiment_continuity(iterators: Tuple[Generator]):
     data = defaultdict(list)
     for experiment_info in concatenate_iterators(*iterators)():
         print("\n----------------------------------")
         print(identifier(experiment_info))
-        _, pairwise_versors = single_experiment_continuity(
-            **filter_for_func(single_experiment_continuity, experiment_info._asdict())
-        )
+        pairwise_versors = do(single_experiment_continuity, experiment_info)
+        # _, pairwise_versors = single_eexperiment_continuity, experiment_info._asdict())
+        # )xperiment_continuity(
+        #     **filter_for_func(single_
         data["pairwise_versors"].append(pairwise_versors)
         data["label"].append(experiment_info.label)
         data["refinement"].append(experiment_info.refinement)
@@ -106,8 +107,7 @@ if __name__ == "__main__":
     # ---------- Experiment list ---------- #
     iterator_builder, info = experiment_iterator(
         experiment_name=Path(__file__).stem,
-        constants=define_default_constants(sub_cell_model=None, label=None, angle_threshold=0, reconstruction_factor=1,
-                                           recalculate=False),
+        constants=define_default_constants(sub_cell_model=None, label=None, angle_threshold=0, reconstruction_factor=1),
         variables=define_default_variables(
             num_cells_per_dim=[20, 40],
             shape=[
@@ -123,12 +123,11 @@ if __name__ == "__main__":
 
 
     # ---------- Do experiments ---------- #
-    _, df = do_experiment_continuity(
-        recalculate=True or recalculate_all,
+    df = do_experiment_continuity(
+        # recalculate=True,
         iterators=(
             iterator_builder(sub_cell_model=aero_linear, label="AEROS linear", refinement=[1, 2, 3, 4, 5, 6, 7],
-                             angle_threshold=45,
-                             recalculate=False or recalculate_all),
+                             angle_threshold=45, recalculate=False),
         ),
     )
 
@@ -166,9 +165,7 @@ if __name__ == "__main__":
     for metric_name, metric in metrics.items():
         for shape, sub_df in df.groupby("shape"):
             with save_figure(filename=f"ContinuityConvergence_{shape}_{metric_name}", path=experiment_path,
-                             figsize=(16, 8),
-                             show=False) as (
-                    fig, ax):
+                             figsize=(16, 8), show=False) as (fig, ax):
                 sub_df = sub_df.groupby(["label", "refinement", "num_cells_per_dim"]).apply(
                     lambda x: metric(
                         np.array(list(map(angle_between_versors, x["pairwise_versors"].values[0]))))).reset_index(
