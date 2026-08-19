@@ -19,7 +19,7 @@ from lib.Curves.CurveTrigo import CurveTrigo, TrigoParams
 from perplexitylab.experiment_tools import experiment_iterator, concatenate_iterators, define_default_constants, \
     define_default_variables, perplexifier, do
 from perplexitylab.miscellaneous import filter_for_func
-from perplexitylab.plot_tools import save_figure
+from perplexitylab.plot_tools import save_figure, sorted_legend
 
 file_format_data_to_plot = "csv"
 filename_data_to_plot = "ConvergencePlot"
@@ -82,32 +82,7 @@ def single_experiment_convergence(shape, sub_cell_model, refinement, angle_thres
         sub_discretization2bound_error=sub_discretization2bound_error,
         refinement=refinement, evaluation_mode=evaluation_mode)
     error = calculate_error(true_reconstruction, reconstruction, p=p)
-    # import matplotlib.pylab as plt
-    # d = np.abs(true_reconstruction - reconstruction)
-    # d = np.log10(d[d > 1e-10])
-    # plt.hist(d)
-    # plt.axvline(np.mean(d), c="k")
-    # plt.show()
     return error
-
-
-# @perplexifier(default_path=experiment_path,
-#               filename=filename_data_to_plot,
-#               saver=lambda data, filepath: data.to_csv(filepath),
-#               loader=lambda filepath: pd.read_csv(filepath),
-#               file_format=file_format_data_to_plot)
-def do_experiment_convergence(iterators: Tuple[Generator]):
-    data = defaultdict(list)
-    for experiment_info in concatenate_iterators(*iterators)():
-        print("\n----------------------------------")
-        print(identifier(experiment_info))
-        error = do(single_experiment_convergence, experiment_info)
-        data["error"].append(error)
-        data["label"].append(experiment_info.label)
-        data["refinement"].append(experiment_info.refinement)
-        data["num_cells_per_dim"].append(experiment_info.num_cells_per_dim)
-        data["shape"].append(str(experiment_info.shape))
-    return pd.DataFrame.from_dict(data)
 
 
 if __name__ == "__main__":
@@ -130,29 +105,44 @@ if __name__ == "__main__":
     )
 
     # ---------- Do experiments ---------- #
-    df = do_experiment_convergence(
-        # recalculate=True or recalculate_all,
-        iterators=(
-            # iterator_builder(sub_cell_model=AEROS4, label="AEROS quartic", refinement=[1, ], angle_threshold=45,
-            #                  recalculate=False or recalculate_all),
-            iterator_builder(sub_cell_model=AEROS4, label="AEROS quartic", refinement=[1, 2], angle_threshold=0,
-                             recalculate=False or recalculate_all),
-            iterator_builder(sub_cell_model=cubic, label="AEROS cubic", refinement=[1, 2, 3], angle_threshold=45,
-                             recalculate=True or recalculate_all),
-            iterator_builder(sub_cell_model=quadratic, label="AEROS quadratic", refinement=[1], angle_threshold=45,
-                             recalculate=False or recalculate_all),
-            iterator_builder(sub_cell_model=quadratic, label="AEROS quadratic", refinement=[2], angle_threshold=0,
-                             recalculate=False or recalculate_all),
-            # iterator_builder(sub_cell_model=quadratic_lsq5, label="AEROS quadratic lsqx5", refinement=[1, 2], angle_threshold=45,
-            #                  recalculate=False or recalculate_all),
-            iterator_builder(sub_cell_model=aero_linear, label="AEROS linear", refinement=[1, 2, 3], angle_threshold=45,
-                             recalculate=False or recalculate_all),
-            iterator_builder(sub_cell_model=elvira, label="ELVIRA", refinement=[1, 2, 3],
-                             recalculate=False or recalculate_all),
-            # iterator_builder(sub_cell_model=elvira_w, label="ELVIRA W", refinement=[1, 2, 3],
-            #                  recalculate=False or recalculate_all, recalculate_inner_funcs=False),
-        ),
+    experiment_labels_order = ["ELVIRA", "AEROS linear", "AEROS quadratic", "AEROS cubic", "AEROS quartic"]
+    iterators = []
+    iterators.append(
+        iterator_builder(sub_cell_model=elvira, label="ELVIRA", refinement=[1, 2, 3],
+                         recalculate=False or recalculate_all)
     )
+    iterators.append(
+        iterator_builder(sub_cell_model=aero_linear, label="AEROS linear", refinement=[1, 2, 3], angle_threshold=45,
+                         recalculate=False or recalculate_all)
+    )
+    iterators.append(
+        iterator_builder(sub_cell_model=quadratic, label="AEROS quadratic", refinement=[1], angle_threshold=45,
+                         recalculate=False or recalculate_all)
+    )
+    iterators.append(
+        iterator_builder(sub_cell_model=quadratic, label="AEROS quadratic", refinement=[2], angle_threshold=0,
+                         recalculate=False or recalculate_all)
+    )
+    iterators.append(
+        iterator_builder(sub_cell_model=cubic, label="AEROS cubic", refinement=[1, 2, 3], angle_threshold=45,
+                         recalculate=True or recalculate_all)
+    )
+    iterators.append(
+        iterator_builder(sub_cell_model=AEROS4, label="AEROS quartic", refinement=[1, 2], angle_threshold=0,
+                         recalculate=False or recalculate_all)
+    )
+
+    data = defaultdict(list)
+    for experiment_info in concatenate_iterators(*iterators)():
+        print("\n----------------------------------")
+        print(identifier(experiment_info))
+        error = do(single_experiment_convergence, experiment_info)
+        data["error"].append(error)
+        data["label"].append(experiment_info.label)
+        data["refinement"].append(experiment_info.refinement)
+        data["num_cells_per_dim"].append(experiment_info.num_cells_per_dim)
+        data["shape"].append(str(experiment_info.shape))
+    df = pd.DataFrame.from_dict(data)
 
     # ---------- Do plot ---------- #
     threshold_hinv = 30
@@ -162,6 +152,7 @@ if __name__ == "__main__":
             lambda x: get_label4plot(x["label"], x["refinement"]),
             axis=1)
 
+        labels_order = dict()
         with save_figure(filename=f"Convergence_{shape}", path=experiment_path, figsize=(16, 8), show=False) as (
                 fig, ax):
             for (label_plot, label, refinement), df4plot in sub_df.groupby(["label_plot", "label", "refinement"]):
@@ -171,6 +162,8 @@ if __name__ == "__main__":
                     np.vstack([np.log(hinv[valid_ix]), np.ones(np.sum(valid_ix))]).T,
                     np.log(df4plot["error"].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
                 label_plot_rate = fr"{label_plot}: $\cal{{O}}$({abs(rate):.1f})"
+                # replaces with the plot label
+                labels_order[label_plot_rate] = 100 * experiment_labels_order.index(label) + refinement
                 # ax.scatter(df4plot["num_cells_per_dim"], df4plot["error"],
                 #             color=color[label], marker=marker_style[refinement], s=30)
                 ax.plot(df4plot["num_cells_per_dim"], df4plot["error"],
@@ -194,6 +187,7 @@ if __name__ == "__main__":
             ax.set_xlabel(r"$1/h$", fontdict=axis_font_dict)
             ax.set_ylabel(r"$\|u-\tilde u \|_{L^1}$", fontdict=axis_font_dict)
             ax.legend(prop=legend_font_dict, loc='upper left', bbox_to_anchor=(1, 1))
+            sorted_legend(ax, labels_order, prop=legend_font_dict, loc='upper left', bbox_to_anchor=(1, 1))
             ax.tick_params(labelsize=axis_font_dict["size"])
             # ax.set_ylim((1e-7, 1e-1))
             fig.tight_layout()

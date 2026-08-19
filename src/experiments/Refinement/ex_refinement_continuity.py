@@ -8,10 +8,10 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from experiments.OtherExperiments.SubcellExperiments.models2compare import aero_linear
 from experiments.Refinement.ex_refinement_config import experiment_path, experiment_name, C_BLUE, C_PURPLE, C_RED, \
     C_GREEN, C_ORANGE, C_OLIVE, C_GRAY, C_BLACK
 from experiments.Refinement.ex_refinement_convergence import get_label4plot, axis_font_dict, legend_font_dict, color
+from experiments.Refinement.ex_refinement_models_to_compare import aero_3, aero_linear, quadratic, cubic
 from experiments.Refinement.ex_refinement_singular_cells_connectivity import build_connected_singular_cell_graph
 from experiments.Refinement.ex_refinement_tools import plx_fit_model, plx_obtain_image4error, fit_model
 from experiments.global_params import cred
@@ -22,7 +22,7 @@ from lib.Curves.CurveTrigo import TrigoParams, CurveTrigo
 from perplexitylab.experiment_tools import experiment_iterator, concatenate_iterators, define_default_constants, \
     define_default_variables, perplexifier, do
 from perplexitylab.miscellaneous import filter_for_func
-from perplexitylab.plot_tools import save_figure
+from perplexitylab.plot_tools import save_figure, sorted_legend
 
 # 1680: 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 15, 16, 20, 21, 24, 28, 30, 35, 40, 42, 48, 56, 60, 70, 80, 84, 105, 120, 140, 168, 210, 240, 280, 336, 420, 560, 840, 1680
 # divisors = [i for i in range(1, n+1) if n % i == 0]
@@ -33,7 +33,7 @@ filename_data_to_plot = "PairwiseSlopesPlot"
 path_data_to_plot = f"{experiment_path}/{experiment_name}"
 
 # Reconstruction plot params
-matplotlib.rcParams['text.usetex'] = False
+matplotlib.rcParams['text.usetex'] = True
 curve_color = cred
 cmap_reconstruction = "Reds"
 cmap_true_image = "Greys_r"
@@ -41,16 +41,26 @@ fig_size = (15, 15)
 
 
 def get_pairwise_slope_versors(model, graph):
-    def get_slope_versor(c):
-        slope = model.cells[c].curve.polynomial.deriv().coef[0]
+    def get_versor(cell, slope):
         vec = [0, 0]
-        vec[model.cells[c].independent_axis] = 1
-        vec[model.cells[c].dependent_axis] = slope
+        vec[cell.independent_axis] = 1
+        vec[cell.dependent_axis] = slope
         vec = np.array(vec)
         vec /= np.linalg.norm(vec)
         return vec
 
-    # TODO: Analysis only valid for linear interfaces
+    # def get_slopes_versors(c, c_next):
+    #     eval_coords = model.cells[c_next].center_of_cell - model.cells[c].center_of_cell
+    #     slope = model.cells[c].curve.polynomial.deriv()(eval_coords[model.cells[c].independent_axis])
+    #     slope_next = model.cells[c_next].curve.polynomial.deriv()(eval_coords[model.cells[c_next].independent_axis])
+    #     return get_versor(model.cells[c], slope), get_versor(model.cells[c_next], slope_next)
+    #
+    # return [get_slopes_versors(graph[i], graph[i + 1]) for i in range(len(graph) - 1)]
+
+    def get_slope_versor(c):
+        slope = model.cells[c].curve.polynomial.deriv()(model.cells[c].center_of_cell[model.cells[c].independent_axis])
+        return get_versor(model.cells[c], slope)
+
     return [(get_slope_versor(c=graph[i]), get_slope_versor(c=graph[i + 1])) for i in range(len(graph) - 1)]
 
 
@@ -76,28 +86,6 @@ def single_experiment_continuity(shape, sub_cell_model, refinement, angle_thresh
     return pairwise_versors
 
 
-# @perplexifier(default_path=experiment_path,
-#               filename=filename_data_to_plot,
-#               saver=lambda data, filepath: data.to_csv(filepath),
-#               loader=lambda filepath: pd.read_csv(filepath),
-#               file_format=file_format_data_to_plot)
-def do_experiment_continuity(iterators: Tuple[Generator]):
-    data = defaultdict(list)
-    for experiment_info in concatenate_iterators(*iterators)():
-        print("\n----------------------------------")
-        print(identifier(experiment_info))
-        pairwise_versors = do(single_experiment_continuity, experiment_info)
-        # _, pairwise_versors = single_eexperiment_continuity, experiment_info._asdict())
-        # )xperiment_continuity(
-        #     **filter_for_func(single_
-        data["pairwise_versors"].append(pairwise_versors)
-        data["label"].append(experiment_info.label)
-        data["refinement"].append(experiment_info.refinement)
-        data["num_cells_per_dim"].append(experiment_info.num_cells_per_dim)
-        data["shape"].append(str(experiment_info.shape))
-    return pd.DataFrame.from_dict(data)
-
-
 if __name__ == "__main__":
     # Experiment general params
     noise = 0
@@ -109,12 +97,13 @@ if __name__ == "__main__":
         experiment_name=Path(__file__).stem,
         constants=define_default_constants(sub_cell_model=None, label=None, angle_threshold=0, reconstruction_factor=1),
         variables=define_default_variables(
-            num_cells_per_dim=[20, 40],
+            num_cells_per_dim=[40],
             shape=[
                 CurveTrigo(params=TrigoParams(x0=0.5, y0=0.5, amplitude=0.1, frequency=1.)),
                 CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232))
             ],
-            refinement=[1, ]
+            # refinement=[1, 2, 3, 4, 5, 6, 7]
+            refinement=[1, 2, 3, 4]
         ))
 
 
@@ -123,13 +112,33 @@ if __name__ == "__main__":
 
 
     # ---------- Do experiments ---------- #
-    df = do_experiment_continuity(
-        # recalculate=True,
-        iterators=(
-            iterator_builder(sub_cell_model=aero_linear, label="AEROS linear", refinement=[1, 2, 3, 4, 5, 6, 7],
-                             angle_threshold=45, recalculate=False),
-        ),
+    experiment_labels_order = ["AEROS linear", "AEROS quadratic", "AEROS cubic"]
+
+    iterators = []
+    iterators.append(
+        iterator_builder(sub_cell_model=aero_linear, label="AEROS linear",
+                         angle_threshold=45, recalculate=False)
     )
+    iterators.append(
+        iterator_builder(sub_cell_model=quadratic, label="AEROS quadratic",
+                         angle_threshold=45, recalculate=False)
+    )
+    iterators.append(
+        iterator_builder(sub_cell_model=cubic, label="AEROS cubic",
+                         angle_threshold=45, recalculate=False)
+    )
+
+    data = defaultdict(list)
+    for experiment_info in concatenate_iterators(*iterators)():
+        print("\n----------------------------------")
+        print(identifier(experiment_info))
+        pairwise_versors = do(single_experiment_continuity, experiment_info)
+        data["pairwise_versors"].append(pairwise_versors)
+        data["label"].append(experiment_info.label)
+        data["refinement"].append(experiment_info.refinement)
+        data["num_cells_per_dim"].append(experiment_info.num_cells_per_dim)
+        data["shape"].append(str(experiment_info.shape))
+    df = pd.DataFrame.from_dict(data)
 
 
     # ---------------------------------------------------------- #
@@ -155,22 +164,19 @@ if __name__ == "__main__":
         "L2": r"$L_2$",
     }
 
-    linestyle = {
-        20: "solid",
-        40: "dashed"
-    }
-
+    linestyle = defaultdict(lambda: "solid")
     threshold_ref = 0
 
     for metric_name, metric in metrics.items():
-        for shape, sub_df in df.groupby("shape"):
+        for (shape, num_cells_per_dim), sub_df in df.groupby(["shape", "num_cells_per_dim"]):
+            labels_order = experiment_labels_order.copy()
             with save_figure(filename=f"ContinuityConvergence_{shape}_{metric_name}", path=experiment_path,
                              figsize=(16, 8), show=False) as (fig, ax):
-                sub_df = sub_df.groupby(["label", "refinement", "num_cells_per_dim"]).apply(
+                sub_df = sub_df.groupby(["label", "refinement"]).apply(
                     lambda x: metric(
                         np.array(list(map(angle_between_versors, x["pairwise_versors"].values[0]))))).reset_index(
                     name="angle")
-                for (label, num_cells_per_dim), df2plot in sub_df.groupby(["label", "num_cells_per_dim"]):
+                for (label,), df2plot in sub_df.groupby(["label"]):
                     ref = df2plot["refinement"].copy()
                     valid_ix = ref >= threshold_ref
                     # rate, origin = np.ravel(np.linalg.lstsq(
@@ -183,15 +189,16 @@ if __name__ == "__main__":
                         np.vstack([ref[valid_ix], np.ones(np.sum(valid_ix))]).T,
                         np.log2(df2plot["angle"].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
 
-                    # plot fitting line
+                    # plot points
+                    label4plot = fr"{label}: $r={abs(rate):.1f}$"
+                    labels_order[experiment_labels_order.index(label)] = label4plot  # replaces with the plot label
                     ax.plot(df2plot["refinement"], df2plot["angle"], marker="o",
-                            label=fr"{label}: $1/h={num_cells_per_dim}$",
+                            label=label4plot,
                             color=color[label], linestyle=linestyle[num_cells_per_dim])
                     # plot fitting line
-                    ax.plot(ref, 2 ** (origin + rate * ref),
-                            color=C_BLACK, linestyle=linestyle[num_cells_per_dim], linewidth=1.5,
-                            label=fr"Exponential fit: $r={abs(rate):.1f}$")
-
+                    # ax.plot(ref, 2 ** (origin + rate * ref),
+                    #         color=C_BLACK, linestyle=linestyle[num_cells_per_dim], linewidth=1.5,
+                    #         label=fr"Exponential fit: $r={abs(rate):.1f}$")
 
                 # ax.set_xscale("log")
                 ax.set_yscale("log")
@@ -204,16 +211,17 @@ if __name__ == "__main__":
                 ax.set_xticks(xticks, labels=list(map(str, np.array(xticks) - 1)))
                 ax.grid(True)
 
-                ax.set_title(fr"{shape} and metric {metric_names[metric_name]}")
+                ax.set_title(fr"{shape} and metric {metric_names[metric_name]} $1/h={num_cells_per_dim}$")
                 ax.set_xlabel(r"Number of subdivisions", fontdict=axis_font_dict)
                 ax.set_ylabel(fr"{metric_names[metric_name]} angle difference (deg)", fontdict=axis_font_dict)
-                ax.legend(prop=legend_font_dict, loc='upper left', bbox_to_anchor=(1, 1))
+                sorted_legend(ax, labels_order, prop=legend_font_dict, loc='upper left', bbox_to_anchor=(1, 1))
+
                 ax.tick_params(labelsize=axis_font_dict["size"])
                 # ax.set_ylim((1e-7, 1e-1))
                 ax.set_xlim((0, None))
                 fig.tight_layout()
 
-    exit()
+    # exit()
     # ---------------------------------------------------------- #
     # Continuity histogram
     color = {

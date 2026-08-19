@@ -9,9 +9,7 @@ import matplotlib
 import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
-from tqdm.contrib import itertools
 
-from Results.PaperTest.SchemesTests.SchemesRot.main_script import num_cells_per_dim
 from experiments.OtherExperiments.SubcellExperiments.models2compare import quadratic, aero_linear
 from experiments.Refinement.ex_refinement_config import experiment_path
 from experiments.Refinement.ex_refinement_convergence import get_label4plot
