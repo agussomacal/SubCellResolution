@@ -40,15 +40,26 @@ cmap_true_image = "Greys_r"
 fig_size = (15, 15)
 
 
-def get_pairwise_slope_versors(model, graph):
-    def get_versor(cell, slope):
-        vec = [0, 0]
-        vec[cell.independent_axis] = 1
-        vec[cell.dependent_axis] = slope
-        vec = np.array(vec)
-        vec /= np.linalg.norm(vec)
-        return vec
+def get_versor(cell, slope):
+    vec = [0, 0]
+    vec[cell.independent_axis] = 1
+    vec[cell.dependent_axis] = slope
+    vec = np.array(vec)
+    vec /= np.linalg.norm(vec)
+    return vec
 
+
+def get_ordered_slope_versors(model, graph):
+    return [
+        get_versor(
+            cell=model.cells[c],
+            slope=model.cells[c].curve.polynomial.deriv()(
+                model.cells[c].center_of_cell[model.cells[c].independent_axis]))
+        for c in graph
+    ]
+
+
+def get_pairwise_slope_versors(model, graph):
     # def get_slopes_versors(c, c_next):
     #     eval_coords = model.cells[c_next].center_of_cell - model.cells[c].center_of_cell
     #     slope = model.cells[c].curve.polynomial.deriv()(eval_coords[model.cells[c].independent_axis])
@@ -62,6 +73,15 @@ def get_pairwise_slope_versors(model, graph):
         return get_versor(model.cells[c], slope)
 
     return [(get_slope_versor(c=graph[i]), get_slope_versor(c=graph[i + 1])) for i in range(len(graph) - 1)]
+
+
+def get_triplewise_slope_versors(model, graph):
+    def get_slope_versor(c):
+        slope = model.cells[c].curve.polynomial.deriv()(model.cells[c].center_of_cell[model.cells[c].independent_axis])
+        return get_versor(model.cells[c], slope)
+
+    return [(get_slope_versor(c=graph[i]), get_slope_versor(c=graph[i + 1]), get_slope_versor(c=graph[i + 1])) for i in
+            range(len(graph) - 2)]
 
 
 @perplexifier(default_path=experiment_path)
@@ -82,8 +102,7 @@ def single_experiment_continuity(shape, sub_cell_model, refinement, angle_thresh
         trim=trim
     )
 
-    pairwise_versors = get_pairwise_slope_versors(model, graph)
-    return pairwise_versors
+    return get_ordered_slope_versors(model, graph)
 
 
 if __name__ == "__main__":
@@ -132,8 +151,9 @@ if __name__ == "__main__":
     for experiment_info in concatenate_iterators(*iterators)():
         print("\n----------------------------------")
         print(identifier(experiment_info))
-        pairwise_versors = do(single_experiment_continuity, experiment_info)
-        data["pairwise_versors"].append(pairwise_versors)
+        ordered_versors = do(single_experiment_continuity, experiment_info)
+        data["pairwise_versors"].append(list(zip(ordered_versors[:-1], ordered_versors[1:])))
+        data["triplewise_versors"].append(list(zip(ordered_versors[:-2], ordered_versors[1:-1], ordered_versors[2:])))
         data["label"].append(experiment_info.label)
         data["refinement"].append(experiment_info.refinement)
         data["num_cells_per_dim"].append(experiment_info.num_cells_per_dim)
@@ -151,6 +171,11 @@ if __name__ == "__main__":
         a1 = np.arccos(np.dot(pairwise_versors[0], pairwise_versors[1]))
         a2 = np.arccos(np.dot(pairwise_versors[0], -pairwise_versors[1]))
         return np.min((a1, a2)) * (1 if rad else 180 / np.pi)
+
+    def diff_angle_between_versors(triplewise_versors, rad=False, normalization=1,):
+        a1 = angle_between_versors(triplewise_versors[:-1], rad=rad)
+        a2 = angle_between_versors(triplewise_versors[1:], rad=rad)
+        return (a2-a1)/normalization
 
 
     metrics = {
@@ -170,29 +195,85 @@ if __name__ == "__main__":
     for metric_name, metric in metrics.items():
         for (shape, num_cells_per_dim), sub_df in df.groupby(["shape", "num_cells_per_dim"]):
             labels_order = experiment_labels_order.copy()
+
+            # ------------- FIRST ORDER differences plot ------------- #
+            Y_VAR_NAME = "angle"
             with save_figure(filename=f"ContinuityConvergence_{shape}_{metric_name}", path=experiment_path,
                              figsize=(16, 8), show=False) as (fig, ax):
                 sub_df = sub_df.groupby(["label", "refinement"]).apply(
                     lambda x: metric(
                         np.array(list(map(angle_between_versors, x["pairwise_versors"].values[0]))))).reset_index(
-                    name="angle")
+                    name=Y_VAR_NAME)
                 for (label,), df2plot in sub_df.groupby(["label"]):
                     ref = df2plot["refinement"].copy()
                     valid_ix = ref >= threshold_ref
                     # rate, origin = np.ravel(np.linalg.lstsq(
                     #     np.vstack([np.log(ref[valid_ix]), np.ones(np.sum(valid_ix))]).T,
-                    #     np.log(df2plot["angle"].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
+                    #     np.log(df2plot[Y_VAR_NAME].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
                     # label_plot_rate = fr"{label}: $1/h={num_cells_per_dim}$: $\cal{{O}}$({abs(rate):.1f})"
 
                     ref = df2plot["refinement"].copy()
                     rate, origin = np.ravel(np.linalg.lstsq(
                         np.vstack([ref[valid_ix], np.ones(np.sum(valid_ix))]).T,
-                        np.log2(df2plot["angle"].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
+                        np.log2(df2plot[Y_VAR_NAME].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
 
                     # plot points
                     label4plot = fr"{label}: $r={abs(rate):.1f}$"
                     labels_order[experiment_labels_order.index(label)] = label4plot  # replaces with the plot label
-                    ax.plot(df2plot["refinement"], df2plot["angle"], marker="o",
+                    ax.plot(df2plot["refinement"], df2plot[Y_VAR_NAME], marker="o",
+                            label=label4plot,
+                            color=color[label], linestyle=linestyle[num_cells_per_dim])
+                    # plot fitting line
+                    # ax.plot(ref, 2 ** (origin + rate * ref),
+                    #         color=C_BLACK, linestyle=linestyle[num_cells_per_dim], linewidth=1.5,
+                    #         label=fr"Exponential fit: $r={abs(rate):.1f}$")
+
+                # ax.set_xscale("log")
+                ax.set_yscale("log")
+
+                yticks = [6, 3, 1, 0.5, 0.1]
+                # ax.set_xlim((int(min(xticks) * 0.9), int(max(xticks) * 1.1)))
+                ax.set_yticks(yticks, labels=yticks)
+
+                xticks = sorted(pd.unique(sub_df["refinement"]))
+                ax.set_xticks(xticks, labels=list(map(str, np.array(xticks) - 1)))
+                ax.grid(True)
+
+                ax.set_title(fr"{shape} and metric {metric_names[metric_name]} $1/h={num_cells_per_dim}$")
+                ax.set_xlabel(r"Number of subdivisions", fontdict=axis_font_dict)
+                ax.set_ylabel(fr"{metric_names[metric_name]} angle (deg)", fontdict=axis_font_dict)
+                sorted_legend(ax, labels_order, prop=legend_font_dict, loc='upper left', bbox_to_anchor=(1, 1))
+
+                ax.tick_params(labelsize=axis_font_dict["size"])
+                # ax.set_ylim((1e-7, 1e-1))
+                ax.set_xlim((0, None))
+                fig.tight_layout()
+
+            # ------------- FIRST ORDER differences plot ------------- #
+            Y_VAR_NAME = "angle difference"
+            with save_figure(filename=f"Continuity2ndOrderConvergence_{shape}_{metric_name}", path=experiment_path,
+                             figsize=(16, 8), show=False) as (fig, ax):
+                sub_df = sub_df.groupby(["label", "refinement"]).apply(
+                    lambda x: metric(
+                        np.array(list(map(diff_angle_between_versors, x["triplewise_versors"].values[0]))))).reset_index(
+                    name=Y_VAR_NAME)
+                for (label,), df2plot in sub_df.groupby(["label"]):
+                    ref = df2plot["refinement"].copy()
+                    valid_ix = ref >= threshold_ref
+                    # rate, origin = np.ravel(np.linalg.lstsq(
+                    #     np.vstack([np.log(ref[valid_ix]), np.ones(np.sum(valid_ix))]).T,
+                    #     np.log(df2plot[Y_VAR_NAME].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
+                    # label_plot_rate = fr"{label}: $1/h={num_cells_per_dim}$: $\cal{{O}}$({abs(rate):.1f})"
+
+                    ref = df2plot["refinement"].copy()
+                    rate, origin = np.ravel(np.linalg.lstsq(
+                        np.vstack([ref[valid_ix], np.ones(np.sum(valid_ix))]).T,
+                        np.log2(df2plot[Y_VAR_NAME].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
+
+                    # plot points
+                    label4plot = fr"{label}: $r={abs(rate):.1f}$"
+                    labels_order[experiment_labels_order.index(label)] = label4plot  # replaces with the plot label
+                    ax.plot(df2plot["refinement"], df2plot[Y_VAR_NAME], marker="o",
                             label=label4plot,
                             color=color[label], linestyle=linestyle[num_cells_per_dim])
                     # plot fitting line
