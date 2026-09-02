@@ -5,17 +5,13 @@ from typing import Callable
 import numpy as np
 from matplotlib import pyplot as plt
 
-from experiments.Refinement.ex_refinement_config import experiment_path
+from experiments.Refinement.ex_refinement_config import experiment_subdivision_path
 from experiments.global_params import EVALUATIONS
 from experiments.tools import calculate_averages_from_image, load_image, reconstruct, singular_cells_mask, \
     make_image_high_resolution, calculate_evaluations_from_curve, calculate_averages_from_curve
 from lib.AuxiliaryStructures.Indexers import ArrayIndexerNd
 from lib.SubCellReconstruction import reconstruct_arbitrary_size, reconstruct_by_factor
 from perplexitylab.experiment_tools import perplexifier
-
-
-def single_experiment_vars_filter(*args, **kwargs):
-    return list(map(str, args)) + list(map(str, kwargs.values()))
 
 
 def image_to_avg(num_cells_per_dim, image, noise=0, seed=42):
@@ -34,10 +30,10 @@ def fit_model(sub_cell_model, angle_threshold, refinement, avg_values):
     return model
 
 
-plx_fit_model = perplexifier(default_path=experiment_path)(fit_model)
+plx_fit_model = perplexifier(default_path=experiment_subdivision_path)(fit_model)
 
 
-@perplexifier(default_path=experiment_path,
+@perplexifier(default_path=experiment_subdivision_path,
               saver=lambda data, filepath: plt.imsave(filepath, data),
               loader=lambda filepath: load_image(filepath, other_path=""),
               file_format="png")
@@ -75,7 +71,7 @@ def obtain_image4error(shape, num_cells_per_dim, sub_discretization2bound_error,
     return true_reconstruction
 
 
-plx_obtain_image4error = perplexifier(default_path=experiment_path,
+plx_obtain_image4error = perplexifier(default_path=experiment_subdivision_path,
                                       saver=lambda data, filepath: plt.imsave(filepath, data),
                                       loader=lambda filepath: load_image(filepath, other_path=""),
                                       file_format="png")(obtain_image4error)
@@ -111,7 +107,7 @@ def efficient_reconstruction(model, avg_values, sub_discretization2bound_error, 
     return reconstruction
 
 
-plx_efficient_reconstruction = perplexifier(default_path=experiment_path,
+plx_efficient_reconstruction = perplexifier(default_path=experiment_subdivision_path,
                                             saver=lambda data, filepath: plt.imsave(filepath, data),
                                             loader=lambda filepath: load_image(filepath, other_path=""),
                                             file_format="png")(efficient_reconstruction)

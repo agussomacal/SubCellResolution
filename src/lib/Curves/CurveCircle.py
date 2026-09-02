@@ -13,7 +13,7 @@ def get_concavity(x_points, y):
 
 
 class CurveSemiCircle(Curve):
-    def __init__(self, params: CircleParams, value_up=0, value_down=1, concave=False):
+    def __init__(self, params: CircleParams, value_up=0, value_down=1, concave=False, curve_name=""):
         """
 
         :param params:
@@ -21,7 +21,7 @@ class CurveSemiCircle(Curve):
         :param value_down:
         :param concave: True if down semi-circle or positive curvature. False otherwise.
         """
-        super().__init__(value_up=value_up, value_down=value_down)
+        super().__init__(curve_name=curve_name, value_up=value_up, value_down=value_down)
         self.x0, self.y0, self.r = params
         self.concave = concave
 
@@ -71,9 +71,9 @@ class CurveSemiCircle(Curve):
 
 
 class CurveCircle(CurveSemiCircle):
-    def __init__(self, params: CircleParams, value_up=0, value_down=1):
+    def __init__(self, params: CircleParams, value_up=0, value_down=1, curve_name=""):
         # super().__init__(params=params, value_up=value_up, value_down=value_down)
-        super().__init__(params, value_up, value_down)
+        super().__init__(params=params, value_up=value_up, value_down=value_down, curve_name=curve_name)
         new_curve = CurveSemiCircle(params=params, value_down=value_down, value_up=value_up) - \
                     CurveSemiCircle(params=params, value_down=value_down, value_up=value_up, concave=True)
         setattr(self, "calculate_integrals", new_curve.calculate_integrals)

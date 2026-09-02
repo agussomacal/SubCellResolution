@@ -1,27 +1,24 @@
 import warnings
 from collections import defaultdict
 from pathlib import Path
-from typing import Tuple, Generator
 
-import matplotlib
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 
-from experiments.Refinement.ex_refinement_config import experiment_path, experiment_name, C_BLUE, C_PURPLE, C_RED, \
-    C_GREEN, C_ORANGE, C_OLIVE, C_GRAY, C_BLACK
-from experiments.Refinement.ex_refinement_convergence import get_label4plot, axis_font_dict, legend_font_dict, color
-from experiments.Refinement.ex_refinement_models_to_compare import aero_3, aero_linear, quadratic, cubic
+from experiments.Refinement.ex_refinement_config import experiment_subdivision_path, experiment_name, C_BLUE, C_PURPLE, \
+    C_RED, \
+    C_GREEN, C_ORANGE, C_OLIVE, axis_font_dict, legend_font_dict, color, experiment_labels_order
+from experiments.Refinement.ex_refinement_02_convergence import get_label4plot
+from experiments.Refinement.ex_refinement_models_to_compare import aero_linear, quadratic, cubic, elvira, \
+    quartic
 from experiments.Refinement.ex_refinement_singular_cells_connectivity import build_connected_singular_cell_graph
-from experiments.Refinement.ex_refinement_tools import plx_fit_model, plx_obtain_image4error, fit_model
-from experiments.global_params import cred
+from experiments.Refinement.ex_refinement_tools import fit_model
 from experiments.tools import calculate_averages_from_curve
 from lib.CellCreators.CellCreatorBase import REGULAR_CELL_TYPE
 from lib.Curves.CurveCircle import CurveCircle, CircleParams
 from lib.Curves.CurveTrigo import TrigoParams, CurveTrigo
 from perplexitylab.experiment_tools import experiment_iterator, concatenate_iterators, define_default_constants, \
     define_default_variables, perplexifier, do
-from perplexitylab.miscellaneous import filter_for_func
 from perplexitylab.plot_tools import save_figure, sorted_legend
 
 # 1680: 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 15, 16, 20, 21, 24, 28, 30, 35, 40, 42, 48, 56, 60, 70, 80, 84, 105, 120, 140, 168, 210, 240, 280, 336, 420, 560, 840, 1680
@@ -30,14 +27,7 @@ from perplexitylab.plot_tools import save_figure, sorted_legend
 
 file_format_data_to_plot = "csv"
 filename_data_to_plot = "PairwiseSlopesPlot"
-path_data_to_plot = f"{experiment_path}/{experiment_name}"
-
-# Reconstruction plot params
-matplotlib.rcParams['text.usetex'] = True
-curve_color = cred
-cmap_reconstruction = "Reds"
-cmap_true_image = "Greys_r"
-fig_size = (15, 15)
+path_data_to_plot = f"{experiment_subdivision_path}/{experiment_name}"
 
 
 def get_versor(cell, slope):
@@ -84,9 +74,9 @@ def get_triplewise_slope_versors(model, graph):
             range(len(graph) - 2)]
 
 
-@perplexifier(default_path=experiment_path)
-def single_experiment_continuity(shape, sub_cell_model, refinement, angle_threshold, num_cells_per_dim,
-                                 trim=((2, 2), (-2, -2))):
+@perplexifier(default_path=experiment_subdivision_path)
+def experiment_continuity(shape, sub_cell_model, refinement, angle_threshold, num_cells_per_dim,
+                          trim=((2, 2), (-2, -2))):
     avg_values = calculate_averages_from_curve(shape, (num_cells_per_dim, num_cells_per_dim))
 
     with warnings.catch_warnings():
@@ -121,9 +111,10 @@ if __name__ == "__main__":
                 CurveTrigo(params=TrigoParams(x0=0.5, y0=0.5, amplitude=0.1, frequency=1.)),
                 CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232))
             ],
-            # refinement=[1, 2, 3, 4, 5, 6, 7]
-            refinement=[1, 2, 3, 4]
-        ))
+            refinement=[1, 2, 3, 4, 5, 6]
+            # refinement=[1, 2, 3, ]
+        )
+    )
 
 
     def identifier(info):
@@ -131,9 +122,12 @@ if __name__ == "__main__":
 
 
     # ---------- Do experiments ---------- #
-    experiment_labels_order = ["AEROS linear", "AEROS quadratic", "AEROS cubic"]
 
     iterators = []
+    iterators.append(
+        iterator_builder(sub_cell_model=elvira, label="ELVIRA",
+                         angle_threshold=0, recalculate=False)
+    )
     iterators.append(
         iterator_builder(sub_cell_model=aero_linear, label="AEROS linear",
                          angle_threshold=45, recalculate=False)
@@ -146,12 +140,16 @@ if __name__ == "__main__":
         iterator_builder(sub_cell_model=cubic, label="AEROS cubic",
                          angle_threshold=45, recalculate=False)
     )
+    iterators.append(
+        iterator_builder(sub_cell_model=quartic, label="AEROS quartic",
+                         angle_threshold=45, recalculate=False)
+    )
 
     data = defaultdict(list)
     for experiment_info in concatenate_iterators(*iterators)():
         print("\n----------------------------------")
         print(identifier(experiment_info))
-        ordered_versors = do(single_experiment_continuity, experiment_info)
+        ordered_versors = do(experiment_continuity, experiment_info)
         data["pairwise_versors"].append(list(zip(ordered_versors[:-1], ordered_versors[1:])))
         data["triplewise_versors"].append(list(zip(ordered_versors[:-2], ordered_versors[1:-1], ordered_versors[2:])))
         data["label"].append(experiment_info.label)
@@ -172,10 +170,11 @@ if __name__ == "__main__":
         a2 = np.arccos(np.dot(pairwise_versors[0], -pairwise_versors[1]))
         return np.min((a1, a2)) * (1 if rad else 180 / np.pi)
 
-    def diff_angle_between_versors(triplewise_versors, rad=False, normalization=1,):
+
+    def diff_angle_between_versors(triplewise_versors, rad=False):
         a1 = angle_between_versors(triplewise_versors[:-1], rad=rad)
         a2 = angle_between_versors(triplewise_versors[1:], rad=rad)
-        return (a2-a1)/normalization
+        return np.abs((a2 - a1))
 
 
     metrics = {
@@ -193,18 +192,18 @@ if __name__ == "__main__":
     threshold_ref = 0
 
     for metric_name, metric in metrics.items():
+
+        # ------------- FIRST ORDER differences plot ------------- #
+        Y_VAR_NAME = "angle"
         for (shape, num_cells_per_dim), sub_df in df.groupby(["shape", "num_cells_per_dim"]):
             labels_order = experiment_labels_order.copy()
-
-            # ------------- FIRST ORDER differences plot ------------- #
-            Y_VAR_NAME = "angle"
-            with save_figure(filename=f"ContinuityConvergence_{shape}_{metric_name}", path=experiment_path,
+            with save_figure(filename=f"ContinuityConvergence_{shape}_{metric_name}", path=experiment_subdivision_path,
                              figsize=(16, 8), show=False) as (fig, ax):
                 sub_df = sub_df.groupby(["label", "refinement"]).apply(
                     lambda x: metric(
                         np.array(list(map(angle_between_versors, x["pairwise_versors"].values[0]))))).reset_index(
                     name=Y_VAR_NAME)
-                for (label,), df2plot in sub_df.groupby(["label"]):
+                for label, df2plot in sub_df.groupby(["label"]):
                     ref = df2plot["refinement"].copy()
                     valid_ix = ref >= threshold_ref
                     # rate, origin = np.ravel(np.linalg.lstsq(
@@ -249,15 +248,20 @@ if __name__ == "__main__":
                 ax.set_xlim((0, None))
                 fig.tight_layout()
 
-            # ------------- FIRST ORDER differences plot ------------- #
-            Y_VAR_NAME = "angle difference"
-            with save_figure(filename=f"Continuity2ndOrderConvergence_{shape}_{metric_name}", path=experiment_path,
+        # ------------- FIRST ORDER differences plot ------------- #
+        Y_VAR_NAME = "angle difference"
+        for (shape, num_cells_per_dim), sub_df in df.groupby(["shape", "num_cells_per_dim"]):
+            labels_order = experiment_labels_order.copy()
+            with save_figure(filename=f"Continuity2ndOrderConvergence_{shape}_{metric_name}",
+                             path=experiment_subdivision_path,
                              figsize=(16, 8), show=False) as (fig, ax):
                 sub_df = sub_df.groupby(["label", "refinement"]).apply(
                     lambda x: metric(
-                        np.array(list(map(diff_angle_between_versors, x["triplewise_versors"].values[0]))))).reset_index(
+                        np.array(
+                            list(map(diff_angle_between_versors, x["triplewise_versors"].values[0]))))).reset_index(
                     name=Y_VAR_NAME)
-                for (label,), df2plot in sub_df.groupby(["label"]):
+                # sub_df[Y_VAR_NAME] /= sub_df["refinement"]
+                for label, df2plot in sub_df.groupby(["label"]):
                     ref = df2plot["refinement"].copy()
                     valid_ix = ref >= threshold_ref
                     # rate, origin = np.ravel(np.linalg.lstsq(
@@ -315,7 +319,7 @@ if __name__ == "__main__":
     }
 
     for shape, sub_df in df.groupby("shape"):
-        with save_figure(filename=f"HistogramContinuity_{shape}", path=experiment_path, figsize=(16, 8),
+        with save_figure(filename=f"HistogramContinuity_{shape}", path=experiment_subdivision_path, figsize=(16, 8),
                          show=False) as (
                 fig, ax):
             sub_df["label_plot"] = sub_df.apply(

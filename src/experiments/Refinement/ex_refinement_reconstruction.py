@@ -3,7 +3,7 @@ from pathlib import Path
 import matplotlib
 
 from experiments.OtherExperiments.SubcellExperiments.models2compare import quadratic, aero_linear, elvira
-from experiments.Refinement.ex_refinement_config import experiment_path
+from experiments.Refinement.ex_refinement_config import experiment_subdivision_path
 from experiments.Refinement.ex_refinement_tools import image_to_avg, do_reconstruction, fit_model
 from experiments.global_params import cred
 from experiments.tools import load_image
@@ -66,7 +66,7 @@ if __name__ == "__main__":
                                                        recalculate=experiment_info.recalculate,
                                                        image=image, model=model,
                                                        reconstruction_factor=experiment_info.reconstruction_factor)
-        with save_figure(filename=identifier(experiment_info), path=experiment_path, figsize=fig_size,
+        with save_figure(filename=identifier(experiment_info), path=experiment_subdivision_path, figsize=fig_size,
                          show=False) as (fig, ax):
             plot_reconstruction4img(
                 fig=fig, ax=ax,

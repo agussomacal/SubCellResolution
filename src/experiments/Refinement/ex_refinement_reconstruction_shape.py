@@ -6,8 +6,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from experiments.OtherExperiments.SubcellExperiments.models2compare import quadratic, aero_linear
-from experiments.Refinement.ex_refinement_config import experiment_path
-from experiments.Refinement.ex_refinement_convergence import get_label4plot
+from experiments.Refinement.ex_refinement_config import experiment_subdivision_path
+from experiments.Refinement.ex_refinement_02_convergence import get_label4plot
 from experiments.Refinement.ex_refinement_tools import do_reconstruction, fit_model, plx_fit_model, obtain_image4error, \
     plx_obtain_image4error, efficient_reconstruction, plx_efficient_reconstruction
 from experiments.VizReconstructionUtils import plot_cells, plot_cells_vh_classification_core, \
@@ -186,7 +186,7 @@ if __name__ == "__main__":
             do_efficient_reconstruction=True,
             **filter_for_func(single_experiment_reconstruction_shape, experiment_info._asdict())
         )
-        with save_figure(filename=identifier(experiment_info), path=experiment_path, figsize=fig_size,
+        with save_figure(filename=identifier(experiment_info), path=experiment_subdivision_path, figsize=fig_size,
                          show=False, format="svg") as (fig, ax):
             ax.set_title(get_label4plot(experiment_info.label, experiment_info.refinement))
             plot_reconstruction4shape(

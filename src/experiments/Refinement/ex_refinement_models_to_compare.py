@@ -248,7 +248,7 @@ def cubic(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=
     )
 
 
-def AEROS4(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=45, *args, **kwargs):
+def quartic(smoothness_calculator=naive_piece_wise, refinement=1, angle_threshold=45, *args, **kwargs):
     return SubCellReconstruction(
         name="All",
         smoothness_calculator=smoothness_calculator,
