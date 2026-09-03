@@ -66,13 +66,15 @@ def fit_model(sub_cell_model):
 
 
 def plot_reconstruction4img(fig, ax, image, num_cells_per_dim, model, reconstruction,
-                            alpha=0.5, alpha_true_image=0.5, difference=False, plot_curve=True, plot_curve_winner=False,
+                            alpha=0.5, alpha_true_image=0.5, alpha_vh=0.4,
+                            difference=False, plot_curve=True,
+                            plot_curve_winner=False,
                             plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
                             cmap_true_image="Greys_r", draw_mesh=True,
                             trim=((0, 1), (0, 1)), default_linewidth=2,
                             numbers_on=True, vmin=None, vmax=None, labels=True, curve_color=None):
     model_resolution = np.array(model.resolution)
-    image = load_image(image)
+    image = load_image(image) if isinstance(image, str) else image
 
     if alpha_true_image > 0:
         plot_cells(ax, colors=image, mesh_shape=model_resolution, alpha=alpha_true_image, cmap=cmap_true_image,
@@ -97,14 +99,15 @@ def plot_reconstruction4img(fig, ax, image, num_cells_per_dim, model, reconstruc
                        vmax=np.max(reconstruction) if vmax is None else vmax,
                        labels=labels)
 
+    if plot_curve_winner:
+        # plot_cells_identity(ax, model.resolution, model.cells, alpha=0.8, color_dict=winner_color_dict)
+        plot_cells_type_of_curve_core(ax, model.resolution, model.cells, alpha=0.8)
+    elif plot_vh_classification:
+        plot_cells_vh_classification_core(ax, model.resolution, model.cells, color_border_only=False, alpha=alpha_vh)
+    elif plot_singular_cells:
+        plot_cells_not_regular_classification_core(ax, model.resolution, model.cells, alpha=0.8)
+
     if plot_curve:
-        if plot_curve_winner:
-            # plot_cells_identity(ax, model.resolution, model.cells, alpha=0.8, color_dict=winner_color_dict)
-            plot_cells_type_of_curve_core(ax, model.resolution, model.cells, alpha=0.8)
-        elif plot_vh_classification:
-            plot_cells_vh_classification_core(ax, model.resolution, model.cells, alpha=0.8)
-        elif plot_singular_cells:
-            plot_cells_not_regular_classification_core(ax, model.resolution, model.cells, alpha=0.8)
         plot_curve_core(ax, curve_cells=[cell for cell in model.cells.values() if
                                          cell.CELL_TYPE != REGULAR_CELL_TYPE],
                         default_linewidth=default_linewidth * 1.5,
@@ -119,9 +122,6 @@ def plot_reconstruction4img(fig, ax, image, num_cells_per_dim, model, reconstruc
             mesh_style=":"
         )
 
-    ax.set_ylim((model.resolution[1] - trim[0][1] - 0.5, -0.5 + trim[0][0]))
-    ax.set_xlim((trim[1][0] - 0.5, model.resolution[0] - trim[1][1] - 0.5))
-
     draw_numbers(
         ax, mesh_shape=num_cells_per_dim,
         refinement=model_resolution // num_cells_per_dim,
@@ -131,6 +131,9 @@ def plot_reconstruction4img(fig, ax, image, num_cells_per_dim, model, reconstruc
 
     if not numbers_on:
         plt.box(False)
+
+    ax.set_ylim((model.resolution[1] - trim[0][1] - 0.5, -0.5 + trim[0][0]))
+    ax.set_xlim((trim[1][0] - 0.5, model.resolution[0] - trim[1][1] - 0.5))
 
 
 plx_plot_reconstruction4img = perplex_plot(legend=False)(one_line_iterator(plot_reconstruction4img))

@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from experiments.Refinement.ex_refinement_01_test_cases import shapes, get_shape_key, shape_names_for_label_plots
-from experiments.Refinement.ex_refinement_config import experiment_subdivision_path, experiment_name, axis_font_dict, \
+from experiments.Refinement.ex_refinement_config import experiment_subdivision_path, axis_font_dict, \
     legend_font_dict, line_style, marker_style, color, experiment_labels_order
 from experiments.Refinement.ex_refinement_models_to_compare import quadratic, aero_linear, elvira, cubic, \
     quartic
