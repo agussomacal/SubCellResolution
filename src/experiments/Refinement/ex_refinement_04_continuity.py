@@ -5,10 +5,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from experiments.Refinement.ex_refinement_config import experiment_subdivision_path, experiment_name, C_BLUE, C_PURPLE, \
-    C_RED, \
-    C_GREEN, C_ORANGE, C_OLIVE, axis_font_dict, legend_font_dict, color, experiment_labels_order
-from experiments.Refinement.ex_refinement_02_convergence import get_label4plot
+from experiments.Refinement.ex_refinement_config import experiment_subdivision_path, axis_font_dict, legend_font_dict, \
+    color, experiment_labels_order
 from experiments.Refinement.ex_refinement_models_to_compare import aero_linear, quadratic, cubic, elvira, \
     quartic
 from experiments.Refinement.ex_refinement_singular_cells_connectivity import build_connected_singular_cell_graph
@@ -24,12 +22,12 @@ from perplexitylab.plot_tools import save_figure, sorted_legend
 # 1680: 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 15, 16, 20, 21, 24, 28, 30, 35, 40, 42, 48, 56, 60, 70, 80, 84, 105, 120, 140, 168, 210, 240, 280, 336, 420, 560, 840, 1680
 # divisors = [i for i in range(1, n+1) if n % i == 0]
 
+# --------- PATHs to experiment --------- #
+experiment_path = experiment_subdivision_path.joinpath("Continuity")
+experiment_path.mkdir(parents=True, exist_ok=True)
 
-file_format_data_to_plot = "csv"
-filename_data_to_plot = "PairwiseSlopesPlot"
-path_data_to_plot = f"{experiment_subdivision_path}/{experiment_name}"
 
-
+# --------- Auxiliary functions --------- #
 def get_versor(cell, slope):
     vec = [0, 0]
     vec[cell.independent_axis] = 1
@@ -74,7 +72,7 @@ def get_triplewise_slope_versors(model, graph):
             range(len(graph) - 2)]
 
 
-@perplexifier(default_path=experiment_subdivision_path)
+@perplexifier(default_path=experiment_path)
 def experiment_continuity(shape, sub_cell_model, refinement, angle_threshold, num_cells_per_dim,
                           trim=((2, 2), (-2, -2))):
     avg_values = calculate_averages_from_curve(shape, (num_cells_per_dim, num_cells_per_dim))
@@ -197,7 +195,7 @@ if __name__ == "__main__":
         Y_VAR_NAME = "angle"
         for (shape, num_cells_per_dim), sub_df in df.groupby(["shape", "num_cells_per_dim"]):
             labels_order = experiment_labels_order.copy()
-            with save_figure(filename=f"ContinuityConvergence_{shape}_{metric_name}", path=experiment_subdivision_path,
+            with save_figure(filename=f"ContinuityConvergence_{shape}_{metric_name}", path=experiment_path,
                              figsize=(16, 8), show=False) as (fig, ax):
                 sub_df = sub_df.groupby(["label", "refinement"]).apply(
                     lambda x: metric(
@@ -206,18 +204,15 @@ if __name__ == "__main__":
                 for label, df2plot in sub_df.groupby(["label"]):
                     ref = df2plot["refinement"].copy()
                     valid_ix = ref >= threshold_ref
-                    # rate, origin = np.ravel(np.linalg.lstsq(
-                    #     np.vstack([np.log(ref[valid_ix]), np.ones(np.sum(valid_ix))]).T,
-                    #     np.log(df2plot[Y_VAR_NAME].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
-                    # label_plot_rate = fr"{label}: $1/h={num_cells_per_dim}$: $\cal{{O}}$({abs(rate):.1f})"
-
-                    ref = df2plot["refinement"].copy()
                     rate, origin = np.ravel(np.linalg.lstsq(
                         np.vstack([ref[valid_ix], np.ones(np.sum(valid_ix))]).T,
                         np.log2(df2plot[Y_VAR_NAME].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
+                    r = abs(rate) - 1
+                    r = abs(rate)
+                    # label_plot_rate = fr"{label}: $1/h={num_cells_per_dim}$: $\cal{{O}}$({abs(rate):.1f})"
 
                     # plot points
-                    label4plot = fr"{label}: $r={abs(rate):.1f}$"
+                    label4plot = fr"{label}: $r={r:.1f}$"
                     labels_order[experiment_labels_order.index(label)] = label4plot  # replaces with the plot label
                     ax.plot(df2plot["refinement"], df2plot[Y_VAR_NAME], marker="o",
                             label=label4plot,
@@ -253,7 +248,7 @@ if __name__ == "__main__":
         for (shape, num_cells_per_dim), sub_df in df.groupby(["shape", "num_cells_per_dim"]):
             labels_order = experiment_labels_order.copy()
             with save_figure(filename=f"Continuity2ndOrderConvergence_{shape}_{metric_name}",
-                             path=experiment_subdivision_path,
+                             path=experiment_path,
                              figsize=(16, 8), show=False) as (fig, ax):
                 sub_df = sub_df.groupby(["label", "refinement"]).apply(
                     lambda x: metric(
@@ -264,18 +259,15 @@ if __name__ == "__main__":
                 for label, df2plot in sub_df.groupby(["label"]):
                     ref = df2plot["refinement"].copy()
                     valid_ix = ref >= threshold_ref
-                    # rate, origin = np.ravel(np.linalg.lstsq(
-                    #     np.vstack([np.log(ref[valid_ix]), np.ones(np.sum(valid_ix))]).T,
-                    #     np.log(df2plot[Y_VAR_NAME].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
-                    # label_plot_rate = fr"{label}: $1/h={num_cells_per_dim}$: $\cal{{O}}$({abs(rate):.1f})"
-
-                    ref = df2plot["refinement"].copy()
                     rate, origin = np.ravel(np.linalg.lstsq(
                         np.vstack([ref[valid_ix], np.ones(np.sum(valid_ix))]).T,
                         np.log2(df2plot[Y_VAR_NAME].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
+                    r = abs(rate) - 1
+                    r = abs(rate)
+                    # label_plot_rate = fr"{label}: $1/h={num_cells_per_dim}$: $\cal{{O}}$({r:.1f})"
 
                     # plot points
-                    label4plot = fr"{label}: $r={abs(rate):.1f}$"
+                    label4plot = fr"{label}: $r={r:.1f}$"
                     labels_order[experiment_labels_order.index(label)] = label4plot  # replaces with the plot label
                     ax.plot(df2plot["refinement"], df2plot[Y_VAR_NAME], marker="o",
                             label=label4plot,
@@ -306,48 +298,47 @@ if __name__ == "__main__":
                 ax.set_xlim((0, None))
                 fig.tight_layout()
 
-    # exit()
     # ---------------------------------------------------------- #
     # Continuity histogram
-    color = {
-        1: C_GREEN,
-        2: C_BLUE,
-        3: C_PURPLE,
-        4: C_RED,
-        5: C_ORANGE,
-        6: C_OLIVE,
-    }
-
-    for shape, sub_df in df.groupby("shape"):
-        with save_figure(filename=f"HistogramContinuity_{shape}", path=experiment_subdivision_path, figsize=(16, 8),
-                         show=False) as (
-                fig, ax):
-            sub_df["label_plot"] = sub_df.apply(
-                lambda x: get_label4plot(x["label"], x["refinement"]),
-                axis=1)
-
-            for (label_plot, label, refinement), df4plot in sub_df.groupby(["label_plot", "label", "refinement"]):
-                angles = np.array(list(map(angle_between_versors, df4plot["pairwise_versors"].values[0])))
-                angles = angles[angles > 1e-4]
-                hist, bins = np.histogram(angles, bins=int(np.sqrt(len(angles))))
-                logbins = np.logspace(np.log10(bins[0]), np.log10(bins[-1]), len(bins))
-                ax.hist(angles, bins=logbins, color=color[refinement], label=label_plot, alpha=0.5, log=True)
-                # plt.hist(angles, color=color[refinement], label=label_plot, alpha=0.5, log=True)
-                ax.axvline(np.nanmedian(angles), color=color[refinement], linestyle="dashed", linewidth=2)
-
-            ax.set_xscale("log")
-            ax.set_yscale("log")
-
-            xticks = [6, 3, 1, 0.5, 0.1]
-            # ax.set_xlim((int(min(xticks) * 0.9), int(max(xticks) * 1.1)))
-            ax.set_xticks(xticks, labels=xticks)
-            ax.grid(True)
-
-            ax.set_title(shape)
-            ax.set_xlabel(r"Angle difference (deg)", fontdict=axis_font_dict)
-            ax.set_ylabel("Counts", fontdict=axis_font_dict)
-            ax.legend(prop=legend_font_dict, loc='upper left', bbox_to_anchor=(1, 1))
-            ax.tick_params(labelsize=axis_font_dict["size"])
-            # ax.set_ylim((1e-7, 1e-1))
-            # ax.set_xlim((0, None))
-            fig.tight_layout()
+    # color = {
+    #     1: C_GREEN,
+    #     2: C_BLUE,
+    #     3: C_PURPLE,
+    #     4: C_RED,
+    #     5: C_ORANGE,
+    #     6: C_OLIVE,
+    # }
+    #
+    # for shape, sub_df in df.groupby("shape"):
+    #     with save_figure(filename=f"HistogramContinuity_{shape}", path=experiment_path, figsize=(16, 8),
+    #                      show=False) as (
+    #             fig, ax):
+    #         sub_df["label_plot"] = sub_df.apply(
+    #             lambda x: get_label4plot(x["label"], x["refinement"]),
+    #             axis=1)
+    #
+    #         for (label_plot, label, refinement), df4plot in sub_df.groupby(["label_plot", "label", "refinement"]):
+    #             angles = np.array(list(map(angle_between_versors, df4plot["pairwise_versors"].values[0])))
+    #             angles = angles[angles > 1e-4]
+    #             hist, bins = np.histogram(angles, bins=int(np.sqrt(len(angles))))
+    #             logbins = np.logspace(np.log10(bins[0]), np.log10(bins[-1]), len(bins))
+    #             ax.hist(angles, bins=logbins, color=color[refinement], label=label_plot, alpha=0.5, log=True)
+    #             # plt.hist(angles, color=color[refinement], label=label_plot, alpha=0.5, log=True)
+    #             ax.axvline(np.nanmedian(angles), color=color[refinement], linestyle="dashed", linewidth=2)
+    #
+    #         ax.set_xscale("log")
+    #         ax.set_yscale("log")
+    #
+    #         xticks = [6, 3, 1, 0.5, 0.1]
+    #         # ax.set_xlim((int(min(xticks) * 0.9), int(max(xticks) * 1.1)))
+    #         ax.set_xticks(xticks, labels=xticks)
+    #         ax.grid(True)
+    #
+    #         ax.set_title(shape)
+    #         ax.set_xlabel(r"Angle difference (deg)", fontdict=axis_font_dict)
+    #         ax.set_ylabel("Counts", fontdict=axis_font_dict)
+    #         ax.legend(prop=legend_font_dict, loc='upper left', bbox_to_anchor=(1, 1))
+    #         ax.tick_params(labelsize=axis_font_dict["size"])
+    #         # ax.set_ylim((1e-7, 1e-1))
+    #         # ax.set_xlim((0, None))
+    #         fig.tight_layout()
