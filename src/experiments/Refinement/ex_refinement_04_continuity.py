@@ -236,7 +236,7 @@ if __name__ == "__main__":
                 ax.set_title(fr"{shape} and metric {metric_names[metric_name]} $1/h={num_cells_per_dim}$")
                 ax.set_xlabel(r"Number of subdivisions", fontdict=axis_font_dict)
                 ax.set_ylabel(fr"{metric_names[metric_name]} angle (deg)", fontdict=axis_font_dict)
-                sorted_legend(ax, labels_order, prop=legend_font_dict, loc='upper left', bbox_to_anchor=(1, 1))
+                sorted_legend(ax, labels_order, prop=legend_font_dict, loc='lower left')
 
                 ax.tick_params(labelsize=axis_font_dict["size"])
                 # ax.set_ylim((1e-7, 1e-1))
@@ -291,7 +291,7 @@ if __name__ == "__main__":
                 ax.set_title(fr"{shape} and metric {metric_names[metric_name]} $1/h={num_cells_per_dim}$")
                 ax.set_xlabel(r"Number of subdivisions", fontdict=axis_font_dict)
                 ax.set_ylabel(fr"{metric_names[metric_name]} angle difference (deg)", fontdict=axis_font_dict)
-                sorted_legend(ax, labels_order, prop=legend_font_dict, loc='upper left', bbox_to_anchor=(1, 1))
+                sorted_legend(ax, labels_order, prop=legend_font_dict, loc='lower left')
 
                 ax.tick_params(labelsize=axis_font_dict["size"])
                 # ax.set_ylim((1e-7, 1e-1))

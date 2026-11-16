@@ -43,7 +43,7 @@ if __name__ == "__main__":
                                            # sub_discretization2bound_error=2 * 2 * 3,
                                            p=1, recalculate_inner_funcs=False, evaluation_mode=False),
         variables=define_default_variables(
-            num_cells_per_dim=[40],
+            num_cells_per_dim=[40, 20],
             shape=[
                 # shapes["Sinusoidal-horizon"],
                 shapes["Circle"],
@@ -93,6 +93,8 @@ if __name__ == "__main__":
         for name, plot_curve, plot_vh_classification in [("VH_classification", False, True), ("Curve", True, False)]:
             with save_figure(filename=f"{name}_{identifier(experiment_info)}", path=experiment_path, figsize=fig_size,
                              show=False) as (fig, ax):
+                trim = (np.array(((16, 9), (15, 10))) * experiment_info.num_cells_per_dim) / 40
+                trim *= 2 ** experiment_info.refinement
                 plot_reconstruction4img(
                     fig=fig, ax=ax,
                     image=true_reconstruction,
@@ -108,12 +110,12 @@ if __name__ == "__main__":
                     alpha=0,
                     # trim=((1, 1), (2, 2)),
                     # trim=np.array(((10, 9), (9, 10))) * experiment_info.refinement,
-                    trim=np.array(((16, 9), (15, 10))) * 2 ** experiment_info.refinement,
+                    trim=trim,
                     cmap=cmap_reconstruction,
                     cmap_true_image=cmap_true_image,
                     curve_color=curve_color,
                     vmin=0, vmax=1,
                     labels=False,
                     draw_mesh=True,
-                    numbers_on=True,
+                    numbers_on=False,
                 )
