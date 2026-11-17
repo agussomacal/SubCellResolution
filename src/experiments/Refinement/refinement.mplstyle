@@ -9,4 +9,5 @@ ytick.labelsize: 16
 axes.spines.right: False
 axes.spines.top: False
 text.usetex: True
+text.latex.preamble: \usepackage{amsmath}\usepackage{amssymb}
 font.family: amssymb

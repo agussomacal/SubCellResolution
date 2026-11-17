@@ -174,4 +174,30 @@ if __name__ == "__main__":
             # ax.set_ylim((1e-7, 1e-1))
             fig.tight_layout()
 
-        pd.DataFrame.from_dict(convergence_rates).to_csv(f"{experiment_path}/{shape_name}_convergence_rates.csv")
+        table = pd.DataFrame.from_dict(convergence_rates)
+        table["rate"] = np.round(table["rate"], 1)
+
+        # 1. Convert to categorical using your custom order
+        table["label"] = pd.Categorical(table["label"], categories=experiment_labels_order, ordered=True)
+
+        # 2. Sort the DataFrame FIRST while "label" still exists
+        table = table.sort_values("label").reset_index(drop=True)
+
+        # 3. Rename/reorder columns AFTER sorting is finished
+        table["method"] = table["label"]
+        table = table[["method", "subdivisions", "rate"]]
+
+        csv_table_filename = f"{experiment_path}/{shape_name}_convergence_rates.csv"
+        table.to_csv(csv_table_filename, index=False)
+
+        # Convert dataframe to a LaTeX table string
+        latex_code = table.to_latex(
+            index=False,
+            escape=True,
+            caption=f"Convergence rates for {shape_names_for_label_plots[shape_name]}",
+            label=f"tab:{shape_names_for_label_plots[shape_name]}"
+        )
+
+        # Save it to a .tex file to \input{} into your main document
+        with open(f"{experiment_path}/{shape_name}_convergence_rates.tex", "w") as f:
+            f.write(latex_code)

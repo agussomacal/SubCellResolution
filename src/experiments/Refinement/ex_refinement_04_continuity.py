@@ -5,8 +5,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from experiments.Refinement.ex_refinement_config import experiment_subdivision_path, axis_font_dict, legend_font_dict, \
-    color, experiment_labels_order
 from experiments.Refinement.ex_refinement_models_to_compare import aero_linear, quadratic, cubic, elvira, \
     quartic
 from experiments.Refinement.ex_refinement_singular_cells_connectivity import build_connected_singular_cell_graph
@@ -19,6 +17,8 @@ from perplexitylab.experiment_tools import experiment_iterator, concatenate_iter
     define_default_variables, perplexifier, do
 from perplexitylab.plot_tools import save_figure, sorted_legend
 
+from experiments.Refinement.ex_refinement_config import experiment_subdivision_path, axis_font_dict, legend_font_dict, \
+    color, experiment_labels_order
 # 1680: 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 15, 16, 20, 21, 24, 28, 30, 35, 40, 42, 48, 56, 60, 70, 80, 84, 105, 120, 140, 168, 210, 240, 280, 336, 420, 560, 840, 1680
 # divisors = [i for i in range(1, n+1) if n % i == 0]
 
@@ -189,6 +189,12 @@ if __name__ == "__main__":
     linestyle = defaultdict(lambda: "solid")
     threshold_ref = 0
 
+    # Define a clean mapping or helper for shape names
+    shape_display_names = {
+        str(CurveTrigo(params=TrigoParams(x0=0.5, y0=0.5, amplitude=0.1, frequency=1.))): "Trigonometric Curve",
+        str(CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232))): "Circle"
+    }
+
     for metric_name, metric in metrics.items():
 
         # ------------- FIRST ORDER differences plot ------------- #
@@ -212,10 +218,10 @@ if __name__ == "__main__":
                     # label_plot_rate = fr"{label}: $1/h={num_cells_per_dim}$: $\cal{{O}}$({abs(rate):.1f})"
 
                     # plot points
-                    label4plot = fr"{label}: $r={r:.1f}$"
+                    label4plot = f"{label}: $r={r:.1f}$"
                     labels_order[experiment_labels_order.index(label)] = label4plot  # replaces with the plot label
                     ax.plot(df2plot["refinement"], df2plot[Y_VAR_NAME], marker="o",
-                            label=label4plot,
+                            label=fr"{label4plot}",
                             color=color[label], linestyle=linestyle[num_cells_per_dim])
                     # plot fitting line
                     # ax.plot(ref, 2 ** (origin + rate * ref),
@@ -233,7 +239,12 @@ if __name__ == "__main__":
                 ax.set_xticks(xticks, labels=list(map(str, np.array(xticks) - 1)))
                 ax.grid(True)
 
-                ax.set_title(fr"{shape} and metric {metric_names[metric_name]} $1/h={num_cells_per_dim}$")
+                shape_title = "Trigonometric Curve" if "Trigo" in shape else "Circle"
+                # ax.set_title(f"{shape_title} — {metric_names[metric_name]} ($1/h={num_cells_per_dim}$)")
+                title = f"{shape_title} — {metric_names[metric_name]} ($1/h={num_cells_per_dim}$)"
+                ax.set_title(fr"{title}")
+
+                # ax.set_title(fr"{shape} and metric {metric_names[metric_name]} $1/h={num_cells_per_dim}$")
                 ax.set_xlabel(r"Number of subdivisions", fontdict=axis_font_dict)
                 ax.set_ylabel(fr"{metric_names[metric_name]} angle (deg)", fontdict=axis_font_dict)
                 sorted_legend(ax, labels_order, prop=legend_font_dict, loc='lower left')
@@ -244,59 +255,59 @@ if __name__ == "__main__":
                 fig.tight_layout()
 
         # ------------- FIRST ORDER differences plot ------------- #
-        Y_VAR_NAME = "angle difference"
-        for (shape, num_cells_per_dim), sub_df in df.groupby(["shape", "num_cells_per_dim"]):
-            labels_order = experiment_labels_order.copy()
-            with save_figure(filename=f"Continuity2ndOrderConvergence_{shape}_{metric_name}",
-                             path=experiment_path,
-                             figsize=(16, 8), show=False) as (fig, ax):
-                sub_df = sub_df.groupby(["label", "refinement"]).apply(
-                    lambda x: metric(
-                        np.array(
-                            list(map(diff_angle_between_versors, x["triplewise_versors"].values[0]))))).reset_index(
-                    name=Y_VAR_NAME)
-                # sub_df[Y_VAR_NAME] /= sub_df["refinement"]
-                for label, df2plot in sub_df.groupby(["label"]):
-                    ref = df2plot["refinement"].copy()
-                    valid_ix = ref >= threshold_ref
-                    rate, origin = np.ravel(np.linalg.lstsq(
-                        np.vstack([ref[valid_ix], np.ones(np.sum(valid_ix))]).T,
-                        np.log2(df2plot[Y_VAR_NAME].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
-                    r = abs(rate) - 1
-                    r = abs(rate)
-                    # label_plot_rate = fr"{label}: $1/h={num_cells_per_dim}$: $\cal{{O}}$({r:.1f})"
-
-                    # plot points
-                    label4plot = fr"{label}: $r={r:.1f}$"
-                    labels_order[experiment_labels_order.index(label)] = label4plot  # replaces with the plot label
-                    ax.plot(df2plot["refinement"], df2plot[Y_VAR_NAME], marker="o",
-                            label=label4plot,
-                            color=color[label], linestyle=linestyle[num_cells_per_dim])
-                    # plot fitting line
-                    # ax.plot(ref, 2 ** (origin + rate * ref),
-                    #         color=C_BLACK, linestyle=linestyle[num_cells_per_dim], linewidth=1.5,
-                    #         label=fr"Exponential fit: $r={abs(rate):.1f}$")
-
-                # ax.set_xscale("log")
-                ax.set_yscale("log")
-
-                yticks = [6, 3, 1, 0.5, 0.1]
-                # ax.set_xlim((int(min(xticks) * 0.9), int(max(xticks) * 1.1)))
-                ax.set_yticks(yticks, labels=yticks)
-
-                xticks = sorted(pd.unique(sub_df["refinement"]))
-                ax.set_xticks(xticks, labels=list(map(str, np.array(xticks) - 1)))
-                ax.grid(True)
-
-                ax.set_title(fr"{shape} and metric {metric_names[metric_name]} $1/h={num_cells_per_dim}$")
-                ax.set_xlabel(r"Number of subdivisions", fontdict=axis_font_dict)
-                ax.set_ylabel(fr"{metric_names[metric_name]} angle difference (deg)", fontdict=axis_font_dict)
-                sorted_legend(ax, labels_order, prop=legend_font_dict, loc='lower left')
-
-                ax.tick_params(labelsize=axis_font_dict["size"])
-                # ax.set_ylim((1e-7, 1e-1))
-                ax.set_xlim((0, None))
-                fig.tight_layout()
+        # Y_VAR_NAME = "angle difference"
+        # for (shape, num_cells_per_dim), sub_df in df.groupby(["shape", "num_cells_per_dim"]):
+        #     labels_order = experiment_labels_order.copy()
+        #     with save_figure(filename=f"Continuity2ndOrderConvergence_{shape}_{metric_name}",
+        #                      path=experiment_path,
+        #                      figsize=(16, 8), show=False) as (fig, ax):
+        #         sub_df = sub_df.groupby(["label", "refinement"]).apply(
+        #             lambda x: metric(
+        #                 np.array(
+        #                     list(map(diff_angle_between_versors, x["triplewise_versors"].values[0]))))).reset_index(
+        #             name=Y_VAR_NAME)
+        #         # sub_df[Y_VAR_NAME] /= sub_df["refinement"]
+        #         for label, df2plot in sub_df.groupby(["label"]):
+        #             ref = df2plot["refinement"].copy()
+        #             valid_ix = ref >= threshold_ref
+        #             rate, origin = np.ravel(np.linalg.lstsq(
+        #                 np.vstack([ref[valid_ix], np.ones(np.sum(valid_ix))]).T,
+        #                 np.log2(df2plot[Y_VAR_NAME].values[valid_ix]).reshape((-1, 1)), rcond=None)[0])
+        #             r = abs(rate) - 1
+        #             r = abs(rate)
+        #             # label_plot_rate = fr"{label}: $1/h={num_cells_per_dim}$: $\cal{{O}}$({r:.1f})"
+        #
+        #             # plot points
+        #             label4plot = fr"{label}: $r={r:.1f}$"
+        #             labels_order[experiment_labels_order.index(label)] = label4plot  # replaces with the plot label
+        #             ax.plot(df2plot["refinement"], df2plot[Y_VAR_NAME], marker="o",
+        #                     label=label4plot,
+        #                     color=color[label], linestyle=linestyle[num_cells_per_dim])
+        #             # plot fitting line
+        #             # ax.plot(ref, 2 ** (origin + rate * ref),
+        #             #         color=C_BLACK, linestyle=linestyle[num_cells_per_dim], linewidth=1.5,
+        #             #         label=fr"Exponential fit: $r={abs(rate):.1f}$")
+        #
+        #         # ax.set_xscale("log")
+        #         ax.set_yscale("log")
+        #
+        #         yticks = [6, 3, 1, 0.5, 0.1]
+        #         # ax.set_xlim((int(min(xticks) * 0.9), int(max(xticks) * 1.1)))
+        #         ax.set_yticks(yticks, labels=yticks)
+        #
+        #         xticks = sorted(pd.unique(sub_df["refinement"]))
+        #         ax.set_xticks(xticks, labels=list(map(str, np.array(xticks) - 1)))
+        #         ax.grid(True)
+        #
+        #         ax.set_title(fr"{shape} and metric {metric_names[metric_name]} $1/h={num_cells_per_dim}$")
+        #         ax.set_xlabel(r"Number of subdivisions", fontdict=axis_font_dict)
+        #         ax.set_ylabel(fr"{metric_names[metric_name]} angle difference (deg)", fontdict=axis_font_dict)
+        #         sorted_legend(ax, labels_order, prop=legend_font_dict, loc='lower left')
+        #
+        #         ax.tick_params(labelsize=axis_font_dict["size"])
+        #         # ax.set_ylim((1e-7, 1e-1))
+        #         ax.set_xlim((0, None))
+        #         fig.tight_layout()
 
     # ---------------------------------------------------------- #
     # Continuity histogram
