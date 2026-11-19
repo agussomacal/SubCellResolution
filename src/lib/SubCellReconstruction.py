@@ -250,18 +250,6 @@ class SubCellReconstruction:
             smoothness_index = self.smoothness_calculator(average_values, indexer)
             reconstruction_error = np.inf * np.ones(np.shape(smoothness_index))  # everything to be improved
 
-            # thr = [0] + np.logspace(-5, 0, num=5).tolist()
-            # num = [np.sum(np.array(list({coords.tuple: self.cell_classifier(
-            #         coords=coords, average_values=average_values,
-            #         smoothness_index=smoothness_index,
-            #         indexer=indexer,
-            #         cell_creators=self.cell_creators,
-            #         damping=np.array([1, 1, v])) for coords in iterate_all(smoothness_index)}.values())) == 3) for v in thr]
-            # # for debug
-            # c = np.zeros((30, 30))
-            # for k, v in cell_classification.items():
-            #     c[k] = v[0]
-
             # TODO: harcoded damping 1e-4 to penalize vertex classification
             # To penalize if models tend to to predict vertex too much
             cell_classification = {coords.tuple: self.cell_classifier(
@@ -282,6 +270,7 @@ class SubCellReconstruction:
                     # if self.refinement > 1: warning("Time calculations won't be correct if refinement > 1")
                     t0 = time.time()
 
+                    # TODO: new orientations in case of constrained overrides orientation test in refinement
                     axis3try = cell_creator.orientator.get_independent_axis(coords, average_values, indexer)
                     for independent_axis in axis3try:
                         stencil = cell_creator.stencil_creator.get_stencil(
@@ -362,6 +351,7 @@ class SubCellReconstruction:
             if r < self.refinement - 1:
                 average_values = self.reconstruct_by_factor(resolution_factor=2)
                 indexer = ArrayIndexerNd(average_values, indexer.modes)
+                # TODO: new orientations in case of constrained
         return self
 
     def reconstruct_by_factor(self, resolution_factor: Union[int, Tuple, np.ndarray] = 1):

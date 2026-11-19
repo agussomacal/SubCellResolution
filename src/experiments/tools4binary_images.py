@@ -71,7 +71,7 @@ def plot_reconstruction4img(fig, ax, image, num_cells_per_dim, model, reconstruc
                             plot_curve_winner=False,
                             plot_vh_classification=True, plot_singular_cells=True, cmap="viridis",
                             cmap_true_image="Greys_r", draw_mesh=True,
-                            trim=((0, 1), (0, 1)), default_linewidth=2,
+                            x_limits_prop=(0, 0), y_limits_prop=(0, 0), default_linewidth=2,
                             numbers_on=True, vmin=None, vmax=None, labels=True, curve_color=None):
     model_resolution = np.array(model.resolution)
     image = load_image(image) if isinstance(image, str) else image
@@ -132,8 +132,10 @@ def plot_reconstruction4img(fig, ax, image, num_cells_per_dim, model, reconstruc
     if not numbers_on:
         plt.box(False)
 
-    ax.set_ylim((model.resolution[1] - trim[0][1] - 0.5, -0.5 + trim[0][0]))
-    ax.set_xlim((trim[1][0] - 0.5, model.resolution[0] - trim[1][1] - 0.5))
+    # ax.set_ylim((model.resolution[1] - trim[0][1] - 0.5, -0.5 + trim[0][0]))
+    # ax.set_xlim((trim[1][0] - 0.5, model.resolution[0] - trim[1][1] - 0.5))
+    ax.set_xlim((model.resolution[1] * x_limits_prop[0] - 0.5, model.resolution[1] * x_limits_prop[1] - 0.5))
+    ax.set_ylim((model.resolution[1] * (1-y_limits_prop[1]) - 0.5, model.resolution[1] * (1-y_limits_prop[0]) - 0.5))
 
 
 plx_plot_reconstruction4img = perplex_plot(legend=False)(one_line_iterator(plot_reconstruction4img))

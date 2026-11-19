@@ -139,8 +139,9 @@ if __name__ == "__main__":
                 convergence_rates["subdivisions"].append(refinement - 1)
 
                 # label_plot_rate = fr"{label_plot}: $\cal{{O}}$({abs(rate):.1f})"
+                label_plot_rate = fr"{label_plot}: $s\approx{abs(rate):.1f}$"
                 # label_plot_rate = fr"{label_plot}" if refinement == 0 else None
-                label_plot_rate = fr"{label_plot}"
+                # label_plot_rate = fr"{label_plot}"
 
                 # replaces with the plot label
                 labels_order[label_plot_rate] = 100 * experiment_labels_order.index(label) + refinement

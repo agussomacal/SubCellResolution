@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from experiments.Refinement.ex_refinement_01_test_cases import shape_names_for_label_plots, shapes, shape2name
 from experiments.Refinement.ex_refinement_models_to_compare import aero_linear, quadratic, cubic, elvira, \
     quartic
 from experiments.Refinement.ex_refinement_singular_cells_connectivity import build_connected_singular_cell_graph
@@ -19,6 +20,7 @@ from perplexitylab.plot_tools import save_figure, sorted_legend
 
 from experiments.Refinement.ex_refinement_config import experiment_subdivision_path, axis_font_dict, legend_font_dict, \
     color, experiment_labels_order
+
 # 1680: 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 15, 16, 20, 21, 24, 28, 30, 35, 40, 42, 48, 56, 60, 70, 80, 84, 105, 120, 140, 168, 210, 240, 280, 336, 420, 560, 840, 1680
 # divisors = [i for i in range(1, n+1) if n % i == 0]
 
@@ -239,7 +241,8 @@ if __name__ == "__main__":
                 ax.set_xticks(xticks, labels=list(map(str, np.array(xticks) - 1)))
                 ax.grid(True)
 
-                shape_title = "Trigonometric Curve" if "Trigo" in shape else "Circle"
+                shape_title = shape_names_for_label_plots[shape2name[shape]]
+
                 # ax.set_title(f"{shape_title} — {metric_names[metric_name]} ($1/h={num_cells_per_dim}$)")
                 title = f"{shape_title} — {metric_names[metric_name]} ($1/h={num_cells_per_dim}$)"
                 ax.set_title(fr"{title}")

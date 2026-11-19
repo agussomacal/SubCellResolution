@@ -14,13 +14,15 @@ experiment_path.mkdir(parents=True, exist_ok=True)
 # --------- Experiment parameters --------- #
 shape_names_for_label_plots = {
     "Circle": "Circle",
-    "Sinusoidal-horizon": "Sinusoidal-horizon",
+    "Sinusoidal-horizon": "Trigonometric",
 }
 
 shapes = {
     "Circle": CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232)),
     "Sinusoidal-horizon": CurveTrigo(params=TrigoParams(x0=0.5, y0=0.5, amplitude=0.1, frequency=1.))
 }
+
+shape2name = {str(v): k for k, v in shapes.items()}
 
 num_cells_per_dim = {
     20: 20,
