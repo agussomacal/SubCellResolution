@@ -25,18 +25,17 @@ from experiments.Refinement.ex_refinement_config import experiment_subdivision_p
 # divisors = [i for i in range(1, n+1) if n % i == 0]
 
 # --------- PATHs to experiment --------- #
-experiment_path = experiment_subdivision_path.joinpath("Continuity")
+experiment_path = experiment_subdivision_path.joinpath("Continuity2")
 experiment_path.mkdir(parents=True, exist_ok=True)
 
 
 # --------- Auxiliary functions --------- #
 def get_versor(cell, slope):
-    vec = [0, 0]
-    vec[cell.independent_axis] = 1
-    vec[cell.dependent_axis] = slope
-    vec = np.array(vec)
-    vec /= np.linalg.norm(vec)
-    return vec
+    vec = np.zeros(2, dtype=float)
+    vec[cell.independent_axis] = 1.0
+    vec[cell.dependent_axis] = float(slope)
+    norm = np.linalg.norm(vec)
+    return vec / norm if norm > 0 else vec
 
 
 def get_ordered_slope_versors(model, graph):
@@ -49,20 +48,53 @@ def get_ordered_slope_versors(model, graph):
     ]
 
 
+# def get_pairwise_slope_versors(model, graph):
+#     def get_slopes_versors(c, c_next):
+#         eval_coords = model.cells[c_next].center_of_cell - model.cells[c].center_of_cell
+#         slope = model.cells[c].curve.polynomial.deriv()(eval_coords[model.cells[c].independent_axis])
+#         slope_next = model.cells[c_next].curve.polynomial.deriv()(eval_coords[model.cells[c_next].independent_axis])
+#         return get_versor(model.cells[c], slope), get_versor(model.cells[c_next], slope_next)
+#
+#     return [get_slopes_versors(graph[i], graph[i + 1]) for i in range(len(graph) - 1)]
+#
+#     def get_slope_versor(c):
+#         slope = model.cells[c].curve.polynomial.deriv()(model.cells[c].center_of_cell[model.cells[c].independent_axis])
+#         return get_versor(model.cells[c], slope)
+#
+#     return [(get_slope_versor(c=graph[i]), get_slope_versor(c=graph[i + 1])) for i in range(len(graph) - 1)]
+
+
 def get_pairwise_slope_versors(model, graph):
-    # def get_slopes_versors(c, c_next):
-    #     eval_coords = model.cells[c_next].center_of_cell - model.cells[c].center_of_cell
-    #     slope = model.cells[c].curve.polynomial.deriv()(eval_coords[model.cells[c].independent_axis])
-    #     slope_next = model.cells[c_next].curve.polynomial.deriv()(eval_coords[model.cells[c_next].independent_axis])
-    #     return get_versor(model.cells[c], slope), get_versor(model.cells[c_next], slope_next)
-    #
-    # return [get_slopes_versors(graph[i], graph[i + 1]) for i in range(len(graph) - 1)]
+    """
+    For each consecutive pair (graph[i], graph[i + 1]) on unit cells with
+    centers around (i + 0.5, j + 0.5), returns:
+      (versor_at_exit_of_curr, versor_at_entry_of_next)
+    evaluated at their shared boundary in global coordinates.
+    """
 
-    def get_slope_versor(c):
-        slope = model.cells[c].curve.polynomial.deriv()(model.cells[c].center_of_cell[model.cells[c].independent_axis])
-        return get_versor(model.cells[c], slope)
+    def get_pair_versors(c, c_next):
+        cell = model.cells[c]
+        cell_next = model.cells[c_next]
 
-    return [(get_slope_versor(c=graph[i]), get_slope_versor(c=graph[i + 1])) for i in range(len(graph) - 1)]
+        ax = cell.independent_axis
+        ax_next = cell_next.independent_axis
+
+        delta = cell_next.center_of_cell - cell.center_of_cell
+        step_dir = np.sign(delta[ax]) if delta[ax] != 0 else 1.0
+        step_dir_next = np.sign(delta[ax_next]) if delta[ax_next] != 0 else step_dir
+
+        # Global boundary coordinates (e.g., for center i + 0.5 and step_dir +1 -> i + 1.0)
+        x_exit = cell.center_of_cell[ax] + 0.5 * step_dir
+        x_entry_next = cell_next.center_of_cell[ax_next] - 0.5 * step_dir_next
+
+        # If your polynomial is parameterized on local [0, 1] cell coords instead of global coords,
+        # use: x_exit - np.floor(cell.center_of_cell[ax]) and x_entry_next - np.floor(cell_next.center_of_cell[ax_next])
+        slope = float(cell.curve.polynomial.deriv()(x_exit))
+        slope_next = float(cell_next.curve.polynomial.deriv()(x_entry_next))
+
+        return get_versor(cell, slope), get_versor(cell_next, slope_next)
+
+    return [get_pair_versors(graph[i], graph[i + 1]) for i in range(len(graph) - 1)]
 
 
 def get_triplewise_slope_versors(model, graph):
@@ -92,6 +124,7 @@ def experiment_continuity(shape, sub_cell_model, refinement, angle_threshold, nu
         trim=trim
     )
 
+    return get_pairwise_slope_versors(model, graph)
     return get_ordered_slope_versors(model, graph)
 
 
@@ -111,8 +144,8 @@ if __name__ == "__main__":
                 CurveTrigo(params=TrigoParams(x0=0.5, y0=0.5, amplitude=0.1, frequency=1.)),
                 CurveCircle(params=CircleParams(x0=0.511, y0=0.486, radius=0.232))
             ],
+            # refinement=[1, 2, 3, 4, 5, 6]
             refinement=[1, 2, 3, 4, 5, 6]
-            # refinement=[1, 2, 3, ]
         )
     )
 
@@ -150,8 +183,9 @@ if __name__ == "__main__":
         print("\n----------------------------------")
         print(identifier(experiment_info))
         ordered_versors = do(experiment_continuity, experiment_info)
-        data["pairwise_versors"].append(list(zip(ordered_versors[:-1], ordered_versors[1:])))
-        data["triplewise_versors"].append(list(zip(ordered_versors[:-2], ordered_versors[1:-1], ordered_versors[2:])))
+        # data["pairwise_versors"].append(list(zip(ordered_versors[:-1], ordered_versors[1:])))
+        data["pairwise_versors"].append(ordered_versors)
+        # data["triplewise_versors"].append(list(zip(ordered_versors[:-2], ordered_versors[1:-1], ordered_versors[2:])))
         data["label"].append(experiment_info.label)
         data["refinement"].append(experiment_info.refinement)
         data["num_cells_per_dim"].append(experiment_info.num_cells_per_dim)

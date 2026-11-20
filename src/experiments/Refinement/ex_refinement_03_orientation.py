@@ -3,9 +3,9 @@ from pathlib import Path
 import numpy as np
 from matplotlib import pyplot as plt
 
-from experiments.OtherExperiments.SubcellExperiments.models2compare import aero_linear
 from experiments.Refinement.ex_refinement_config import experiment_subdivision_path, fig_size, cmap_reconstruction, \
     cmap_true_image, curve_color
+from experiments.Refinement.ex_refinement_models_to_compare import aero_linear, quadratic
 from experiments.Refinement.ex_refinement_tools import fit_model, obtain_image4error
 from experiments.tools import load_image, calculate_averages_from_curve
 from experiments.tools4binary_images import plot_reconstruction4img
@@ -62,12 +62,12 @@ if __name__ == "__main__":
     recalculate_all = False
 
     iterators = []
-    # iterators.append(
-    #     iterator_builder(sub_cell_model=elvira, label="ELVIRA", refinement=[1, 2, 3], angle_threshold=0,
-    #                      recalculate=False or recalculate_all)
-    # )
     iterators.append(
         iterator_builder(sub_cell_model=aero_linear, label="AEROS linear", angle_threshold=45,
+                         recalculate=False or recalculate_all)
+    )
+    iterators.append(
+        iterator_builder(sub_cell_model=quadratic, label="AEROS quadratic", angle_threshold=45,
                          recalculate=False or recalculate_all)
     )
 
